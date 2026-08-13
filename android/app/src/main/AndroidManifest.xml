@@ -1,26 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- INTERNET is required for the AI assistant and WebDAV/backup features.
-         It lives in the MAIN manifest (not just debug) so release builds can
-         reach the network — without it every AI request fails with
-         "Failed host lookup" (SocketException errno=7). -->
-    <uses-permission android:name="android.permission.INTERNET"/>
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
-    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
-    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
-    <uses-permission android:name="android.permission.USE_EXACT_ALARM"/>
-    <!-- Keep scheduled reminders working after a reboot (flutter_local_notifications
-         re-registers them from its persisted store on BOOT_COMPLETED). -->
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
-    <!-- Let the app ask to disable battery optimization — on MIUI/Redmi this
-         is required or Doze kills the process and reminders arrive late. -->
-    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"/>
     <application
-        android:label="Ataraxy"
+        android:label="dream_journal"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher"
-        android:allowBackup="false"
-        android:hardwareAccelerated="true"
-        android:largeHeap="false">
+        android:icon="@mipmap/ic_launcher">
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -29,10 +11,7 @@
             android:theme="@style/LaunchTheme"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:hardwareAccelerated="true"
-            android:screenOrientation="portrait"
             android:windowSoftInputMode="adjustResize">
-            <!-- Optimizations for Redmi Note 12 and mid-range devices -->
-            <meta-data android:name="flutter_has_custom_splash" android:value="true" />
             <!-- Specifies an Android theme to apply to this Activity as soon as
                  the Android process has started. This theme is visible to the user
                  while the Flutter UI initializes. After that, this theme continues
@@ -46,24 +25,6 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
-        <!-- flutter_local_notifications broadcast receivers. These are NOT
-             auto-declared by the plugin — without ScheduledNotificationReceiver
-             zonedSchedule alarms fire but no receiver catches the broadcast,
-             so the scheduled reminder silently never appears (the immediate
-             "test notification" works, the scheduled one doesn't). -->
-        <receiver
-            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver"
-            android:exported="false" />
-        <receiver
-            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED" />
-                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
-                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
-                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON" />
-            </intent-filter>
-        </receiver>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data
@@ -74,20 +35,8 @@
          https://developer.android.com/training/package-visibility and
          https://developer.android.com/reference/android/content/Intent#ACTION_PROCESS_TEXT.
 
-         In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin.
-
-         The ACTION_VIEW https/http intents let url_launcher's canLaunchUrl
-         return true for browser links (GROQ/PSAI/GitHub buttons) on Android
-         11+ — without them the pills silently do nothing. -->
+         In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
     <queries>
-        <intent>
-            <action android:name="android.intent.action.VIEW"/>
-            <data android:scheme="https"/>
-        </intent>
-        <intent>
-            <action android:name="android.intent.action.VIEW"/>
-            <data android:scheme="http"/>
-        </intent>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>

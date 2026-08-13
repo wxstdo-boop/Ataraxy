@@ -121,7 +121,8 @@ class _EntryScreenState extends State<EntryScreen> {
       }
     } else {
       _createdAt = DateTime.now();
-      _id = _createdAt.millisecondsSinceEpoch.toString();
+      // Use microseconds for more unique IDs to avoid collisions
+      _id = _createdAt.microsecondsSinceEpoch.toString();
       _category = widget.defaultCategory;
     }
     // НЕ читаем autosave в initState — context ещё не привязан к SettingsProvider!

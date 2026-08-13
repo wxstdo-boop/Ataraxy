@@ -463,38 +463,45 @@ class NotificationService {
     // Note: `zonedSchedule` in flutter_local_notifications ^22 is timezone-aware
     // and does not accept `uiLocalNotificationDateInterpretation` — that param
     // is only meaningful for the non-zoned `show`/`periodicallyShow` paths.
-    await _notifications.zonedSchedule(
-      id: 0,
-      title: title,
-      body: body,
-      scheduledDate: tzScheduled,
-      notificationDetails: details,
-      androidScheduleMode: mode,
-      matchDateTimeComponents: DateTimeComponents.time,
-    );
-    debugPrint('[Notif] scheduled ok with mode=${mode.name}, next fire at ${tzScheduled.toIso8601String()}');
+    try {
+      await _notifications.zonedSchedule(
+        id: 0,
+        title: title,
+        body: body,
+        scheduledDate: tzScheduled,
+        notificationDetails: details,
+        androidScheduleMode: mode,
+        matchDateTimeComponents: DateTimeComponents.time,
+      );
+      debugPrint('[NOTIF SUCCESS] Reminder scheduled! Mode=$mode, Next fire: ${tzScheduled.toIso8601String()}');
+    } catch (e) {
+      debugPrint('[NOTIF ERROR] Failed to schedule: $e');
+      rethrow;
+    }
   }
 
   static Future<void> updateReminderFromSettings(
     AppSettings settings, {
     bool requestBatteryExemption = false,
   }) async {
+    debugPrint('[NOTIF SETTINGS] reminderEnabled=${settings.reminderEnabled}, time=${settings.reminderTime}');
     if (settings.reminderEnabled &&
         settings.reminderTime != null &&
         settings.reminderTime!.isNotEmpty) {
       final body = settings.reminderText?.isNotEmpty == true
           ? settings.reminderText!
           : 'Не забудьте записать свои мысли в дневник';
+      debugPrint('[NOTIF] Scheduling daily at ${settings.reminderTime}, body: $body');
       await scheduleDaily(
         settings.reminderTime!,
         'Напоминание',
         body,
         requestBatteryExemption: requestBatteryExemption,
       );
-      debugPrint('Scheduled daily notification at ${settings.reminderTime}');
+      debugPrint('[NOTIF SETTINGS] ✓ Scheduled daily notification at ${settings.reminderTime}');
     } else {
       await cancelAll();
-      debugPrint('Cancelled all notifications');
+      debugPrint('[NOTIF SETTINGS] × Cancelled all notifications (reminder disabled or no time set)');
     }
   }
 

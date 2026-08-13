@@ -61,20 +61,30 @@ class AutoExportService {
   }
   
   Future<bool> checkAndExport() async {
-    if (!_isEnabled) return false;
+    debugPrint('[AUTO-EXPORT CHECK] Enabled: $_isEnabled, Last: $_lastExport');
+    if (!_isEnabled) {
+      debugPrint('[AUTO-EXPORT] Skipped: not enabled');
+      return false;
+    }
     
     final now = DateTime.now();
-    if (_lastExport == null || now.difference(_lastExport!) >= _interval) {
+    final diff = _lastExport == null 
+        ? _interval + const Duration(minutes: 1)
+        : now.difference(_lastExport!);
+    if (_lastExport == null || diff >= _interval) {
+      debugPrint('[AUTO-EXPORT] Starting export...');
       await _performExport();
       return true;
     }
+    debugPrint('[AUTO-EXPORT] Skipped: only ${diff.inMinutes}min since last (need ${_interval.inMinutes}min)');
     return false;
   }
   
   Future<void> _performExport() async {
+    debugPrint('[AUTO-EXPORT] _performExport called, has callback: ${_exportCallback != null}');
     try {
       if (_exportCallback == null) {
-        debugPrint('AutoExportService: no export callback set');
+        debugPrint('[AUTO-EXPORT ERROR] No export callback set!');
         return;
       }
       
@@ -139,7 +149,8 @@ class AutoExportService {
         await file.writeAsString(json);
         final prefs = await SharedPreferences.getInstance();
         await prefs.setInt(_lastExportKey, DateTime.now().millisecondsSinceEpoch);
-        debugPrint('AutoExportService: exported to $finalPath');
+        _lastExport = DateTime.now();
+        debugPrint('[AUTO-EXPORT SUCCESS] Saved to: $finalPath');
         return;
       } catch (e) {
         debugPrint('AutoExportService: write failed: $e');

@@ -1022,16 +1022,17 @@ class _SmoothTabPills extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     final controller = DefaultTabController.of(context);
     final count = labels.length;
     return Container(
       height: 52,
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.22),
+        color: scheme.primaryContainer.withValues(alpha: 0.6),
         borderRadius: BorderRadius.circular(30),
         border: Border.all(
-          color: Colors.white.withValues(alpha: 0.15),
+          color: scheme.outline.withValues(alpha: 0.3),
         ),
       ),
       child: AnimatedBuilder(
@@ -1055,16 +1056,16 @@ class _SmoothTabPills extends StatelessWidget implements PreferredSizeWidget {
                     top: 0,
                     bottom: 0,
                     child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 300),
+                      duration: const Duration(milliseconds: 400),
                       margin: const EdgeInsets.all(3),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: scheme.primary,
                         borderRadius: BorderRadius.circular(26),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.14),
-                            blurRadius: 10,
-                            offset: const Offset(0, 2),
+                            color: scheme.shadow.withValues(alpha: 0.2),
+                            blurRadius: 12,
+                            offset: const Offset(0, 3),
                           ),
                         ],
                       ),
@@ -1088,12 +1089,12 @@ class _SmoothTabPills extends StatelessWidget implements PreferredSizeWidget {
                             borderRadius: BorderRadius.circular(26),
                             child: Center(
                               child: AnimatedDefaultTextStyle(
-                                duration: const Duration(milliseconds: 350),
+                                duration: const Duration(milliseconds: 400),
                                 curve: Curves.easeOutCubic,
                                 style: TextStyle(
                                   color: i == index
-                                      ? headerColor
-                                      : Colors.white.withValues(alpha: 0.75),
+                                      ? scheme.onPrimary
+                                      : scheme.onPrimaryContainer,
                                   fontWeight: i == index
                                       ? FontWeight.w700
                                       : FontWeight.w500,
@@ -1564,34 +1565,6 @@ class _DailyGuideBanner extends StatelessWidget {
   static List<_DailyGuidePrompt> get _dreamPrompts => dp.dreamPrompts;
   static List<_DailyGuidePrompt> get _tulpaPrompts => dp.tulpaPrompts;
 
-  // A rotating palette of gradient pairs — each day the banner picks the
-  // next palette so consecutive days never look the same.
-  static const _palettes = <List<Color>>[
-    [Color(0xFF7B61FF), Color(0xFF00C6FF)], // purple-blue
-    [Color(0xFF6366F1), Color(0xFFEC4899)], // indigo-pink
-    [Color(0xFF14B8A6), Color(0xFF3B82F6)], // teal-blue
-    [Color(0xFFF59E0B), Color(0xFFEF4444)], // amber-red
-    [Color(0xFF8B5CF6), Color(0xFF06B6D4)], // violet-cyan
-    [Color(0xFFEC4899), Color(0xFFF97316)], // pink-orange
-    [Color(0xFF10B981), Color(0xFF6366F1)], // emerald-indigo
-    [Color(0xFFEF4444), Color(0xFFFBBF24)], // red-yellow
-    [Color(0xFF0EA5E9), Color(0xFFA855F7)], // sky-purple
-    [Color(0xFFD946EF), Color(0xFF06B6D4)], // fuchsia-cyan
-    [Color(0xFF84CC16), Color(0xFF14B8A6)], // lime-teal
-    [Color(0xFFFB923C), Color(0xFFE11D48)], // orange-rose
-  ];
-
-  static const _tulpaPalettes = <List<Color>>[
-    [Color(0xFFFF6C87), Color(0xFFFFA84B)], // rose-orange
-    [Color(0xFFEC4899), Color(0xFFF97316)], // pink-orange
-    [Color(0xFFD946EF), Color(0xFFFB923C)], // fuchsia-peach
-    [Color(0xFF8B5CF6), Color(0xFFFBBF24)], // violet-gold
-    [Color(0xFF06B6D4), Color(0xFFA855F7)], // cyan-purple
-    [Color(0xFFF43F5E), Color(0xFFFBBF24)], // rose-gold
-    [Color(0xFFEF4444), Color(0xFFEC4899)], // red-pink
-    [Color(0xFFFB7185), Color(0xFFFDE68A)], // soft-pink-cream
-  ];
-
   Widget build(BuildContext context) {
     final isDream = topic == DailyGuideTopic.lucidDreams;
     final prompts = isDream ? _dreamPrompts : _tulpaPrompts;
@@ -1605,11 +1578,8 @@ class _DailyGuideBanner extends StatelessWidget {
     // Theme-driven gradient with a daily hue rotation: the banner always
     // belongs to the ACTIVE theme (primary → tertiary) yet every day shifts
     // the hue slightly, so consecutive days stay visually distinct without
-    // ever clashing with the app palette. The fixed palettes remain only as
-    // a soft accent for the icon glow.
+    // ever clashing with the app palette.
     final scheme = Theme.of(context).colorScheme;
-    final palettes = isDream ? _palettes : _tulpaPalettes;
-    final accent = palettes[idx % palettes.length];
     final shift = (idx * 17) % 360;
     Color shiftHue(Color c, double delta) => HSLColor.fromColor(c)
         .withHue((HSLColor.fromColor(c).hue + delta) % 360)
@@ -1686,7 +1656,7 @@ class _DailyGuideBanner extends StatelessWidget {
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: accent.first.withValues(alpha: 0.35),
+                              color: gradient.first.withValues(alpha: 0.35),
                               blurRadius: 14,
                               offset: const Offset(0, 4),
                             ),

@@ -83,35 +83,83 @@ class AutoExportService {
       final json = await _exportCallback!();
 
       // Save into Downloads/Ataraxy (creating the folder if needed).
-      // getApplicationDocumentsDirectory() on Android points at
-      // /storage/emulated/0/Android/data/.../files — the user's real
-      // Downloads is its parent's parent + /Download (public storage).
-      // We create a dedicated Ataraxy subfolder so backups never clutter
-      // the root of Downloads.
-      final appDir = await getApplicationDocumentsDirectory();
-      final downloadsRoot = Directory('${appDir.parent.path}/Download');
-      final targetDir = Directory('${downloadsRoot.path}/Ataraxy');
+      // On Android, try to get the real Downloads directory.
+      // Fall back to app documents if public Downloads is unreachable.
+      Directory? targetDir;
+      String finalPath = '';
+      
       try {
-        if (!targetDir.existsSync()) targetDir.createSync(recursive: true);
-        final file = File('${targetDir.path}/$filename');
+        // Try to get the actual Downloads directory
+        // Common paths: /storage/emulated/0/Download or /sdcard/Download
+        final commonPaths = [
+          '/storage/emulated/0/Download',
+          '/sdcard/Download',
+          '/storage/emulated/0/Downloads',
+        ];
+        
+        for (final path in commonPaths) {
+          final testDir = Directory(path);
+          if (await testDir.exists()) {
+            targetDir = Directory('${testDir.path}/Ataraxy');
+            if (!targetDir.existsSync()) {
+              targetDir.createSync(recursive: true);
+            }
+            finalPath = '${targetDir.path}/$filename';
+            break;
+          }
+        }
+        
+        if (targetDir == null) {
+          // Fallback: try to use getDownloadsDirectory from path_provider
+          try {
+            final downloadsDir = await getDownloadsDirectory();
+            if (downloadsDir != null) {
+              targetDir = Directory('${downloadsDir.path}/Ataraxy');
+              if (!targetDir.existsSync()) {
+                targetDir.createSync(recursive: true);
+              }
+              finalPath = '${targetDir.path}/$filename';
+            }
+          } catch (e) {
+            debugPrint('AutoExportService: getDownloadsDirectory failed: $e');
+          }
+        }
+        
+        if (targetDir == null) {
+          // Last fallback: try the old method
+          final appDir = await getApplicationDocumentsDirectory();
+          targetDir = Directory('${appDir.path}/Ataraxy');
+          if (!targetDir.existsSync()) {
+            targetDir.createSync(recursive: true);
+          }
+          finalPath = '${targetDir.path}/$filename';
+        }
+        
+        final file = File(finalPath);
         await file.writeAsString(json);
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setInt(
-            _lastExportKey, DateTime.now().millisecondsSinceEpoch);
-        debugPrint('AutoExportService: exported to ${targetDir.path}/$filename');
+        await prefs.setInt(_lastExportKey, DateTime.now().millisecondsSinceEpoch);
+        debugPrint('AutoExportService: exported to $finalPath');
         return;
       } catch (e) {
-        debugPrint('AutoExportService: Downloads/Ataraxy write failed: $e');
+        debugPrint('AutoExportService: write failed: $e');
       }
-
-      // Fallback to app documents directory if public Downloads is
-      // unreachable (permission denied on some devices).
-      debugPrint('AutoExportService: falling back to app docs');
-      final file = File('${appDir.path}/$filename');
-      await file.writeAsString(json);
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setInt(_lastExportKey, DateTime.now().millisecondsSinceEpoch);
-      debugPrint('AutoExportService: exported to ${appDir.path}/$filename');
+      
+      // If all else fails, try app documents
+      try {
+        final appDir = await getApplicationDocumentsDirectory();
+        final fallbackDir = Directory('${appDir.path}/Ataraxy');
+        if (!fallbackDir.existsSync()) {
+          fallbackDir.createSync(recursive: true);
+        }
+        final file = File('${fallbackDir.path}/$filename');
+        await file.writeAsString(json);
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setInt(_lastExportKey, DateTime.now().millisecondsSinceEpoch);
+        debugPrint('AutoExportService: exported to ${fallbackDir.path}/$filename');
+      } catch (e) {
+        debugPrint('AutoExportService: final fallback write failed: $e');
+      }
     } catch (e) {
       debugPrint('AutoExportService: export error: $e');
     }

@@ -391,14 +391,32 @@ class NotificationService {
     final details = notificationDetails ?? _defaultDetails();
 
     // Decide scheduleMode EXPLICITLY from permission state
+    // On Android 14+, also check for USE_EXACT_ALARM permission
     AndroidScheduleMode mode;
     bool exactGranted = false;
+    
     if (Platform.isAndroid) {
-      final status = await Permission.scheduleExactAlarm.status;
-      exactGranted = status.isGranted || status.isRestricted;
+      // Check SCHEDULE_EXACT_ALARM permission
+      final scheduleExactStatus = await Permission.scheduleExactAlarm.status;
+      exactGranted = scheduleExactStatus.isGranted || scheduleExactStatus.isRestricted;
+      
+      // Use exact mode if permission is granted
       mode = exactGranted
           ? AndroidScheduleMode.exactAllowWhileIdle
           : AndroidScheduleMode.inexactAllowWhileIdle;
+      
+      // If exact alarm not granted and this is user-initiated, try to request it
+      if (!exactGranted && requestBatteryExemption) {
+        try {
+          final res = await Permission.scheduleExactAlarm.request();
+          if (res.isGranted || res.isRestricted) {
+            mode = AndroidScheduleMode.exactAllowWhileIdle;
+            debugPrint('[Notif] SCHEDULE_EXACT_ALARM granted after request');
+          }
+        } catch (e) {
+          debugPrint('[Notif] SCHEDULE_EXACT_ALARM request failed: $e');
+        }
+      }
     } else {
       mode = AndroidScheduleMode.exactAllowWhileIdle;
     }
@@ -406,14 +424,15 @@ class NotificationService {
     debugPrint(
       '[Notif] scheduleDaily: '
       'wall=$hour:$minute, '
-      'exact_alarm_granted=$exactGranted, '
+      'exact_alarm_granted=$exactGranted,'
       'mode=${mode.name}',
     );
 
     if (!exactGranted && Platform.isAndroid) {
       debugPrint(
         '[Notif] WARNING: SCHEDULE_EXACT_ALARM not granted — using '
-        'inexactAllowWhileIdle which Doze-batches and can be 1-3+ hours late.',
+        'inexactAllowWhileIdle which Doze-batches and can be 1-3+ hours late. '
+        'User should grant permission in settings for exact alarm scheduling.',
       );
     }
 
@@ -422,14 +441,16 @@ class NotificationService {
     // Asking the user to exempt the app from battery optimization is the
     // single highest-value fix for "test notification arrives, reminder
     // never fires". The system dialog appears once; if denied we keep the
-    // inexact fallback (better than nothing). Only ask when the user
-    // actively toggles the reminder on — at startup we re-arm silently.
-    if (requestBatteryExemption && Platform.isAndroid) {
+    // inexact fallback (better than nothing).
+    // We now ALWAYS try to request battery exemption on Android to ensure reliability
+    if (Platform.isAndroid) {
       try {
         final batt = await Permission.ignoreBatteryOptimizations.status;
         if (!batt.isGranted && !batt.isRestricted) {
           final ok = await Permission.ignoreBatteryOptimizations.request();
-          debugPrint('[Notif] battery-optimization request → $ok');
+          debugPrint('[Notif] battery-optimization request → ${ok == true ? 'GRANTED' : 'DENIED'}');
+        } else {
+          debugPrint('[Notif] battery-optimization already granted or restricted');
         }
       } catch (e) {
         debugPrint('[Notif] battery-optimization request failed: $e');

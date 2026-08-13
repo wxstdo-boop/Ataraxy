@@ -79,6 +79,10 @@ class _EntryScreenState extends State<EntryScreen> {
   // re-reading and re-writing the whole list on the UI isolate — that
   // CPU/memory storm is what got the app killed mid-typing.
   bool _autosaveRunning = false;
+  
+  // Guards against overlapping manual save taps: prevents double-save race
+  // conditions where rapid taps could overwrite or lose data.
+  bool _saving = false;
 
   void _startAutosaveTimer() {
     _autosaveTimer?.cancel();
@@ -556,47 +560,54 @@ class _EntryScreenState extends State<EntryScreen> {
   }
 
   Future<void> _save() async {
-    _autosaveTimer?.cancel();
-    // Commit any in-progress IME composing text BEFORE reading the
-    // controllers: on MIUI/Gboard the very last typed word can still be
-    // in the composing region when the save button is tapped, and reading
-    // the controller early dropped it. Unfocusing flushes the IME, then a
-    // short delay lets the commit land.
-    FocusManager.instance.primaryFocus?.unfocus();
-    await Future<void>.delayed(const Duration(milliseconds: 60));
-    if (!mounted) return;
-    final entry = _buildEntry();
+    // Prevent overlapping saves from rapid taps
+    if (_saving) return;
+    _saving = true;
     try {
-      await _storage.addEntry(entry);
-    } catch (e) {
-      debugPrint('[Save] Error saving entry: $e');
-      if (mounted) {
-        AnimatedSnack.show(
-          context,
-          L.tr(context, 'saveFailed'),
-          type: SnackType.error,
-        );
+      _autosaveTimer?.cancel();
+      // Commit any in-progress IME composing text BEFORE reading the
+      // controllers: on MIUI/Gboard the very last typed word can still be
+      // in the composing region when the save button is tapped, and reading
+      // the controller early dropped it. Unfocusing flushes the IME, then a
+      // short delay lets the commit land.
+      FocusManager.instance.primaryFocus?.unfocus();
+      await Future<void>.delayed(const Duration(milliseconds: 60));
+      if (!mounted) return;
+      final entry = _buildEntry();
+      try {
+        await _storage.addEntry(entry);
+      } catch (e) {
+        debugPrint('[Save] Error saving entry: $e');
+        if (mounted) {
+          AnimatedSnack.show(
+            context,
+            L.tr(context, 'saveFailed'),
+            type: SnackType.error,
+          );
+        }
+        // Keep the editor open with all the typed text — do NOT navigate
+        // away or crash, so nothing the user wrote is lost.
+        return;
       }
-      // Keep the editor open with all the typed text — do NOT navigate
-      // away or crash, so nothing the user wrote is lost.
-      return;
-    }
-    if (!mounted) return;
-    if (widget.entry == null) {
-      // New entry: land on its preview instead of dropping the user back
-      // onto the feed — they want to see what was just saved.
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (_) => EntryDetailScreen(
-            entry: entry,
-            storage: _storage,
+      if (!mounted) return;
+      if (widget.entry == null) {
+        // New entry: land on its preview instead of dropping the user back
+        // onto the feed — they want to see what was just saved.
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (_) => EntryDetailScreen(
+              entry: entry,
+              storage: _storage,
+            ),
           ),
-        ),
-      );
-    } else {
-      // Editing: hand the fresh entry back so the detail screen can show
-      // the updated preview (not stale data).
-      Navigator.of(context).pop(entry);
+        );
+      } else {
+        // Editing: hand the fresh entry back so the detail screen can show
+        // the updated preview (not stale data).
+        Navigator.of(context).pop(entry);
+      }
+    } finally {
+      _saving = false;
     }
   }
 

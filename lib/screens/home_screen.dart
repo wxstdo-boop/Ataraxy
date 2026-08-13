@@ -1028,8 +1028,11 @@ class _SmoothTabPills extends StatelessWidget implements PreferredSizeWidget {
       height: 52,
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.20),
+        color: Colors.white.withValues(alpha: 0.22),
         borderRadius: BorderRadius.circular(30),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.15),
+        ),
       ),
       child: AnimatedBuilder(
         animation: controller.animation ?? const AlwaysStoppedAnimation(0.0),
@@ -1051,15 +1054,16 @@ class _SmoothTabPills extends StatelessWidget implements PreferredSizeWidget {
                     width: segW,
                     top: 0,
                     bottom: 0,
-                    child: Container(
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
                       margin: const EdgeInsets.all(3),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(26),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.12),
-                            blurRadius: 8,
+                            color: Colors.black.withValues(alpha: 0.14),
+                            blurRadius: 10,
                             offset: const Offset(0, 2),
                           ),
                         ],
@@ -1084,16 +1088,17 @@ class _SmoothTabPills extends StatelessWidget implements PreferredSizeWidget {
                             borderRadius: BorderRadius.circular(26),
                             child: Center(
                               child: AnimatedDefaultTextStyle(
-                                duration: const Duration(milliseconds: 250),
-                                curve: Curves.easeOut,
+                                duration: const Duration(milliseconds: 350),
+                                curve: Curves.easeOutCubic,
                                 style: TextStyle(
                                   color: i == index
                                       ? headerColor
-                                      : Colors.white70,
+                                      : Colors.white.withValues(alpha: 0.75),
                                   fontWeight: i == index
                                       ? FontWeight.w700
                                       : FontWeight.w500,
                                   fontSize: 14,
+                                  letterSpacing: 0.2,
                                 ),
                                 child: Text(labels[i]),
                               ),
@@ -1158,7 +1163,7 @@ class _CategoryChips extends StatelessWidget {
                     // across the segments (easeOutCubic, 360ms) — much
                     // smoother than fading each segment's fill in place.
                     AnimatedAlign(
-                      duration: const Duration(milliseconds: 360),
+                      duration: const Duration(milliseconds: 400),
                       curve: Curves.easeOutCubic,
                       alignment: Alignment(
                         idx == 0
@@ -1176,8 +1181,8 @@ class _CategoryChips extends StatelessWidget {
                           borderRadius: BorderRadius.circular(12),
                           boxShadow: [
                             BoxShadow(
-                              color: scheme.primary.withValues(alpha: 0.3),
-                              blurRadius: 6,
+                              color: scheme.primary.withValues(alpha: 0.35),
+                              blurRadius: 8,
                               offset: const Offset(0, 2),
                             ),
                           ],
@@ -1204,7 +1209,7 @@ class _CategoryChips extends StatelessWidget {
                                     fit: BoxFit.scaleDown,
                                     child: AnimatedDefaultTextStyle(
                                       duration:
-                                          const Duration(milliseconds: 360),
+                                          const Duration(milliseconds: 400),
                                       curve: Curves.easeOutCubic,
                                       style: TextStyle(
                                         fontSize: 11.5,
@@ -1213,7 +1218,8 @@ class _CategoryChips extends StatelessWidget {
                                             : FontWeight.w500,
                                         color: c == current
                                             ? scheme.onPrimary
-                                            : scheme.onSurfaceVariant,
+                                            : scheme.onSurfaceVariant.withValues(alpha: 0.85),
+                                        letterSpacing: 0.2,
                                       ),
                                       child: Text(
                                         L.tr(
@@ -1248,13 +1254,24 @@ class _CategoryChips extends StatelessWidget {
           ),
           IconButton(
             icon: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 250),
+              duration: const Duration(milliseconds: 350),
               switchInCurve: Curves.easeOutBack,
               switchOutCurve: Curves.easeIn,
               transitionBuilder: (child, animation) =>
                   RotationTransition(
-                    turns: Tween(begin: 0.75, end: 1.0).animate(animation),
-                    child: FadeTransition(opacity: animation, child: child),
+                    turns: Tween(begin: 0.75, end: 1.0).animate(
+                      CurvedAnimation(
+                        parent: animation,
+                        curve: Curves.easeOutBack,
+                      ),
+                    ),
+                    child: FadeTransition(
+                      opacity: CurvedAnimation(
+                        parent: animation,
+                        curve: Curves.easeOut,
+                      ),
+                      child: child,
+                    ),
                   ),
               child: Icon(
                 key: ValueKey(sortMode),

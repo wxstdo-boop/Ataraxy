@@ -72,3 +72,6 @@ app.*.map.json
 
 # Poolside local settings
 .poolside/
+
+# WorkBuddy local memory
+.workbuddy-ai/

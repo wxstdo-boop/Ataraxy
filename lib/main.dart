@@ -1,3 +1,4 @@
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -54,13 +55,17 @@ void main() async {
   
   // These can run in parallel as they don't block the UI
   final initFuture = Future.wait([
-    notificationService.initialize(),
-    autoExport.loadState(),
+    _guarded(notificationService.initialize(), 'Notification init'),
+    _guarded(autoExport.loadState(), 'Auto-export load'),
     _precacheAvatar(),
   ]);
   
   // Update reminders from settings (depends on settings being loaded)
-  await NotificationService.updateReminderFromSettings(settings);
+  try {
+    await NotificationService.updateReminderFromSettings(settings);
+  } catch (e) {
+    debugPrint('[Boot] Reminder update failed (non-fatal): $e');
+  }
   
   // Set auto-export callback
   autoExport.setExportCallback(() async {
@@ -68,11 +73,25 @@ void main() async {
   });
 
   // Wait for parallel initialization to complete
-  await initFuture;
+  try {
+    await initFuture;
+  } catch (e) {
+    debugPrint('[Boot] Parallel init failed (non-fatal): $e');
+  }
 
   runApp(
     MyApp(notificationService: notificationService, initialSettings: settings),
   );
+}
+
+/// Runs [future] and swallows/logs any error so a single failing subsystem
+/// (e.g. notifications) can never block startup and leave a black screen.
+Future<void> _guarded(Future<dynamic> future, String label) async {
+  try {
+    await future;
+  } catch (e) {
+    debugPrint('[Boot] $label failed (non-fatal): $e');
+  }
 }
 
 /// Loads and decodes the app avatar before the first frame so the splash
@@ -89,15 +108,15 @@ Future<void> _precacheAvatar() async {
   }
 
   listener = ImageStreamListener(
-    (_, __) => done(),
-    onError: (_, __) => done(),
+    (_, _) => done(),
+    onError: (_, _) => done(),
   );
   stream.addListener(listener);
   // Safety net: if the asset stream never delivers AND never errors (rare
   // but possible on some engines), don't block startup forever — the splash
-  // paints the avatar from its own Image.asset anyway.
+  // paints the avatar from its own FadeInImage anyway.
   try {
-    await completer.future.timeout(const Duration(seconds: 4));
+    await completer.future.timeout(const Duration(seconds: 1));
   } catch (_) {
     done();
   }

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:dream_journal/services/notification_service.dart';
+import 'package:ataraxy/services/notification_service.dart';
 
 void main() {
   group('NotificationService.parseScheduleTime', () {

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- flutter_local_notifications references drawables by name from Dart, so the
+     resource optimizer (aapt2 optimize) considers them unused and strips them.
+     This keeps all drawable resources in release builds. -->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@drawable/*" />

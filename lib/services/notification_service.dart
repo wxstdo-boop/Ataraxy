@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:dream_journal/models/settings.dart';
+import 'package:ataraxy/models/settings.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz_data;
 // Conditional web helpers: real Notification API on web, no-op stub on
@@ -50,7 +50,7 @@ class NotificationService {
     // a colorful launcher icon renders as a solid blob / blank square on
     // Android (incl. MIUI). ic_notification is our custom white vector.
     const androidSettings = AndroidInitializationSettings(
-      '@drawable/ic_notification',
+      'ic_notification',
     );
     const iosSettings = DarwinInitializationSettings(
       requestAlertPermission: true,
@@ -69,10 +69,10 @@ class NotificationService {
 
     await _createChannels();
 
-    // Request ALL required permissions at startup so the FIRST
-    // scheduleDaily() does not fall back to inexactAllowWhileIdle
-    // (which Doze-mode-batches to ~15-minute windows and can be hours late).
-    await requestAllPermissions();
+    // NOTE: permissions are intentionally NOT requested here. Popping the
+    // notification + battery dialogs at every launch was hostile — they are
+    // now requested from the welcome screen's "enable" button and from
+    // Settings, where the user actually has context for them.
   }
 
   /// Resolves the device's real IANA timezone and sets tz.local accordingly.
@@ -305,7 +305,7 @@ class NotificationService {
         importance: Importance.max,
         priority: Priority.high,
         category: AndroidNotificationCategory.reminder,
-        icon: '@drawable/ic_notification',
+        icon: 'ic_notification',
         playSound: true,
         enableVibration: true,
       ),
@@ -448,7 +448,7 @@ class NotificationService {
         final batt = await Permission.ignoreBatteryOptimizations.status;
         if (!batt.isGranted && !batt.isRestricted) {
           final ok = await Permission.ignoreBatteryOptimizations.request();
-          debugPrint('[Notif] battery-optimization request → ${ok == true ? 'GRANTED' : 'DENIED'}');
+          debugPrint('[Notif] battery-optimization request → ${ok == PermissionStatus.granted ? 'GRANTED' : 'DENIED'}');
         } else {
           debugPrint('[Notif] battery-optimization already granted or restricted');
         }

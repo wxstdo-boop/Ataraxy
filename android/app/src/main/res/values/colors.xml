@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="ic_launcher_background">#F6F3FC</color>
+    <color name="ic_launcher_background">#000000</color>
+    <!-- AMOLED: native window is pure black so the transition into the
+         Flutter splash (black gradient + logo) is seamless, no flash. -->
+    <color name="launchBg">#000000</color>
+    <color name="normalBg">#0A0A0C</color>
 </resources>

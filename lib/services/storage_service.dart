@@ -5,13 +5,13 @@ import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:dream_journal/models/chat_message.dart';
-import 'package:dream_journal/models/entry.dart';
-import 'package:dream_journal/models/favorite_activity.dart';
-import 'package:dream_journal/models/settings.dart';
-import 'package:dream_journal/services/chat_service.dart';
-import 'package:dream_journal/services/favorite_activity_service.dart';
-import 'package:dream_journal/services/settings_service.dart';
+import 'package:ataraxy/models/chat_message.dart';
+import 'package:ataraxy/models/entry.dart';
+import 'package:ataraxy/models/favorite_activity.dart';
+import 'package:ataraxy/models/settings.dart';
+import 'package:ataraxy/services/chat_service.dart';
+import 'package:ataraxy/services/favorite_activity_service.dart';
+import 'package:ataraxy/services/settings_service.dart';
 
 /// Утилита для правильной обработки UTF-8 кодировки
 class JsonHelper {
@@ -191,6 +191,72 @@ class StorageService {
     await _rawMap();
     final box = await _openBox();
     await box.put(_entryKey(entry.id), jsonEncode(entry.toJson()));
+  }
+
+  /// Single-entry read straight from the box. Screens that receive an entry
+  /// as a widget argument use this to check whether the stored copy has moved
+  /// on since their snapshot was taken, instead of trusting it.
+  Future<JournalEntry?> readEntry(String id) async {
+    if (id.isEmpty) return null;
+    await _rawMap();
+    final box = await _openBox();
+    final raw = box.get(_entryKey(id));
+    if (raw is! String) return null;
+    try {
+      return JournalEntry.fromJson(
+        (jsonDecode(raw) as Map).cast<String, dynamic>(),
+      );
+    } catch (e) {
+      debugPrint('Storage: readEntry($id) failed: $e');
+      return null;
+    }
+  }
+
+  /// Read-modify-write a handful of metadata fields without ever rebuilding
+  /// the entry from an in-memory copy. Toggling a pin from the feed used to
+  /// persist the whole object the feed happened to be holding, which could be
+  /// a snapshot taken before an autosave landed — the newer text went back
+  /// out of the box and the user's words vanished. Patching the stored JSON
+  /// touches only the listed keys, so the body on disk stays authoritative.
+  Future<void> patchEntry(String id, Map<String, dynamic> fields) async {
+    if (id.isEmpty || fields.isEmpty) return;
+    await _rawMap();
+    final box = await _openBox();
+    final key = _entryKey(id);
+    final raw = box.get(key);
+    if (raw is! String) return;
+    try {
+      final map = (jsonDecode(raw) as Map).cast<String, dynamic>();
+      map.addAll(fields);
+      await box.put(key, jsonEncode(map));
+    } catch (e) {
+      debugPrint('Storage: patchEntry($id) failed: $e');
+    }
+  }
+
+  /// Manual (drag-and-drop) order: ids only, never entry bodies. The feed
+  /// used to persist the entire in-memory list on every reorder, which both
+  /// raced with the editor's autosave and rewrote entries nobody had
+  /// touched. Storing just the id sequence removes that failure mode.
+  static const String _manualOrderKey = 'manual_order';
+
+  Future<List<String>> loadManualOrder() async {
+    await _rawMap();
+    final box = await _openBox();
+    final raw = box.get(_manualOrderKey);
+    if (raw is! String) return const [];
+    try {
+      return (jsonDecode(raw) as List).whereType<String>().toList();
+    } catch (e) {
+      debugPrint('Storage: manual order decode failed: $e');
+      return const [];
+    }
+  }
+
+  Future<void> saveManualOrder(List<String> ids) async {
+    await _rawMap();
+    final box = await _openBox();
+    await box.put(_manualOrderKey, jsonEncode(ids));
   }
 
   Future<void> deleteEntry(String id) async {

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:dream_journal/l10n/strings.dart';
+import 'package:ataraxy/l10n/strings.dart';
 
 class DreamSign {
   final String id;

@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
-import 'package:dream_journal/l10n/strings.dart';
-import 'package:dream_journal/widgets/limited_context_menu.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:ataraxy/l10n/strings.dart';
+import 'package:ataraxy/widgets/limited_context_menu.dart';
 
 class LockScreen extends StatefulWidget {
   final VoidCallback onUnlocked;
@@ -70,6 +70,7 @@ class _LockScreenState extends State<LockScreen> {
               SizedBox(
                 width: 220,
                 child: TextField(
+        cursorOpacityAnimates: true,
         magnifierConfiguration: TextMagnifierConfiguration.disabled,
                 contextMenuBuilder: (ctx, state) =>
                     buildLimitedContextMenu(ctx, state),

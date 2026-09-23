@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:dream_journal/l10n/strings.dart';
-import 'package:dream_journal/widgets/animated_snack.dart';
-import 'package:dream_journal/widgets/app_avatar.dart';
+import 'package:ataraxy/l10n/strings.dart';
+import 'package:ataraxy/theme/app_theme.dart';
+import 'package:ataraxy/widgets/animated_snack.dart';
+import 'package:ataraxy/widgets/app_avatar.dart';
 
 class AboutScreen extends StatefulWidget {
   const AboutScreen({super.key});
@@ -85,7 +86,7 @@ class _AboutScreenState extends State<AboutScreen> {
                     size: 18, color: scheme.onSurface.withValues(alpha: 0.5)),
                 const SizedBox(width: 8),
                 Text(
-                  '${L.tr(context, 'version')} 1.3',
+                  '${L.tr(context, 'version')} 1.3.4',
                   style: Theme.of(context).textTheme.labelMedium?.copyWith(
                         color: scheme.onSurface.withValues(alpha: 0.6),
                       ),
@@ -142,14 +143,21 @@ class _SupportButton extends StatelessWidget {
         child: Ink(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(24),
+            // Muted support banner: the neon #FF6C87 → #FF9FB6 → #FFB347 ramp
+            // now runs rose → blush → sand, so the white label stays readable
+            // without the card shouting across the screen.
             gradient: const LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [Color(0xFFFF6C87), Color(0xFFFF9FB6), Color(0xFFFFB347)],
+              colors: [
+                AppAccents.rose,
+                AppAccents.roseLight,
+                AppAccents.amber,
+              ],
             ),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFFFF6C87).withValues(alpha: 0.40),
+                color: AppAccents.rose.withValues(alpha: 0.30),
                 blurRadius: 20,
                 offset: const Offset(0, 8),
               ),
@@ -262,7 +270,7 @@ class _PatchNotesCard extends StatelessWidget {
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [scheme.primary, scheme.secondary, scheme.tertiary],
+              colors: AppTheme.headerColors(scheme),
             ),
             boxShadow: [
               BoxShadow(
@@ -329,6 +337,67 @@ class _PatchNotesCard extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              _VersionHeader(
+                                title: '1.3.4',
+                                badge: '2026-09-22',
+                                color: Colors.white,
+                              ),
+                              const SizedBox(height: 10),
+                              _PatchBullet(
+                                text: L.tr(context, 'pn133Repeat'),
+                                color: Colors.white,
+                              ),
+                              _PatchBullet(
+                                text: L.tr(context, 'pn133Spots'),
+                                color: Colors.white,
+                              ),
+                              const SizedBox(height: 18),
+                              _VersionHeader(
+                                title: '1.3.2',
+                                badge: '2026-09-22',
+                                color: Colors.white,
+                              ),
+                              const SizedBox(height: 10),
+                              _PatchBullet(
+                                text: L.tr(context, 'pn132Words'),
+                                color: Colors.white,
+                              ),
+                              _PatchBullet(
+                                text: L.tr(context, 'pn132Order'),
+                                color: Colors.white,
+                              ),
+                              _PatchBullet(
+                                text: L.tr(context, 'pn132Editor'),
+                                color: Colors.white,
+                              ),
+                              _PatchBullet(
+                                text: L.tr(context, 'pn132Spots'),
+                                color: Colors.white,
+                              ),
+                              const SizedBox(height: 18),
+                              _VersionHeader(
+                                title: '1.3.1',
+                                badge: '2026-09-22',
+                                color: Colors.white,
+                              ),
+                              const SizedBox(height: 10),
+                              _PatchBullet(
+                                text: L.tr(context, 'pn131Save'),
+                                color: Colors.white,
+                              ),
+                              _PatchBullet(
+                                text: L.tr(context, 'pn131Meta'),
+                                color: Colors.white,
+                              ),
+                              _PatchBullet(
+                                text: L.tr(context, 'pn131Export'),
+                                color: Colors.white,
+                              ),
+                              _PatchBullet(
+                                text: L.tr(context, 'pn131Smooth'),
+                                color: Colors.white,
+                              ),
+                              const SizedBox(height: 18),
                               _VersionHeader(
                                 title: '1.3',
                                 badge: '2026-08-09',
@@ -397,20 +466,22 @@ class _PatchNotesCard extends StatelessWidget {
                               _VersionHeader(
                                 title: L.tr(context, 'whatsLeft'),
                                 icon: Icons.pending_actions_rounded,
-                                color: Colors.amber.shade100,
+                                // Pale sand instead of neon amber.shade100 —
+                                // still reads as a "todo" tint on the dark card.
+                                color: AppAccents.amberPale,
                               ),
                               const SizedBox(height: 10),
                               _PatchBullet(
                                 text: L.tr(context, 'remindersTodo'),
-                                color: Colors.amber.shade100,
+                                color: AppAccents.amberPale,
                               ),
                               _PatchBullet(
                                 text: L.tr(context, 'autosaveTodo'),
-                                color: Colors.amber.shade100,
+                                color: AppAccents.amberPale,
                               ),
                               _PatchBullet(
                                 text: L.tr(context, 'favoritesTodo'),
-                                color: Colors.amber.shade100,
+                                color: AppAccents.amberPale,
                               ),
                             ],
                           ),
@@ -550,14 +621,17 @@ class _SteqtoqBanner extends StatelessWidget {
         child: Ink(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(24),
+            // Steqtoq teaser: the violet/magenta/amber "synthwave" ramp is
+            // gone — a dusty lilac → rose → amber sweep keeps the playful
+            // mood without the neon glare.
             gradient: const LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [Color(0xFF6B4EFF), Color(0xFFFF4E8E), Color(0xFFFFA84B)],
+              colors: [AppAccents.lilac, AppAccents.rose, AppAccents.amber],
             ),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF6B4EFF).withValues(alpha: 0.35),
+                color: AppAccents.lilac.withValues(alpha: 0.28),
                 blurRadius: 18,
                 offset: const Offset(0, 8),
               ),

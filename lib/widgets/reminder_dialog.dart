@@ -1,15 +1,16 @@
-import 'dart:io';
+﻿import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-import 'package:dream_journal/l10n/strings.dart';
-import 'package:dream_journal/models/settings.dart';
-import 'package:dream_journal/widgets/animated_snack.dart';
-import 'package:dream_journal/services/notification_service.dart';
-import 'package:dream_journal/widgets/volumetric_switch.dart';
-import 'package:dream_journal/widgets/limited_context_menu.dart';
-import 'package:dream_journal/widgets/themed_time_picker.dart';
+import 'package:ataraxy/l10n/strings.dart';
+import 'package:ataraxy/models/settings.dart';
+import 'package:ataraxy/theme/app_theme.dart';
+import 'package:ataraxy/widgets/animated_snack.dart';
+import 'package:ataraxy/services/notification_service.dart';
+import 'package:ataraxy/widgets/volumetric_switch.dart';
+import 'package:ataraxy/widgets/limited_context_menu.dart';
+import 'package:ataraxy/widgets/themed_time_picker.dart';
 
 class ReminderDialog extends StatefulWidget {
   final AppSettings settings;
@@ -82,7 +83,10 @@ class _ReminderDialogState extends State<ReminderDialog> {
               subtitle: _enabled && (_time == null || _text.text.trim().isEmpty)
                   ? Text(
                       L.tr(context, 'reminderRequired'),
-                      style: const TextStyle(color: Colors.orange, fontSize: 12),
+                      style: const TextStyle(
+                        color: AppAccents.amber,
+                        fontSize: 12,
+                      ),
                     )
                   : null,
               trailing: VolumetricSwitch(
@@ -140,7 +144,7 @@ class _ReminderDialogState extends State<ReminderDialog> {
                             contentPadding: EdgeInsets.zero,
                             leading: const Icon(
                               Icons.check_circle_rounded,
-                              color: Colors.green,
+                              color: AppAccents.sage,
                             ),
                             title: Text(L.tr(context, 'permissions')),
                             subtitle: const Text('Проверить разрешения'),
@@ -149,7 +153,7 @@ class _ReminderDialogState extends State<ReminderDialog> {
                               final result =
                                   await NotificationService
                                       .requestAllPermissions();
-                              if (mounted) {
+                              if (context.mounted) {
                                 AnimatedSnack.show(
                                   context,
                                   result.contains('ОТКЛОНЕНО')
@@ -285,6 +289,7 @@ class _ReminderDialogState extends State<ReminderDialog> {
               ),
             ],
             TextField(
+        cursorOpacityAnimates: true,
         magnifierConfiguration: TextMagnifierConfiguration.disabled,
                 contextMenuBuilder: (ctx, state) =>
                     buildLimitedContextMenu(ctx, state),

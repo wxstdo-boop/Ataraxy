@@ -1,6 +1,6 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:dream_journal/widgets/em_dash_formatter.dart';
+import 'package:ataraxy/widgets/em_dash_formatter.dart';
 
 void main() {
   const formatter = EmDashInputFormatter();

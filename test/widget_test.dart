@@ -4,10 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:dream_journal/main.dart';
-import 'package:dream_journal/models/settings.dart';
+import 'package:ataraxy/main.dart';
+import 'package:ataraxy/models/settings.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  SharedPreferences.setMockInitialValues({});
+  Hive.init(Directory.systemTemp.createTempSync('hive_test').path);
   setUpAll(() async {
     Hive.init(Directory.systemTemp.createTempSync('hive_widget').path);
   });

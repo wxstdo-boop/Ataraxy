@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:dream_journal/l10n/strings.dart';
-import 'package:dream_journal/providers/settings_provider.dart';
-import 'package:dream_journal/services/notification_service.dart';
-import 'package:dream_journal/widgets/animated_snack.dart';
-import 'package:dream_journal/widgets/volumetric_switch.dart';
+import 'package:ataraxy/l10n/strings.dart';
+import 'package:ataraxy/providers/settings_provider.dart';
+import 'package:ataraxy/services/notification_service.dart';
+import 'package:ataraxy/theme/app_theme.dart';
+import 'package:ataraxy/widgets/animated_snack.dart';
+import 'package:ataraxy/widgets/volumetric_switch.dart';
 
 class DevSettingsScreen extends StatelessWidget {
   const DevSettingsScreen({super.key});
@@ -159,7 +160,7 @@ class DevSettingsScreen extends StatelessWidget {
                       TextButton(
                         onPressed: () => Navigator.pop(context, true),
                         style: TextButton.styleFrom(
-                          foregroundColor: Colors.red,
+                          foregroundColor: AppAccents.danger,
                         ),
                         child: Text(L.tr(context, 'delete')),
                       ),

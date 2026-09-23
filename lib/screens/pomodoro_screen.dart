@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import 'package:dream_journal/l10n/strings.dart';
+import 'package:ataraxy/l10n/strings.dart';
 
 class PomodoroScreen extends StatelessWidget {
   const PomodoroScreen({super.key});

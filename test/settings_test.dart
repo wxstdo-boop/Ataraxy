@@ -6,12 +6,12 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:hive/hive.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:dream_journal/main.dart';
-import 'package:dream_journal/models/settings.dart';
-import 'package:dream_journal/providers/settings_provider.dart';
-import 'package:dream_journal/screens/settings_screen.dart';
-import 'package:dream_journal/services/settings_service.dart';
-import 'package:dream_journal/widgets/volumetric_switch.dart';
+import 'package:ataraxy/main.dart';
+import 'package:ataraxy/models/settings.dart';
+import 'package:ataraxy/providers/settings_provider.dart';
+import 'package:ataraxy/screens/settings_screen.dart';
+import 'package:ataraxy/services/settings_service.dart';
+import 'package:ataraxy/widgets/volumetric_switch.dart';
 
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));

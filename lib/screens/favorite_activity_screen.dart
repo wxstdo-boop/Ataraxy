@@ -1,13 +1,14 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:dream_journal/l10n/strings.dart';
-import 'package:dream_journal/widgets/skeleton.dart';
-import 'package:dream_journal/models/favorite_activity.dart';
-import 'package:dream_journal/services/favorite_activity_service.dart';
-import 'package:dream_journal/widgets/limited_context_menu.dart';
-import 'package:dream_journal/widgets/em_dash_formatter.dart';
-import 'package:dream_journal/widgets/animated_snack.dart';
+import 'package:ataraxy/l10n/strings.dart';
+import 'package:ataraxy/widgets/skeleton.dart';
+import 'package:ataraxy/models/favorite_activity.dart';
+import 'package:ataraxy/services/favorite_activity_service.dart';
+import 'package:ataraxy/theme/app_theme.dart';
+import 'package:ataraxy/widgets/limited_context_menu.dart';
+import 'package:ataraxy/widgets/em_dash_formatter.dart';
+import 'package:ataraxy/widgets/animated_snack.dart';
 
 class FavoriteActivityScreen extends StatefulWidget {
   const FavoriteActivityScreen({super.key});
@@ -664,13 +665,13 @@ class _ActivityCardState extends State<_ActivityCard> {
                           Icon(
                             Icons.push_pin_rounded,
                             size: 12,
-                            color: Colors.orange.withValues(alpha: 0.9),
+                            color: AppAccents.amber.withValues(alpha: 0.9),
                           ),
                           const SizedBox(width: 3),
                           Text(
                             L.tr(context, 'pinned'),
                             style: TextStyle(
-                              color: Colors.orange.withValues(alpha: 0.9),
+                              color: AppAccents.amber.withValues(alpha: 0.9),
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
                             ),
@@ -689,7 +690,7 @@ class _ActivityCardState extends State<_ActivityCard> {
                   activity.pinned
                       ? Icons.push_pin_rounded
                       : Icons.push_pin_outlined,
-                  color: activity.pinned ? Colors.orange : scheme.primary,
+                  color: activity.pinned ? AppAccents.amber : scheme.primary,
                   size: 20,
                 ),
                 onPressed: widget.onPin,
@@ -698,7 +699,7 @@ class _ActivityCardState extends State<_ActivityCard> {
                 tooltip: L.tr(context, 'delete'),
                 icon: const Icon(
                   Icons.delete_outline_rounded,
-                  color: Colors.redAccent,
+                  color: AppAccents.danger,
                   size: 20,
                 ),
                 onPressed: widget.onDelete,
@@ -861,6 +862,7 @@ class _EditActivitySheetState extends State<_EditActivitySheet> {
             ),
             const SizedBox(height: 12),
             TextField(
+        cursorOpacityAnimates: true,
         magnifierConfiguration: TextMagnifierConfiguration.disabled,
               controller: _controller,
               autofocus: true,
@@ -882,7 +884,7 @@ class _EditActivitySheetState extends State<_EditActivitySheet> {
                 ),
                 counterStyle: TextStyle(
                   color: _controller.text.length >= maxLength
-                      ? Colors.redAccent
+                      ? AppAccents.danger
                       : scheme.onSurfaceVariant,
                   fontSize: 11,
                 ),

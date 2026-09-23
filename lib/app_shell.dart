@@ -110,7 +110,7 @@ class AppShellState extends State<AppShell> {
       navigatorKey: widget.navigatorKey,
       navigatorObservers: [
         appRouteObserver,
-        if (_keyboardGuard != null) _keyboardGuard!,
+        ?_keyboardGuard,
       ],
       themeMode: switch (widget.themeMode) {
         AppThemeMode.system => ThemeMode.system,

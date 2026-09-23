@@ -1,4 +1,4 @@
-import 'package:dream_journal/theme/app_theme.dart';
+import 'package:ataraxy/theme/app_theme.dart';
 
 enum AppLanguage { system, russian, english, french }
 

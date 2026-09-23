@@ -1,32 +1,35 @@
-import 'dart:async';
-import 'dart:io';
+﻿import 'dart:async';
+import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:path_provider/path_provider.dart';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:dream_journal/l10n/strings.dart';
-import 'package:dream_journal/models/settings.dart';
-import 'package:dream_journal/providers/settings_provider.dart';
-import 'package:dream_journal/screens/about_screen.dart';
-import 'package:dream_journal/screens/dev_settings_screen.dart';
-import 'package:dream_journal/services/storage_service.dart';
-import 'package:dream_journal/services/notification_service.dart';
-import 'package:dream_journal/services/settings_service.dart';
-import 'package:dream_journal/services/ai_service.dart';
-import 'package:dream_journal/services/auto_export_service.dart';
-import 'package:dream_journal/widgets/reminder_dialog.dart';
-import 'package:dream_journal/widgets/animated_snack.dart';
-import 'package:dream_journal/widgets/sliding_selector.dart';
-import 'package:dream_journal/widgets/volumetric_switch.dart';
-import 'package:dream_journal/widgets/app_avatar.dart';
-import 'package:dream_journal/theme/app_theme.dart';
-import 'package:dream_journal/widgets/limited_context_menu.dart';
-import 'package:dream_journal/widgets/premium_header.dart';
+import 'package:ataraxy/l10n/strings.dart';
+import 'package:ataraxy/widgets/animated_field_counter.dart';
+import 'package:ataraxy/widgets/app_route.dart';
+import 'package:ataraxy/widgets/pressable_icon_button.dart';
+import 'package:ataraxy/models/settings.dart';
+import 'package:ataraxy/providers/settings_provider.dart';
+import 'package:ataraxy/screens/about_screen.dart';
+import 'package:ataraxy/screens/dev_settings_screen.dart';
+import 'package:ataraxy/services/storage_service.dart';
+import 'package:ataraxy/services/notification_service.dart';
+import 'package:ataraxy/services/settings_service.dart';
+import 'package:ataraxy/services/ai_service.dart';
+import 'package:ataraxy/services/auto_export_service.dart';
+import 'package:ataraxy/widgets/reminder_dialog.dart';
+import 'package:ataraxy/widgets/animated_snack.dart';
+import 'package:ataraxy/widgets/sliding_selector.dart';
+import 'package:ataraxy/widgets/volumetric_switch.dart';
+import 'package:ataraxy/widgets/app_avatar.dart';
+import 'package:ataraxy/theme/app_theme.dart';
+import 'package:ataraxy/widgets/limited_context_menu.dart';
+import 'package:ataraxy/widgets/premium_header.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -80,9 +83,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             bottomRight: Radius.circular(28),
           ),
         ),
-        flexibleSpace: PremiumHeader(
-          colors: [scheme.primary, scheme.secondary, scheme.tertiary],
-        ),
+        flexibleSpace: PremiumHeader(colors: AppTheme.headerColors(scheme)),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -279,7 +280,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 } else {
                   AnimatedSnack.show(
                     context,
-                    err ?? L.tr(context, 'testNotification') + ' ✓',
+                    err ?? '${L.tr(context, 'testNotification')} ✓',
                     type: err == null ? SnackType.success : SnackType.error,
                   );
                 }
@@ -303,7 +304,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     TextButton(
                       onPressed: () => Navigator.pop(context, true),
-                      style: TextButton.styleFrom(foregroundColor: Colors.red),
+                      style: TextButton.styleFrom(
+                        foregroundColor: AppAccents.danger,
+                      ),
                       child: Text(L.tr(context, 'deleteData')),
                     ),
                   ],
@@ -328,8 +331,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 SystemChannels.platform.invokeMethod('System.exit', 0);
               }
             },
-            icon: const Icon(Icons.delete_forever_rounded, color: Colors.red),
-            label: Text(L.tr(context, 'clearData'), style: TextStyle(color: Colors.red)),
+            icon: const Icon(
+              Icons.delete_forever_rounded,
+              color: AppAccents.danger,
+            ),
+            label: Text(
+              L.tr(context, 'clearData'),
+              style: const TextStyle(color: AppAccents.danger),
+            ),
           ),
           const SizedBox(height: 10),
           Container(
@@ -489,9 +498,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
              title: Text(L.tr(context, 'about')),
              trailing: const Icon(Icons.chevron_right_rounded),
              onTap: () => Navigator.of(context).push(
-               MaterialPageRoute(
-                 builder: (_) => const AboutScreen(),
-               ),
+               fadeRoute(const AboutScreen()),
              ),
            ),
            const SizedBox(height: 12),
@@ -884,6 +891,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
             child: TextField(
+              cursorOpacityAnimates: true,
               key: ValueKey('key-field-$obscure'),
               controller: controller,
               obscureText: obscure,
@@ -891,6 +899,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               autofocus: false,
               maxLength: 350,
               maxLines: 3,
+              buildCounter: animatedFieldCounter,
               // No magnifying-glass selection loupe + clean toolbar (Cut/
               // Copy/Paste/Share only — no "Ask Copilot" / web lookup).
               magnifierConfiguration: TextMagnifierConfiguration.disabled,
@@ -900,7 +909,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 border: const OutlineInputBorder(),
                 // Smooth eye toggle: fades/scales between the two states and
                 // keeps the caret exactly where it was.
-                suffixIcon: IconButton(
+                suffixIcon: PressableIconButton(
+                  size: 32,
                   onPressed: () {
                     final sel = controller.selection;
                     setDlgState(() => obscure = !obscure);
@@ -1106,9 +1116,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (ctx) => AlertDialog(
         title: Text(L.tr(ctx, 'aiDailyLimit')),
         content: TextField(
+          cursorOpacityAnimates: true,
           controller: controller,
           keyboardType: TextInputType.number,
           maxLength: 5,
+          buildCounter: animatedFieldCounter,
           inputFormatters: [
             FilteringTextInputFormatter.digitsOnly,
           ],
@@ -1152,7 +1164,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.orange),
+            style: TextButton.styleFrom(foregroundColor: AppAccents.amber),
             child: Text(L.tr(context, 'reset')),
           ),
         ],
@@ -1194,7 +1206,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final s = p.settings;
     if (s.devModeEnabled) {
       Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => const DevSettingsScreen()),
+        fadeRoute(const DevSettingsScreen()),
       );
       return;
     }
@@ -1205,6 +1217,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         return AlertDialog(
           title: Text(L.tr(context, 'devPassword')),
           content: TextField(
+        cursorOpacityAnimates: true,
         magnifierConfiguration: TextMagnifierConfiguration.disabled,
                 contextMenuBuilder: (ctx, state) =>
                     buildLimitedContextMenu(ctx, state),
@@ -1243,40 +1256,46 @@ class _SettingsScreenState extends State<SettingsScreen> {
       p.onChanged(s.copyWith(devModeEnabled: true));
       if (context.mounted) {
         Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const DevSettingsScreen()),
+          fadeRoute(const DevSettingsScreen()),
         );
       }
     }
   }
 
   Future<void> _export(BuildContext context) async {
+    // Resolved before the first await: the localized strings below are read
+    // from the element, which may be gone once the save sheet closes.
+    final pickTitle = L.tr(context, 'exportPickLocation');
     final doneText = L.tr(context, 'exportDone');
+    final cancelledText = L.tr(context, 'exportCancelled');
+
     final service = StorageService();
     final json = await service.exportToJson();
-    final file = File('${Directory.systemTemp.path}/ataraxy_backup.json');
-    await file.writeAsString(json);
-    // Пробуем save-диалог (десктоп), если не поддерживается — шэрим (мобила)
-    try {
-      final location = await getSaveLocation(
-        suggestedName: 'ataraxy_backup.json',
-        acceptedTypeGroups: [
-          XTypeGroup(label: 'JSON', extensions: ['json']),
-        ],
-      );
-      if (location != null && context.mounted) {
-        await File(location.path).writeAsString(json);
-        AnimatedSnack.show(context, doneText, type: SnackType.success);
-        return;
-      }
-    } catch (_) {
-      // unsupported platform (Android/iOS) — fall through to share
+
+    // Generate filename with timestamp
+    final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-');
+    final suggestedName = 'ataraxy_backup_$timestamp.json';
+
+    // System "Save as" sheet (SAF ACTION_CREATE_DOCUMENT): the user picks the
+    // folder and may rename the file, and the app writes only there. This
+    // replaces the share sheet, which handed the whole backup to another app
+    // and, on MIUI, surfaced a file-access prompt on the way.
+    final saved = await FilePicker.saveFile(
+      dialogTitle: pickTitle,
+      fileName: suggestedName,
+      bytes: utf8.encode(json),
+      mimeType: 'application/json',
+    );
+    if (!context.mounted) return;
+    if (saved == null) {
+      AnimatedSnack.show(context, cancelledText, type: SnackType.info);
+      return;
     }
-    if (context.mounted) {
-      await SharePlus.instance.share(
-        ShareParams(files: [XFile(file.path)], text: 'Ataraxy backup'),
-      );
-      AnimatedSnack.show(context, doneText, type: SnackType.success);
-    }
+    AnimatedSnack.show(
+      context,
+      '$doneText\n${saved.path}',
+      type: SnackType.success,
+    );
   }
 
   Future<void> _import(BuildContext context) async {
@@ -1479,6 +1498,7 @@ class _CurrentPinDialogState extends State<_CurrentPinDialog> {
       backgroundColor: scheme.surface,
       title: Text(L.tr(context, 'enterCurrentPin')),
       content: TextField(
+        cursorOpacityAnimates: true,
         magnifierConfiguration: TextMagnifierConfiguration.disabled,
                 contextMenuBuilder: (ctx, state) =>
                     buildLimitedContextMenu(ctx, state),
@@ -1551,6 +1571,7 @@ class _PinSetupDialogState extends State<_PinSetupDialog> {
         mainAxisSize: MainAxisSize.min,
         children: [
           TextField(
+        cursorOpacityAnimates: true,
         magnifierConfiguration: TextMagnifierConfiguration.disabled,
                 contextMenuBuilder: (ctx, state) =>
                     buildLimitedContextMenu(ctx, state),
@@ -1567,6 +1588,7 @@ class _PinSetupDialogState extends State<_PinSetupDialog> {
           ),
           const SizedBox(height: 12),
           TextField(
+        cursorOpacityAnimates: true,
         magnifierConfiguration: TextMagnifierConfiguration.disabled,
                 contextMenuBuilder: (ctx, state) =>
                     buildLimitedContextMenu(ctx, state),

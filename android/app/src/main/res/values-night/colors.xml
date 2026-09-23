@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark-mode launch tint: deep warm brown matching darkPeach surfaces. -->
+    <color name="launchBg">#1A1210</color>
+    <color name="normalBg">#1A1210</color>
+</resources>

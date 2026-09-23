@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:dream_journal/l10n/strings.dart';
+import 'package:ataraxy/l10n/strings.dart';
+import 'package:ataraxy/widgets/winter_hat.dart';
 
 /// Compact circular day-streak badge shown next to the Ataraxy wordmark in
 /// the home header. Colours are pulled from the active [ColorScheme]
 /// (Material You), so the badge always matches the theme.
 ///
-/// Animations: the badge eases in once (fade + slide + spring scale) on
-/// first build, the number counts up/down smoothly whenever the streak
-/// changes, and the badge gently pulses on growth.
+/// Animations: the badge eases in once (fade + slide) on first build, and
+/// afterwards ONLY the number changes — it counts up/down smoothly. The
+/// disc itself never scales, recolors or pulses: size, gradient and colours
+/// are constant, so the header geometry stays rock-steady.
 ///
 /// Long-pressing pops a small rounded card explaining the streak.
 class StreakBadge extends StatefulWidget {
@@ -24,10 +26,8 @@ class StreakBadge extends StatefulWidget {
 class _StreakBadgeState extends State<StreakBadge>
     with TickerProviderStateMixin {
   late final AnimationController _enter;
-  late final AnimationController _pulse;
   late final Animation<double> _fade;
   late final Animation<Offset> _slide;
-  late final Animation<double> _scale;
 
   @override
   void initState() {
@@ -43,36 +43,11 @@ class _StreakBadgeState extends State<StreakBadge>
       begin: const Offset(-0.4, 0),
       end: Offset.zero,
     ).animate(enterCurve);
-    _pulse = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 700),
-    );
-    _scale = TweenSequence<double>([
-      TweenSequenceItem(
-        tween: Tween(begin: 0.5, end: 1.25)
-            .chain(CurveTween(curve: Curves.easeOutBack)),
-        weight: 35,
-      ),
-      TweenSequenceItem(
-        tween: Tween(begin: 1.25, end: 1.0)
-            .chain(CurveTween(curve: Curves.easeOutCubic)),
-        weight: 65,
-      ),
-    ]).animate(CurvedAnimation(parent: _pulse, curve: Curves.linear));
-  }
-
-  @override
-  void didUpdateWidget(StreakBadge old) {
-    super.didUpdateWidget(old);
-    if (old.streak != widget.streak) {
-      _pulse.forward(from: 0);
-    }
   }
 
   @override
   void dispose() {
     _enter.dispose();
-    _pulse.dispose();
     super.dispose();
   }
 
@@ -92,7 +67,7 @@ class _StreakBadgeState extends State<StreakBadge>
           child: child,
         ),
       ),
-      pageBuilder: (context, _, __) => Center(
+      pageBuilder: (context, _, _) => Center(
         child: Material(
           color: Colors.transparent,
           child: Container(
@@ -172,22 +147,15 @@ class _StreakBadgeState extends State<StreakBadge>
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final active = widget.streak > 0;
-    // Material You colours: fire when active, quiet surface when empty.
-    final colors = active
-        ? [scheme.primary, scheme.tertiary]
-        : [scheme.surfaceContainerHighest, scheme.outlineVariant];
+    // One constant look for every streak value (0 included): the disc never
+    // recolors or resizes when the count changes — only the digits animate.
+    final colors = [scheme.primary, scheme.tertiary];
 
-    // The badge widens smoothly as the streak grows past 9 (10, 100, 1000…)
-    // so the number always fits — 24 px for one digit, +7 px per extra
-    // digit, capped at four digits so a 10000-day streak can't overflow.
-    final digits = widget.streak.clamp(0, 9999).toString().length;
-    final size = 24.0 + (digits - 1).clamp(0, 3) * 7.0;
-    final fontSize = switch (digits) {
-      1 => 13.0,
-      2 => 12.0,
-      _ => 11.0,
-    };
+    // CONSTANT geometry: the disc is always 42px with the same digit size —
+    // nothing grows, shrinks or recolors as the streak increases. Huge
+    // counts ('9999+') shrink INSIDE the fixed disc via FittedBox, so the
+    // header layout never jumps.
+    const size = 42.0;
 
     return Semantics(
       container: true,
@@ -200,58 +168,82 @@ class _StreakBadgeState extends State<StreakBadge>
           opacity: _fade,
           child: SlideTransition(
             position: _slide,
-            child: ScaleTransition(
-              scale: _scale,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 320),
-                curve: Curves.easeOutCubic,
-                width: size,
-                height: size,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: colors,
-                  ),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.55),
-                    width: 1,
-                  ),
-                  boxShadow: active
-                      ? [
-                          BoxShadow(
-                            color: scheme.primary.withValues(alpha: 0.4),
-                            blurRadius: 6,
-                            offset: const Offset(0, 1),
-                          ),
-                        ]
-                      : null,
-                ),
-                child: Center(
-                  child: TweenAnimationBuilder<int>(
-                    tween: IntTween(begin: 0, end: widget.streak),
-                    duration: const Duration(milliseconds: 600),
+            child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 320),
                     curve: Curves.easeOutCubic,
-                    builder: (context, value, _) => Text(
-                      // Cap at four digits so the badge width can't grow
-                      // without bound; a 10000-day streak shows "9999+".
-                      value >= 10000 ? '9999+' : '$value',
-                      style: TextStyle(
-                        color: scheme.onPrimary,
-                        fontSize: fontSize,
-                        fontWeight: FontWeight.w900,
-                        height: 1,
-                        fontFeatures: const [FontFeature.tabularFigures()],
+                    width: size,
+                    height: size,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: colors,
+                      ),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.55),
+                        width: 1,
+                      ),
+                      // A quiet shadow even when empty — so the 0 badge
+                      // keeps EXACTLY the same footprint as a "1" badge and
+                      // never reads as smaller/dead.
+                      boxShadow: [
+                        BoxShadow(
+                          color: scheme.primary.withValues(alpha: 0.4),
+                          blurRadius: 6,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
+                    ),
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 5),
+                        // FittedBox keeps the digits at full size for normal
+                        // counts and only shrinks the text (never the disc)
+                        // for extreme '9999+' values.
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: TweenAnimationBuilder<int>(
+                            tween: IntTween(begin: 0, end: widget.streak),
+                            duration: const Duration(milliseconds: 600),
+                            curve: Curves.easeOutCubic,
+                            builder: (context, value, _) => Text(
+                              value >= 10000 ? '9999+' : '$value',
+                              style: TextStyle(
+                                color: scheme.onPrimary,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w900,
+                                height: 1,
+                                fontFeatures: const [
+                                  FontFeature.tabularFigures(),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                ),
+                  // The winter beanie crowns the streak badge: brim sits ON
+                  // the circle's top arc (y≈3..10) above the number, pompom
+                  // pokes into the header's 30px headroom. Straight, centered.
+                  Positioned(
+                    top: -10,
+                    left: 0,
+                    right: 0,
+                    child: Align(
+                      alignment: Alignment.topCenter,
+                      child: const WinterHat(width: 32, height: 20),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
         ),
-      ),
     );
   }
 }

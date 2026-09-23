@@ -4,11 +4,12 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:dream_journal/models/entry.dart';
-import 'package:dream_journal/services/settings_service.dart';
-import 'package:dream_journal/services/storage_service.dart';
+import 'package:ataraxy/models/entry.dart';
+import 'package:ataraxy/services/settings_service.dart';
+import 'package:ataraxy/services/storage_service.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('StorageService', () {
@@ -17,14 +18,20 @@ void main() {
     });
     setUp(() async {
       SharedPreferences.setMockInitialValues({});
+      // Hive caches open boxes: deleteBoxFromDisk throws if the box is
+      // open, and skips nothing when it's closed — the old guard was
+      // inverted, so entries leaked between tests. Always close first,
+      // then delete regardless.
       if (Hive.isBoxOpen('journal_entries')) {
-        await Hive.deleteBoxFromDisk('journal_entries');
+        await Hive.box('journal_entries').close();
       }
+      await Hive.deleteBoxFromDisk('journal_entries');
     });
     tearDown(() async {
       if (Hive.isBoxOpen('journal_entries')) {
-        await Hive.deleteBoxFromDisk('journal_entries');
+        await Hive.box('journal_entries').close();
       }
+      await Hive.deleteBoxFromDisk('journal_entries');
     });
     test('importFromJson skips malformed entries gracefully', () async {
       final service = StorageService();
@@ -250,6 +257,39 @@ void main() {
       final remaining = await service.loadEntries();
       expect(remaining.length, 1);
       expect(remaining.single.id, 'b');
+    });
+
+    test('export/import roundtrip', () async {
+      final service = StorageService();
+      final testEntry = JournalEntry(
+        id: 'test_export',
+        type: EntryType.dream,
+        title: 'Export Test',
+        content: 'This is a test for export/import',
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+        mood: 5,
+        tags: ['test', 'export'],
+        category: EntryCategory.good,
+      );
+      await service.addEntry(testEntry);
+
+      // Export to JSON
+      final json = await service.exportToJson();
+      expect(json, contains('test_export'));
+      expect(json, contains('Export Test'));
+
+      // Import into a fresh box and verify
+      await service.importFromJson(json);
+      final entries = await service.loadEntries();
+      expect(entries.firstWhere((e) => e.id == 'test_export').title,
+          'Export Test');
+    });
+
+    test('handles malformed JSON gracefully', () async {
+      final service = StorageService();
+      // importFromJson throws on a non-object top level / undecodable JSON.
+      expect(() => service.importFromJson('{invalid json}'), throwsException);
     });
   });
 }

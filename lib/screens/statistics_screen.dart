@@ -3,15 +3,17 @@ import 'dart:async';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:dream_journal/l10n/strings.dart';
-import 'package:dream_journal/models/dream_signs.dart';
-import 'package:dream_journal/models/entry.dart';
-import 'package:dream_journal/providers/settings_provider.dart';
-import 'package:dream_journal/services/steps_service.dart';
-import 'package:dream_journal/services/storage_service.dart';
-import 'package:dream_journal/widgets/animated_snack.dart';
-import 'package:dream_journal/widgets/skeleton.dart';
-import 'package:dream_journal/widgets/premium_header.dart';
+import 'package:ataraxy/l10n/strings.dart';
+import 'package:ataraxy/models/dream_signs.dart';
+import 'package:ataraxy/models/entry.dart';
+import 'package:ataraxy/providers/settings_provider.dart';
+import 'package:ataraxy/services/steps_service.dart';
+import 'package:ataraxy/services/storage_service.dart';
+import 'package:ataraxy/theme/app_theme.dart';
+import 'package:ataraxy/widgets/pressable_icon_button.dart';
+import 'package:ataraxy/widgets/animated_snack.dart';
+import 'package:ataraxy/widgets/skeleton.dart';
+import 'package:ataraxy/widgets/premium_header.dart';
 
 class StatisticsScreen extends StatefulWidget {
   const StatisticsScreen({super.key});
@@ -129,7 +131,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
               const SizedBox(width: 12),
               _SummaryCard(
                 icon: Icons.nightlight_round_rounded,
-                color: Colors.purpleAccent,
+                color: AppAccents.lilac,
                 value: dreams.length,
                 label: L.tr(context, 'tabDreams'),
               ),
@@ -140,14 +142,14 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             children: [
               _SummaryCard(
                 icon: Icons.favorite_rounded,
-                color: Colors.teal,
+                color: AppAccents.teal,
                 value: life.length,
                 label: L.tr(context, 'tabLife'),
               ),
               const SizedBox(width: 12),
               _SummaryCard(
                 icon: Icons.psychology_rounded,
-                color: Colors.indigoAccent,
+                color: AppAccents.slate,
                 value: tulpas.length,
                 label: L.tr(context, 'tabTulpa'),
               ),
@@ -164,9 +166,9 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
             child: _BarChartWithTooltip(
               values: [dreams.length, life.length, tulpas.length],
               colors: const [
-                Colors.purpleAccent,
-                Colors.teal,
-                Colors.indigoAccent,
+                AppAccents.lilac,
+                AppAccents.teal,
+                AppAccents.slate,
               ],
               labels: [
                 L.tr(context, 'tabDreams'),
@@ -252,16 +254,17 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
                         // drag picks the nearest spot — no dead zones.
                         touchSpotThreshold: 30,
                         touchTooltipData: LineTouchTooltipData(
-                          getTooltipColor: (_) => scheme.primary,
+                          getTooltipColor: (_) => scheme.inverseSurface,
                           fitInsideHorizontally: true,
                           fitInsideVertically: true,
                           getTooltipItems: (spots) => spots
                               .map(
                                 (s) => LineTooltipItem(
                                   '${s.y.toInt()}',
-                                  const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w800,
+                                  TextStyle(
+                                    color: scheme.onInverseSurface,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 12,
                                   ),
                                 ),
                               )
@@ -378,9 +381,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
           bottomRight: Radius.circular(28),
         ),
       ),
-      flexibleSpace: PremiumHeader(
-        colors: [scheme.primary, scheme.secondary, scheme.tertiary],
-      ),
+      flexibleSpace: PremiumHeader(colors: AppTheme.headerColors(scheme)),
       title: Text(L.tr(context, 'statistics')),
     );
   }
@@ -528,10 +529,10 @@ class _BarChartWithTooltipState extends State<_BarChartWithTooltip> {
                     child: Container(
                       width: 64,
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 5),
+                          horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
                         color: scheme.inverseSurface,
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(12),
                         boxShadow: [
                           BoxShadow(
                             color: scheme.shadow.withValues(alpha: 0.15),
@@ -545,8 +546,8 @@ class _BarChartWithTooltipState extends State<_BarChartWithTooltip> {
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: scheme.onInverseSurface,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12,
                         ),
                       ),
                     ),
@@ -664,14 +665,14 @@ class _TrackingSectionState extends State<_TrackingSection> {
           children: [
             _SummaryCard(
               icon: Icons.water_drop_rounded,
-              color: Colors.blue,
+              color: AppAccents.sky,
               value: total.toInt(),
               label: '${L.tr(context, 'water')} ∑',
             ),
             const SizedBox(width: 12),
             _SummaryCard(
               icon: Icons.show_chart_rounded,
-              color: Colors.blueAccent,
+              color: AppAccents.teal,
               value: avg.toInt(),
               label: '${L.tr(context, 'water')} / ${L.tr(context, 'catAll').toLowerCase()}',
             ),
@@ -700,14 +701,14 @@ class _TrackingSectionState extends State<_TrackingSection> {
           children: [
             _SummaryCard(
               icon: Icons.timer_rounded,
-              color: Colors.deepOrange,
+              color: AppAccents.clay,
               value: fasting.length,
               label: L.tr(context, 'fastingWindow'),
             ),
             const SizedBox(width: 12),
             _SummaryCard(
               icon: Icons.schedule_rounded,
-              color: Colors.orange,
+              color: AppAccents.amber,
               value: avgF ~/ 60,
               label: '${L.tr(context, 'fasting')} ч',
             ),
@@ -736,14 +737,17 @@ class _TrackingSectionState extends State<_TrackingSection> {
           child: Container(
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
-              color: Colors.green.withValues(alpha: 0.12),
+              color: AppAccents.sage.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(18),
             ),
             child: Row(
               children: [
                 const CircleAvatar(
                   backgroundColor: Colors.white,
-                  child: Icon(Icons.directions_walk_rounded, color: Colors.green),
+                  child: Icon(
+                    Icons.directions_walk_rounded,
+                    color: AppAccents.sage,
+                  ),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -756,7 +760,11 @@ class _TrackingSectionState extends State<_TrackingSection> {
                           style: Theme.of(context).textTheme.titleMedium,
                         ),
                 ),
-                const Icon(Icons.info_outline_rounded, size: 20, color: Colors.green),
+                const Icon(
+                  Icons.info_outline_rounded,
+                  size: 20,
+                  color: AppAccents.sage,
+                ),
               ],
             ),
           ),
@@ -932,7 +940,8 @@ class _CalendarHeatmapState extends State<_CalendarHeatmap> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              IconButton(
+              PressableIconButton(
+                size: 36,
                 // Back is limited to January 2026.
                 onPressed: f.isBefore(DateTime(2026, 2))
                     ? null
@@ -964,7 +973,8 @@ class _CalendarHeatmapState extends State<_CalendarHeatmap> {
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
               ),
-              IconButton(
+              PressableIconButton(
+                size: 36,
                 // Forward is limited to December 2032.
                 onPressed: f.isAfter(DateTime(2032, 11))
                     ? null

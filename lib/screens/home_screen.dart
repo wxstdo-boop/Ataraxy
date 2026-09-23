@@ -1,52 +1,50 @@
+﻿import 'dart:async' show unawaited;
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:dream_journal/l10n/strings.dart';
-import 'package:dream_journal/models/entry.dart';
-import 'package:dream_journal/models/settings.dart';
-import 'package:dream_journal/providers/settings_provider.dart';
-import 'package:dream_journal/services/storage_service.dart';
-import 'package:dream_journal/ai_overlay_state.dart';
-import 'package:dream_journal/screens/entry_screen.dart';
-import 'package:dream_journal/screens/entry_detail_screen.dart';
-import 'package:dream_journal/screens/favorite_activity_screen.dart';
-import 'package:dream_journal/screens/settings_screen.dart';
-import 'package:dream_journal/screens/statistics_screen.dart';
-import 'package:dream_journal/screens/favorites_screen.dart';
-import 'package:dream_journal/screens/daily_guide_screen.dart';
-import 'package:dream_journal/widgets/reminder_dialog.dart';
-import 'package:dream_journal/widgets/animated_snack.dart';
-import 'package:dream_journal/services/notification_service.dart';
-import 'package:dream_journal/data/daily_prompts.dart' as dp;
-import 'package:dream_journal/widgets/limited_context_menu.dart';
-import 'package:dream_journal/widgets/em_dash_formatter.dart';
-import 'package:dream_journal/widgets/premium_header.dart';
-import 'package:dream_journal/widgets/skeleton.dart';
-import 'package:dream_journal/widgets/winter_hat.dart';
-import 'package:dream_journal/widgets/streak_badge.dart';
+import 'package:ataraxy/l10n/strings.dart';
+import 'package:ataraxy/widgets/animated_field_counter.dart';
+import 'package:ataraxy/widgets/pressable_icon_button.dart';
+import 'package:ataraxy/models/entry.dart';
+import 'package:ataraxy/models/settings.dart';
+import 'package:ataraxy/providers/settings_provider.dart';
+import 'package:ataraxy/services/storage_service.dart';
+import 'package:ataraxy/theme/app_theme.dart';
+import 'package:ataraxy/ai_overlay_state.dart';
+import 'package:ataraxy/screens/entry_screen.dart';
+import 'package:ataraxy/screens/entry_detail_screen.dart';
+import 'package:ataraxy/screens/favorite_activity_screen.dart';
+import 'package:ataraxy/screens/settings_screen.dart';
+import 'package:ataraxy/screens/statistics_screen.dart';
+import 'package:ataraxy/screens/favorites_screen.dart';
+import 'package:ataraxy/screens/daily_guide_screen.dart';
+import 'package:ataraxy/widgets/reminder_dialog.dart';
+import 'package:ataraxy/widgets/animated_snack.dart';
+import 'package:ataraxy/widgets/app_route.dart';
+import 'package:ataraxy/services/notification_service.dart';
+import 'package:ataraxy/data/daily_prompts.dart' as dp;
+import 'package:ataraxy/widgets/limited_context_menu.dart';
+import 'package:ataraxy/widgets/em_dash_formatter.dart';
+import 'package:ataraxy/widgets/premium_header.dart';
+import 'package:ataraxy/widgets/skeleton.dart';
+import 'package:ataraxy/widgets/streak_badge.dart';
 
-Route<T> _fadeRoute<T>(Widget page) {
-  return PageRouteBuilder<T>(
-    pageBuilder: (context, animation, secondaryAnimation) => page,
-    transitionsBuilder: (context, animation, secondaryAnimation, child) {
-      return FadeTransition(
-        opacity: CurvedAnimation(parent: animation, curve: Curves.easeInOut),
-        child: child,
-      );
-    },
-    transitionDuration: const Duration(milliseconds: 280),
-  );
-}
+/// Cached blur filters: BackdropFilter re-creating its engine-level shader on
+/// every rebuild is wasteful on low-end devices. One shared instance per look,
+/// zero visual difference. Sigma kept modest (7) — soft enough for the frosted
+/// glass, cheap enough to keep 60fps on a Redmi Note 12 while the feed scrolls.
+final ImageFilter _kBarBlur = ImageFilter.blur(sigmaX: 7, sigmaY: 7);
+final ImageFilter _kSearchBlur = ImageFilter.blur(sigmaX: 8, sigmaY: 8);
 
-/// True once the very first entry list has played its entrance animation.
-/// Cards should only animate on the very first build of a session —
-/// replaying the fade+slide on every list remount / tab build caused
-/// visible jank on mid-range devices (each card spun up a controller,
-/// a delayed timer and a transition while scrolling).
-bool _cardEntrancePlayed = false;
+/// Every card animates in when it first appears (new entry id = new
+/// element). Cards are keyed by entry id, so filtering (search, category
+/// chips) re-creates only the cards that actually changed — those fade in
+/// softly instead of popping, while cards already on screen keep their
+/// state and never re-animate.
 
 class HomeScreen extends StatefulWidget {
   final VoidCallback? onRequestLock;
@@ -58,7 +56,8 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen>
+    with SingleTickerProviderStateMixin {
   final StorageService _storage = StorageService();
   static const String _blurPrefKey = 'title_blurred';
   List<JournalEntry> _entries = [];
@@ -82,6 +81,18 @@ class _HomeScreenState extends State<HomeScreen> {
   // life, tulpas, all) via bubbling scroll notifications.
   final ValueNotifier<bool> _fabVisible = ValueNotifier(true);
   double _lastScrollOffset = 0;
+  // The pill bars (main sections + category chips) retract into the header
+  // while the user scrolls down and glide back on scroll-up / back-at-top.
+  // ONE controller drives BOTH bars as a single choreography; every frame of
+  // the collapse updates the app-bar's bottom height (preferredSize).
+  late final AnimationController _barsCtrl;
+  late final Animation<double> _barsAnim;
+  /// 1 = bars fully expanded, 0 = fully retracted.
+  double get _barsT => _barsAnim.value;
+  /// Bumped by every rebuild that changes the feed. Bar-collapse ticks go
+  /// through [_onBarsTick] and leave it alone — that is what lets [_StableFeed]
+  /// hand back its cached widget while the pills retract.
+  int _contentRev = 0;
   // The AI assistant is a plain widget mounted in this screen's Stack (NOT
   // a root-overlay OverlayEntry — that architecture caused the grey-screen
   // crash loop on this device). Long-pressing "+" toggles it; a second
@@ -100,6 +111,42 @@ class _HomeScreenState extends State<HomeScreen> {
     _searchFocus.addListener(_onSearchFocusChanged);
     // Убираем фокус при инициализации чтобы избежать автовызова клавиатуры
     _searchFocus.unfocus();
+    _barsCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 340),
+      value: 1.0,
+    );
+    _barsAnim = CurvedAnimation(
+      parent: _barsCtrl,
+      curve: Curves.easeInOutCubic,
+    );
+    _barsCtrl.addListener(_onBarsTick);
+  }
+
+  /// Each frame of the collapse rebuilds the screen: the app bar reserves its
+  /// bottom slot from `preferredSize`, which is only re-read on a Scaffold
+  /// rebuild. Goes through `super.setState` so [_contentRev] stays put and the
+  /// feed subtree is not rebuilt — only the two bars are.
+  void _onBarsTick() {
+    if (mounted) super.setState(() {});
+  }
+
+  @override
+  void setState(VoidCallback fn) {
+    _contentRev++;
+    super.setState(fn);
+  }
+
+  @override
+  void didUpdateWidget(covariant HomeScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _contentRev++;
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _contentRev++;
   }
 
   @override
@@ -107,6 +154,8 @@ class _HomeScreenState extends State<HomeScreen> {
     _searchFocus.removeListener(_onSearchFocusChanged);
     _searchFocus.dispose();
     _fabVisible.dispose();
+    _barsCtrl.removeListener(_onBarsTick);
+    _barsCtrl.dispose();
     super.dispose();
   }
 
@@ -115,16 +164,31 @@ class _HomeScreenState extends State<HomeScreen> {
   /// ignores tiny jitter.
   bool _onScrollNotification(ScrollNotification n) {
     // VERTICAL drags only: swiping the category chips row sideways is a
-    // horizontal scroll and must NOT hide the row/FAB (it used to, because
+    // horizontal scroll and must NOT hide the bars/FAB (it used to, because
     // any axis produced a positive pixels delta).
-    if (n is ScrollUpdateNotification &&
-        n.dragDetails != null &&
-        n.metrics.axis == Axis.vertical) {
-      final delta = n.metrics.pixels - _lastScrollOffset;
-      if (delta.abs() < 2) return false;
-      _lastScrollOffset = n.metrics.pixels;
-      if (delta > 0 && _fabVisible.value) _fabVisible.value = false;
-      if (delta < 0 && !_fabVisible.value) _fabVisible.value = true;
+    if (n is! ScrollUpdateNotification || n.metrics.axis != Axis.vertical) {
+      return false;
+    }
+    final delta = n.metrics.pixels - _lastScrollOffset;
+    _lastScrollOffset = n.metrics.pixels;
+    // Back at the very top (drag or fling) — always restore everything.
+    if (n.metrics.pixels <= 0) {
+      if (!_fabVisible.value) _fabVisible.value = true;
+      if (!_barsCtrl.isCompleted) _barsCtrl.forward();
+      return false;
+    }
+    // Momentum (ballistic) frames keep the previous decision: only real
+    // user drags toggle the bars.
+    if (n.dragDetails == null) return false;
+    if (delta.abs() < 2) return false;
+    if (delta > 0) {
+      // Scrolling down: tuck the FAB and both pill-bars away.
+      if (_fabVisible.value) _fabVisible.value = false;
+      if (!_barsCtrl.isDismissed) _barsCtrl.reverse();
+    } else {
+      // Scrolling up: bring everything back.
+      if (!_fabVisible.value) _fabVisible.value = true;
+      if (!_barsCtrl.isCompleted) _barsCtrl.forward();
     }
     return false;
   }
@@ -154,9 +218,10 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     try {
       final entries = await _storage.loadEntries();
+      final order = await _storage.loadManualOrder();
       if (!mounted) return;
       setState(() {
-        _entries = entries;
+        _entries = _applyManualOrder(entries, order);
         _streak = _computeStreak(entries);
         _loading = false;
         _refreshing = false;
@@ -169,6 +234,25 @@ class _HomeScreenState extends State<HomeScreen> {
         _refreshing = false;
       });
     }
+  }
+
+  /// The decoder always returns entries newest-first, so a dragged order
+  /// would snap back on the next reload unless it is re-applied from disk.
+  /// Ids the box no longer has are dropped; entries it gained (a new note,
+  /// a restored backup) keep their newest-first order at the tail.
+  List<JournalEntry> _applyManualOrder(
+    List<JournalEntry> entries,
+    List<String> order,
+  ) {
+    if (order.isEmpty) return entries;
+    final byId = <String, JournalEntry>{for (final e in entries) e.id: e};
+    final out = <JournalEntry>[];
+    for (final id in order) {
+      final e = byId.remove(id);
+      if (e != null) out.add(e);
+    }
+    out.addAll(byId.values);
+    return out;
   }
 
   /// Counts consecutive days (ending today, or yesterday while today is
@@ -254,14 +338,16 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _togglePin(JournalEntry entry) async {
-    final updated = entry.copyWith(pinned: !entry.pinned);
-    await _storage.updateEntry(updated);
+    // Patch the flag on disk instead of writing the object the feed happens
+    // to be holding: that snapshot can predate an autosave from the editor,
+    // and persisting it silently reverts the user's newest words.
+    await _storage.patchEntry(entry.id, {'pinned': !entry.pinned});
     await _load();
   }
 
   void _onReorder(List<JournalEntry> list, int oldIndex, int newIndex) {
     final id = list[oldIndex].id;
-    final oldPos = _entries.indexWhere((e) => e.id == id);
+    final oldPos = _entries.indexWhere((e) => id == e.id);
     if (oldPos < 0) return;
     final item = _entries.removeAt(oldPos);
     final targetId = newIndex < list.length ? list[newIndex].id : null;
@@ -270,15 +356,22 @@ class _HomeScreenState extends State<HomeScreen> {
         : _entries.indexWhere((e) => e.id == targetId);
     _entries.insert(insertPos < 0 ? _entries.length : insertPos, item);
     _sortMode = -1;
-    _storage.saveEntries(_entries);
+    // Only the id sequence is persisted. Rewriting every entry from memory
+    // (the old saveEntries call) raced the editor's autosave and pushed
+    // stale bodies back to the box — the "my words disappeared" bug.
+    unawaited(
+      _storage.saveManualOrder(_entries.map((e) => e.id).toList()),
+    );
     setState(() {});
   }
 
   void _openEditor() {
     if (!mounted) return;
+    // Short, smooth fade (280ms) instead of the stock page route — the editor
+    // appears without the extra beat of room the default transition waits for.
     Navigator.of(
       context,
-    ).push(MaterialPageRoute(builder: (_) => EntryScreen())).then((_) {
+    ).push(fadeRoute(const EntryScreen())).then((_) {
       if (mounted) _load();
     });
   }
@@ -304,7 +397,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _openDetail(JournalEntry entry, {String heroPrefix = ''}) async {
     final changed = await Navigator.of(context).push<bool>(
-      _fadeRoute(
+      fadeRoute(
         EntryDetailScreen(
           entry: entry,
           storage: _storage,
@@ -366,9 +459,7 @@ class _HomeScreenState extends State<HomeScreen> {
               bottomRight: Radius.circular(28),
             ),
           ),
-          flexibleSpace: PremiumHeader(
-            colors: [scheme.primary, scheme.secondary, scheme.tertiary],
-          ),
+          flexibleSpace: PremiumHeader(colors: AppTheme.headerColors(scheme)),
           leading: SizedBox(
             width: 48,
             height: 48,
@@ -396,7 +487,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               // button previously just waited 2.5s and
                               // locked the screen, which was wrong.
                               _load().then((_) {
-                                if (!mounted) return;
+                                if (!mounted || !context.mounted) return;
                                 // Debounce: rapid taps on refresh must not
                                 // stack a "Записи обновлены" snackbar per tap.
                                 final now = DateTime.now();
@@ -435,39 +526,30 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Winter beanie sitting ON the first letter of the
-                    // wordmark, with a slight playful tilt.
-                    Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        const Text(
-                          'Ataraxy',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 26,
-                            // Explicitly opt OUT of the theme's italic
-                            // display font (Cormorant) — the brand wordmark
-                            // keeps its original system-sans look.
-                            fontFamily: 'sans-serif',
-                            fontStyle: FontStyle.normal,
-                          ),
-                        ),
-                        Positioned(
-                          left: -5,
-                          top: -8,
-                          child: Transform.rotate(
-                            angle: -0.08,
-                            child: const WinterHat(
-                              width: 18,
-                              height: 13.5,
-                            ),
-                          ),
-                        ),
-                      ],
+                    // The wordmark stands clean — the winter beanie now sits
+                    // on the streak badge (it belongs to the celebration,
+                    // not to the static logo).
+                    const Text(
+                      'Ataraxy',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 26,
+                        // Explicitly opt OUT of the theme's italic
+                        // display font (Cormorant) — the brand wordmark
+                        // keeps its original system-sans look.
+                        fontFamily: 'sans-serif',
+                        fontStyle: FontStyle.normal,
+                      ),
                     ),
-                    const SizedBox(width: 10),
-                    StreakBadge(streak: _streak),
+                    const SizedBox(width: 0),
+                    // A hair of negative offset tucks the badge right up
+                    // against the wordmark (the "y" descender overhangs its
+                    // advance box, so the badge visually hugs the text).
+                    Transform.translate(
+                      offset: const Offset(-3, 0),
+                      child: StreakBadge(streak: _streak),
+                    ),
                   ],
                 ),
               ),
@@ -493,34 +575,32 @@ class _HomeScreenState extends State<HomeScreen> {
                   });
                 }
               },
-              tooltip: _searching
-                  ? L.tr(context, 'closeSearch')
-                  : L.tr(context, 'search'),
             ),
-            IconButton(
+            PressableIconButton(
               icon: const Icon(Icons.insights_rounded),
               tooltip: L.tr(context, 'statistics'),
               onPressed: () {
                 _searchFocus.unfocus();
                 Navigator.of(
                   context,
-                ).push(_fadeRoute(const StatisticsScreen()));
+                ).push(fadeRoute(const StatisticsScreen()));
               },
             ),
-            IconButton(
+            PressableIconButton(
               icon: const Icon(Icons.settings_rounded),
               tooltip: L.tr(context, 'settings'),
               onPressed: () {
                 _searchFocus.unfocus();
                 Navigator.of(
                   context,
-                ).push(_fadeRoute(const SettingsScreen())).then((_) => _load());
+                ).push(fadeRoute(const SettingsScreen())).then((_) => _load());
               },
             ),
           ],
           bottom: _SmoothTabPills(
             labels: defs.map((d) => d.$1).toList(),
             headerColor: headerBg,
+            collapse: _barsT,
             onTap: (index) {
               _searchFocus.unfocus();
             },
@@ -532,28 +612,66 @@ class _HomeScreenState extends State<HomeScreen> {
                 onNotification: _onScrollNotification,
                 child: Stack(
                   children: [
+                    // Ambient wash behind the feed: a soft theme tint so the
+                    // translucent glass cards have something to blend over.
+                    // Solid color (not a gradient) — cheaper to composite on
+                    // low-end GPUs during scroll.
+                    Positioned.fill(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: scheme.surfaceContainerLowest,
+                        ),
+                      ),
+                    ),
                     Column(
                       children: [
                         // Category chips + sort live in ONE compact
-                        // pill-bar (they never hide when the feed scrolls —
-                        // only the "+" FAB and the reminders button do).
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
-                          child: _CategoryChips(
-                            current: _category,
-                            sortMode: _sortMode,
-                            onChanged: (c) => setState(() => _category = c),
-                            onSort: () {
-                              HapticFeedback.selectionClick();
-                              setState(() {
-                                _sortMode =
-                                    _sortMode >= 2 ? -1 : _sortMode + 1;
-                              });
-                            },
-                          ),
+                        // pill-bar. It retracts together with the main pill
+                        // bar (same driver): scrolling down collapses it into
+                        // the header, scrolling up / reaching the top brings
+                        // it back — one fluid motion.
+                        AnimatedBuilder(
+                          animation: _barsAnim,
+                          builder: (context, _) {
+                            final t = _barsAnim.value;
+                            return ClipRect(
+                              child: Align(
+                                alignment: Alignment.topCenter,
+                                heightFactor: t,
+                                child: Opacity(
+                                  opacity: t,
+                                  child: Padding(
+                                    padding: const EdgeInsets.fromLTRB(
+                                      16,
+                                      8,
+                                      16,
+                                      6,
+                                    ),
+                                    child: _CategoryChips(
+                                      current: _category,
+                                      sortMode: _sortMode,
+                                      onChanged: (c) =>
+                                          setState(() => _category = c),
+                                      onSort: () {
+                                        HapticFeedback.selectionClick();
+                                        setState(() {
+                                          _sortMode =
+                                              _sortMode >= 2
+                                                  ? -1
+                                                  : _sortMode + 1;
+                                        });
+                                      },
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
                         ),
                         Expanded(
-                          child: Stack(
+                          child: _StableFeed(
+                            rev: _contentRev,
+                            builder: (context) => Stack(
                             children: [
                               TabBarView(
                                 // Edge swipes spring back with rubber-band
@@ -578,7 +696,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                                       Navigator.of(
                                                         context,
                                                       ).push(
-                                                        _fadeRoute(
+                                                        fadeRoute(
                                                           const FavoriteActivityScreen(),
                                                         ),
                                                       );
@@ -587,9 +705,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                                   _FavoritesBanner(
                                                     onTap: () {
                                                       Navigator.of(context).push(
-                                                        MaterialPageRoute(
-                                                          builder: (_) =>
-                                                              const FavoritesScreen(),
+                                                        fadeRoute(
+                                                          const FavoritesScreen(),
                                                         ),
                                                       );
                                                     },
@@ -628,7 +745,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                                     Navigator.of(
                                                       context,
                                                     ).push(
-                                                      _fadeRoute(
+                                                      fadeRoute(
                                                         DailyGuideScreen(
                                                           topic:
                                                               d.$2 ==
@@ -677,7 +794,14 @@ class _HomeScreenState extends State<HomeScreen> {
                                                   d.$2?.name ?? 'all',
                                                 ),
                                                 header: _AllBanner(
-                                                  entries: _filtered(d.$2),
+                                                  // NOT `_filtered(...)`: the
+                                                  // banner hides itself when
+                                                  // there are no notes, so a
+                                                  // category filter that
+                                                  // happens to drop every note
+                                                  // used to collapse the header
+                                                  // and shift the whole section.
+                                                  entries: _entries,
                                                   onTap: () {
                                                     final notes = _entries
                                                         .where(
@@ -688,7 +812,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                                         )
                                                         .toList();
                                                     Navigator.of(context).push(
-                                                      _fadeRoute(
+                                                      fadeRoute(
                                                         _NotesListScreen(
                                                           notes: notes,
                                                           storage: _storage,
@@ -805,6 +929,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                             ],
                           ),
+                          ),
                         ),
                       ],
                     ),
@@ -826,10 +951,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(24),
                               child: BackdropFilter(
-                                filter: ImageFilter.blur(
-                                  sigmaX: 18,
-                                  sigmaY: 18,
-                                ),
+                                filter: _kSearchBlur,
                                 child: Material(
                                   elevation: _searching ? 6 : 0,
                                   borderRadius: BorderRadius.circular(24),
@@ -854,6 +976,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     const SizedBox(width: 12),
                                     Expanded(
                                       child: TextField(
+                                        cursorOpacityAnimates: true,
                                         magnifierConfiguration:
                                             TextMagnifierConfiguration.disabled,
                                         contextMenuBuilder: (ctx, state) =>
@@ -861,6 +984,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                         focusNode: _searchFocus,
                                         // Убран autofocus: поле фокусируется только при явном открытии поиска
                                         maxLength: 50,
+                                        buildCounter: animatedFieldCounter,
                                         inputFormatters: const [
                                           EmDashInputFormatter(),
                                         ],
@@ -887,15 +1011,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                         ),
                                       ),
                                     ),
-                                    if (_searchQuery.isNotEmpty)
-                                      IconButton(
-                                        icon: const Icon(Icons.clear_rounded),
-                                        onPressed: () {
-                                          setState(() => _searchQuery = '');
-                                          _searchFocus.requestFocus();
-                                        },
-                                        tooltip: L.tr(context, 'clear'),
-                                      ),
                                   ],
                                 ),
                               ),
@@ -939,34 +1054,9 @@ class _HomeScreenState extends State<HomeScreen> {
           valueListenable: _fabVisible,
           builder: (context, fabVisible, _) => _FadeSlideFab(
             visible: fabVisible,
-            child: Material(
-              color: Theme.of(context).colorScheme.primary,
-              elevation: 6,
-              shadowColor: Theme.of(
-                context,
-              ).colorScheme.primary.withValues(alpha: 0.4),
-              shape: const CircleBorder(),
-              clipBehavior: Clip.antiAlias,
-              child: InkWell(
-                onTap: () {
-                  HapticFeedback.lightImpact();
-                  _openEditor();
-                },
-                onLongPress: () {
-                  HapticFeedback.mediumImpact();
-                  _openAiAssistant();
-                },
-                child: Container(
-                  width: 56,
-                  height: 56,
-                  alignment: Alignment.center,
-                  child: const Icon(
-                    Icons.add_rounded,
-                    color: Colors.white,
-                    size: 28,
-                  ),
-                ),
-              ),
+            child: _PressFab(
+              onTap: _openEditor,
+              onLongPress: _openAiAssistant,
             ),
           ),
         ),
@@ -1009,15 +1099,20 @@ class _SmoothTabPills extends StatelessWidget implements PreferredSizeWidget {
   final List<String> labels;
   final Color headerColor;
   final ValueChanged<int>? onTap;
+  /// 1 = fully expanded, 0 = fully retracted while scrolling down. Driven by
+  /// the home screen's scroll controller so the app-bar's bottom slot
+  /// (preferredSize) collapses together with the bar itself.
+  final double collapse;
 
-  // Pill height (52) + its bottom margin (12).
+  // Pill height (52) + its bottom margin (12), scaled by [collapse].
   @override
-  Size get preferredSize => const Size.fromHeight(64);
+  Size get preferredSize => Size.fromHeight(64 * collapse.clamp(0.0, 1.0));
 
   const _SmoothTabPills({
     required this.labels,
     required this.headerColor,
     required this.onTap,
+    this.collapse = 1.0,
   });
 
   @override
@@ -1025,18 +1120,116 @@ class _SmoothTabPills extends StatelessWidget implements PreferredSizeWidget {
     final scheme = Theme.of(context).colorScheme;
     final controller = DefaultTabController.of(context);
     final count = labels.length;
-    return Container(
-      height: 52,
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-      decoration: BoxDecoration(
-        color: scheme.primaryContainer.withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(30),
-        border: Border.all(
-          color: scheme.outline.withValues(alpha: 0.3),
+    final double collapse = this.collapse.clamp(0.0, 1.0);
+    // The capsule's own body colour, built the way the glass is painted
+    // (header under primaryContainer under the white sheen). The spots have to
+    // contrast with THIS, not with the palette — see [_spotColor].
+    final glass = Color.lerp(
+      Color.lerp(headerColor, scheme.primaryContainer, 0.55)!,
+      Colors.white,
+      0.15,
+    )!;
+    // Smooth entrance: the pill-bar fades in and settles from a few pixels
+    // above on first build, so section switches never "pop" into place.
+    // While scrolling down the whole thing retracts into the header: the
+    // app-bar's bottom slot (preferredSize) collapses with [collapse] while
+    // the bar slides up under the clip edge and fades — one fluid motion.
+    return ClipRect(
+      child: Align(
+        alignment: Alignment.topCenter,
+        heightFactor: collapse,
+        child: Opacity(
+          opacity: collapse,
+          child: TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 520),
+      curve: Curves.easeOutCubic,
+      builder: (context, t, child) => Opacity(
+        opacity: t,
+        child: Transform.translate(
+          offset: Offset(0, (1 - t) * -8),
+          child: child,
         ),
       ),
-      child: AnimatedBuilder(
-        animation: controller.animation ?? const AlwaysStoppedAnimation(0.0),
+      child: Container(
+      height: 52,
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(30),
+        // Blur FIRST inside the rounded scissor, RepaintBoundary INSIDE the
+        // blur: the isolated layer inherits the rounded clip, so no square
+        // corners of the blur shader leak past the capsule's bottom edge.
+        child: BackdropFilter(
+          filter: _kBarBlur,
+          child: RepaintBoundary(
+            child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(30),
+              // Premium-glass border: thick, bright hairline that catches
+              // light all the way around the capsule (2dp reads like a
+              // solid glass rim instead of a cheap 1px outline).
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.42),
+                width: 2,
+              ),
+              // Layered body: strong white sheen up top melting into the
+              // tinted glass, with soft shadows that lift the capsule off
+              // the header — the depth premium UI needs.
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                stops: const [0.0, 0.30, 1.0],
+                colors: [
+                  Colors.white.withValues(alpha: 0.30),
+                  scheme.primaryContainer.withValues(alpha: 0.56),
+                  scheme.primaryContainer.withValues(alpha: 0.34),
+                ],
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: scheme.shadow.withValues(alpha: 0.22),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+                // Faint ambient glow in the accent color under the bar.
+                BoxShadow(
+                  color: scheme.primary.withValues(alpha: 0.14),
+                  blurRadius: 24,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Stack(
+              children: [
+                // Glossy catch-light: a soft white band sweeping across the
+                // upper edge of the capsule — the detail that separates
+                // premium glass from a flat translucent rectangle.
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  top: 0,
+                  height: 24,
+                  child: IgnorePointer(
+                    ignoring: true,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(30),
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          stops: const [0.0, 0.9],
+                          colors: [
+                            Colors.white.withValues(alpha: 0.22),
+                            Colors.white.withValues(alpha: 0.05),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned.fill(
+                  child: AnimatedBuilder(
+              animation: controller.animation ?? const AlwaysStoppedAnimation(0.0),
         builder: (context, _) {
           final value = (controller.animation?.value ?? 0).clamp(
             0.0,
@@ -1046,24 +1239,76 @@ class _SmoothTabPills extends StatelessWidget implements PreferredSizeWidget {
           return LayoutBuilder(
             builder: (context, constraints) {
               final segW = constraints.maxWidth / count;
+              // "Snake" gel stretch: while the pill travels between segments
+              // it elongates (up to ~40% wider at the midpoint of the flight)
+              // and settles back to its resting width on arrival — the pill
+              // reads as a stretchy gel snake instead of a rigid block jump.
+              final mid = (value - value.roundToDouble()).abs();
+              final extra = segW * 0.8 * mid;
               return Stack(
                 children: [
+                  // Theme-tinted spots behind EVERY segment: each section keeps
+                  // its own hue pulled from the active palette. `focus` is
+                  // derived from the tab controller's continuous value, so the
+                  // idle spots dim as the pill leaves and the neighbour's
+                  // brightens, cross-fading instead of snapping on arrival.
+                  for (var i = 0; i < count; i++)
+                    Positioned(
+                      left: i * segW,
+                      width: segW,
+                      top: 0,
+                      bottom: 0,
+                      child: _TabBlob(
+                        color: _spotColor(glass, _sectionTint(scheme, i)),
+                        focus: (1 - (value - i).abs()).clamp(0.0, 1.0),
+                      ),
+                    ),
+                  // The bloom rides UNDER the pill and follows it continuously
+                  // (same x/width math as the pill below, minus the stretch),
+                  // so it reads as light leaking out from behind the tab
+                  // rather than a fixed spotlight on one segment.
+                  Positioned(
+                    left: value * segW - segW * 0.25,
+                    width: segW * 1.5,
+                    top: 0,
+                    bottom: 0,
+                    child: _TabBlob(
+                      color: _spotColor(
+                        glass,
+                        _sectionTint(
+                          scheme,
+                          value.round().clamp(0, count - 1),
+                        ),
+                      ),
+                      focus: 1,
+                      bloom: true,
+                    ),
+                  ),
                   // The pill follows the animation continuously: glides with
                   // swipes, springs between tabs on taps.
                   Positioned(
-                    left: value * segW,
-                    width: segW,
+                    left: value * segW - extra / 2,
+                    width: segW + extra,
                     top: 0,
                     bottom: 0,
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 400),
                       margin: const EdgeInsets.all(3),
                       decoration: BoxDecoration(
-                        color: scheme.primary,
                         borderRadius: BorderRadius.circular(26),
+                        // Soft top-lit gradient keeps the pill from reading
+                        // as a flat color block while it glides.
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            scheme.primary.withValues(alpha: 0.9),
+                            scheme.primary,
+                          ],
+                        ),
                         boxShadow: [
                           BoxShadow(
-                            color: scheme.shadow.withValues(alpha: 0.2),
+                            color: scheme.primary.withValues(alpha: 0.25),
                             blurRadius: 12,
                             offset: const Offset(0, 3),
                           ),
@@ -1075,34 +1320,22 @@ class _SmoothTabPills extends StatelessWidget implements PreferredSizeWidget {
                     children: [
                       for (var i = 0; i < count; i++)
                         Expanded(
-                          child: InkWell(
-                            onTap: () {
-                              HapticFeedback.selectionClick();
-                              onTap?.call(i);
-                              // Animate from inside the controller scope:
-                              // calling DefaultTabController.of() from the
-                              // home screen's own context (above the
-                              // DefaultTabController) would silently hit the
-                              // fallback controller and never switch tabs.
-                              controller.animateTo(i);
-                            },
-                            borderRadius: BorderRadius.circular(26),
-                            child: Center(
-                              child: AnimatedDefaultTextStyle(
-                                duration: const Duration(milliseconds: 400),
-                                curve: Curves.easeOutCubic,
-                                style: TextStyle(
-                                  color: i == index
-                                      ? scheme.onPrimary
-                                      : scheme.onPrimaryContainer,
-                                  fontWeight: i == index
-                                      ? FontWeight.w700
-                                      : FontWeight.w500,
-                                  fontSize: 14,
-                                  letterSpacing: 0.2,
-                                ),
-                                child: Text(labels[i]),
-                              ),
+                          child: _TabSegment(
+                            label: labels[i],
+                            selected: i == index,
+                            scheme: scheme,
+                            // Animate from inside the controller scope:
+                            // calling DefaultTabController.of() from the
+                            // home screen's own context (above the
+                            // DefaultTabController) would silently hit the
+                            // fallback controller and never switch tabs.
+                            // Long ease-in-out glide (520ms) — the active
+                            // pill "snakes" between sections instead of
+                            // snapping with the default 300ms jump.
+                            onTap: () => controller.animateTo(
+                              i,
+                              duration: const Duration(milliseconds: 520),
+                              curve: Curves.easeInOutCubic,
                             ),
                           ),
                         ),
@@ -1114,7 +1347,177 @@ class _SmoothTabPills extends StatelessWidget implements PreferredSizeWidget {
           );
         },
       ),
+            ),
+          ],
+        ),
+    ),
+  ),
+  ),
+      ),
+  ),
+      ), // TweenAnimationBuilder (entrance)
+    ), // Opacity(collapse)
+  ), // Align(heightFactor)
+); // ClipRect
+  }
+}
+
+/// Per-section accent: the theme's primary hue fanned out by a fixed offset
+/// per tab. Pulling straight from `primary/secondary/tertiary` made all four
+/// spots the same violet on the lavender theme (and the same peach on the
+/// peach one), so the blobs read as "nothing there"; a ±30° fan keeps every
+/// spot inside the palette while making the tabs tellably different.
+Color _sectionTint(ColorScheme s, int i) {
+  // Distinct enough to tell four sections apart, close enough to stay inside
+  // the palette: ±64° on a purple theme produced a green→magenta rainbow.
+  // The fan is now ±24° with only a light saturation lift — the spots read as
+  // four steps of the same hue instead of four neon lamps, which is what made
+  // the tab bar feel "вырвиглазно" next to the calmed palette.
+  const offsets = [-24.0, -8.0, 8.0, 24.0];
+  final hsl = HSLColor.fromColor(s.primary);
+  return hsl
+      .withHue((hsl.hue + offsets[i % offsets.length]) % 360)
+      .withSaturation((hsl.saturation * 1.10).clamp(0.0, 0.60))
+      .toColor();
+}
+
+/// The spot colour for one segment, anchored to the glass it is painted on.
+///
+/// Deriving the spot from the palette alone was the first bug: on the dark
+/// theme the capsule interior measures RGB(110,112,120) — saturation 0.01 —
+/// and the Grok `primary` is equally neutral, so any palette-derived tint
+/// landed within a few units of the glass. The second bug was a timid
+/// distance: +0.22 lightness at 0.30 saturation composited to ~+20/255 in a
+/// single channel, which the eye reads as "no spot". The values below are the
+/// fix that made the spots visible, softened by one step (0.48 saturation
+/// floor, ±0.24 lightness): still unmistakably readable on the near-neutral
+/// dark glass, no longer the most saturated pixels on the screen.
+Color _spotColor(Color glass, Color tint) {
+  final g = HSLColor.fromColor(glass);
+  final t = HSLColor.fromColor(tint);
+  final sat = t.saturation < 0.48 ? 0.48 : t.saturation;
+  return g.withHue(t.hue)
+      .withSaturation(sat.clamp(0.0, 1.0))
+      .withLightness(
+        (g.lightness + (g.lightness < 0.55 ? 0.24 : -0.22)).clamp(0.06, 0.94),
+      )
+      .toColor();
+}
+
+/// A soft radial spot sitting behind one tab segment. Idle segments keep a
+/// faint hint of their own color; the spot the pill rests on swells wider and
+/// brighter — and because the gradient is an ellipse fitted to the segment
+/// box, `radius > 1` lets it bleed past the segment edges and glow out from
+/// around the pill. Pure gradient paint — no extra BlurFilter layer, so it
+/// costs nothing on low-end devices (Redmi Note 12).
+class _TabBlob extends StatelessWidget {
+  final Color color;
+
+  /// 0 = idle, 1 = the pill is parked on this segment.
+  final double focus;
+
+  /// The traveling glow that rides under the pill: wider box, stronger core.
+  final bool bloom;
+
+  const _TabBlob({
+    required this.color,
+    required this.focus,
+    this.bloom = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // [color] arrives already contrasted against the glass (see [_spotColor]).
+    // The old ellipse (radius 0.72, single linear fade) left most of the
+    // segment bare and averaged out to ~+20/255 — invisible. It now covers
+    // the whole segment with a plateau core, so the hue reads at a glance.
+    final spot = color;
+    final core = spot.withValues(alpha: bloom ? 0.85 : 0.70 + 0.30 * focus);
+    return IgnorePointer(
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: RadialGradient(
+            center: const Alignment(0, 0.18),
+            radius: bloom ? 1.5 : 1.15 + 0.15 * focus,
+            colors: [core, core, spot.withValues(alpha: 0.0)],
+            stops: const [0.0, 0.5, 1.0],
+          ),
+        ),
+        child: const SizedBox.expand(),
+      ),
     );
+  }
+}
+
+class _TabSegment extends StatefulWidget {
+  final String label;
+  final bool selected;
+  final ColorScheme scheme;
+  final VoidCallback onTap;
+
+  const _TabSegment({
+    required this.label,
+    required this.selected,
+    required this.scheme,
+    required this.onTap,
+  });
+
+  @override
+  State<_TabSegment> createState() => _TabSegmentState();
+}
+
+class _TabSegmentState extends State<_TabSegment> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = widget.scheme;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.selectionClick();
+          widget.onTap();
+        },
+        onHighlightChanged: (v) {
+          if (mounted && v != _pressed) setState(() => _pressed = v);
+        },
+        borderRadius: BorderRadius.circular(26),
+        // The raw highlight is muted out; the AnimatedContainer glow below
+        // is the smooth replacement.
+        splashColor: Colors.transparent,
+        highlightColor: Colors.transparent,
+        hoverColor: Colors.transparent,
+        child: AnimatedScale(
+          scale: _pressed ? 0.945 : 1.0,
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 340),
+            curve: Curves.easeOutCubic,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(26),
+              color: scheme.onPrimary.withValues(alpha: _pressed ? 0.16 : 0.0),
+            ),
+            child: Center(
+              child: AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 400),
+              curve: Curves.easeOutCubic,
+              style: TextStyle(
+                color: widget.selected
+                    ? scheme.onPrimary
+                    : scheme.onPrimaryContainer,
+                fontWeight: widget.selected ? FontWeight.w700 : FontWeight.w500,
+                fontSize: 14,
+                letterSpacing: 0.2,
+              ),
+              child: Text(widget.label),
+            ),
+          ),
+        ), // AnimatedContainer
+      ), // AnimatedScale
+    ), // InkWell
+    ); // Material
   }
 }
 
@@ -1143,50 +1546,76 @@ class _CategoryChips extends StatelessWidget {
     // ONE pill-bar: categories + sort share a single compact capsule. A
     // sliding highlight (Stack + AnimatedAlign) glides smoothly between
     // segments instead of per-segment fades — denser and more fluid.
-    return Container(
-      height: 30,
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerHighest.withValues(alpha: 0.55),
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(
-          color: scheme.outlineVariant.withValues(alpha: 0.45),
-        ),
-      ),
-      child: Row(
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(15),
+      // Blur first (inside the rounded clip), layer isolation second — the
+      // blur never leaks square corners past the capsule's rounded edge.
+      child: BackdropFilter(
+        filter: _kBarBlur,
+        child: RepaintBoundary(
+        child: Container(
+          height: 30,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(15),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.28),
+            ),
+            // Layered glass: white sheen up top, tinted body below — the
+            // same premium capsule treatment as the section bar.
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              stops: const [0.0, 0.3, 1.0],
+              colors: [
+                Colors.white.withValues(alpha: 0.20),
+                scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                scheme.surfaceContainerHighest.withValues(alpha: 0.36),
+              ],
+            ),
+          ),
+          child: Row(
         children: [
           Expanded(
             child: LayoutBuilder(
               builder: (context, constraints) {
                 final idx = cats.indexOf(current);
+                final segW = constraints.maxWidth / cats.length;
                 return Stack(
                   children: [
-                    // Sliding highlight: one rounded fill that glides
-                    // across the segments (easeOutCubic, 360ms) — much
-                    // smoother than fading each segment's fill in place.
-                    AnimatedAlign(
-                      duration: const Duration(milliseconds: 400),
+                    // Sliding highlight: an AnimatedPositioned fill that
+                    // always travels the SHORTEST path between segments —
+                    // no alignment-fraction math to get wrong, so it can
+                    // never fly off in the wrong direction.
+                    AnimatedPositioned(
+                      duration: const Duration(milliseconds: 380),
                       curve: Curves.easeOutCubic,
-                      alignment: Alignment(
-                        idx == 0
-                            ? -1.0
-                            : idx == cats.length - 1
-                            ? 1.0
-                            : -1.0 + 2 * idx / (cats.length - 1),
-                        0,
-                      ),
-                      widthFactor: 1 / cats.length,
-                      child: Container(
-                        margin: const EdgeInsets.all(3),
-                        decoration: BoxDecoration(
-                          color: scheme.primary,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: scheme.primary.withValues(alpha: 0.35),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
+                      left: (idx < 0 ? 0 : idx) * segW,
+                      top: 0,
+                      bottom: 0,
+                      width: segW,
+                      child: AnimatedOpacity(
+                        duration: const Duration(milliseconds: 200),
+                        opacity: idx < 0 ? 0.0 : 1.0,
+                        child: Container(
+                          margin: const EdgeInsets.all(3),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                scheme.primary.withValues(alpha: 0.88),
+                                scheme.primary,
+                              ],
                             ),
-                          ],
+                            boxShadow: [
+                              BoxShadow(
+                                color: scheme.primary.withValues(alpha: 0.32),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -1247,23 +1676,37 @@ class _CategoryChips extends StatelessWidget {
           ),
           // Thin divider then the sort control — still part of the same
           // pill-bar, no separate background.
+          // Soft gradient hairline instead of the old flat grey strip —
+          // the separator melts into the glass bar instead of reading as
+          // cheap tape across the pill.
           Container(
-            width: 1,
+            width: 1.5,
             height: 18,
-            margin: const EdgeInsets.symmetric(horizontal: 2),
-            color: scheme.outlineVariant.withValues(alpha: 0.5),
+            margin: const EdgeInsets.symmetric(horizontal: 3),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(1),
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  scheme.outlineVariant.withValues(alpha: 0.0),
+                  scheme.outlineVariant.withValues(alpha: 0.6),
+                  scheme.outlineVariant.withValues(alpha: 0.0),
+                ],
+              ),
+            ),
           ),
           IconButton(
             icon: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 350),
-              switchInCurve: Curves.easeOutBack,
-              switchOutCurve: Curves.easeIn,
+              duration: const Duration(milliseconds: 280),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeInCubic,
               transitionBuilder: (child, animation) =>
                   RotationTransition(
                     turns: Tween(begin: 0.75, end: 1.0).animate(
                       CurvedAnimation(
                         parent: animation,
-                        curve: Curves.easeOutBack,
+                        curve: Curves.easeOutCubic,
                       ),
                     ),
                     child: FadeTransition(
@@ -1305,6 +1748,9 @@ class _CategoryChips extends StatelessWidget {
           ),
         ],
       ),
+    ),
+  ),
+  ),
     );
   }
 }
@@ -1322,23 +1768,75 @@ class _ReminderDialog extends StatelessWidget {
 
 /// Search now only acts as a compact toggle; it does not open a text field.
 /// A fixed-size icon keeps the toolbar from moving between states.
-class _SearchToggleButton extends StatelessWidget {
+///
+/// The tooltip label ("Поиск" ↔ "Закрыть поиск") deliberately LAGS the icon by
+/// one transition: the icon cross-fades (280ms) and the current tooltip fades
+/// out (showDuration 400ms) FIRST — only then does the label swap, while the
+/// tooltip is hidden. Swapping the label in lockstep with the icon made the
+/// text jump mid-fade, which read as a glitch.
+class _SearchToggleButton extends StatefulWidget {
   final bool isSearching;
   final VoidCallback onTap;
-  final String tooltip;
 
   const _SearchToggleButton({
     required this.isSearching,
     required this.onTap,
-    required this.tooltip,
   });
 
   @override
+  State<_SearchToggleButton> createState() => _SearchToggleButtonState();
+}
+
+class _SearchToggleButtonState extends State<_SearchToggleButton> {
+  /// Currently shown tooltip label. Kept stable during the icon cross-fade so
+  /// the tooltip text never swaps in the middle of the transition.
+  String _tooltipText = '';
+
+  int _swapToken = 0;
+
+  String _labelFor(BuildContext context) =>
+      L.tr(context, widget.isSearching ? 'closeSearch' : 'search');
+
+  @override
+  void didUpdateWidget(covariant _SearchToggleButton old) {
+    super.didUpdateWidget(old);
+    if (old.isSearching == widget.isSearching) return;
+    final token = ++_swapToken;
+    // Delay the label swap until the icon fade (280ms) has finished AND the
+    // previous tooltip has faded out (400ms) — the swap then happens while
+    // the tooltip is hidden, so the state change reads as ONE smooth motion.
+    Future<void>.delayed(const Duration(milliseconds: 520)).then((_) {
+      if (!mounted || token != _swapToken) return;
+      final next = _labelFor(context);
+      if (_tooltipText != next) setState(() => _tooltipText = next);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return IconButton(
-      tooltip: tooltip,
-      onPressed: onTap,
-      icon: Icon(isSearching ? Icons.close_rounded : Icons.search_rounded),
+    if (_tooltipText.isEmpty) _tooltipText = _labelFor(context);
+    return Tooltip(
+      message: _tooltipText,
+      // Hold the tooltip for only a beat after a long-press release, then let
+      // it fade — so a quick tap right after never catches the label swap
+      // while the tooltip is still on screen.
+      showDuration: const Duration(milliseconds: 400),
+      child: PressableIconButton(
+        onPressed: widget.onTap,
+        // Clean cross-fade between the search glass and the X. The earlier
+        // rotation + easeOutBack version overshot the icon scale and flashed
+        // a big blurry block on low-end GPUs — a plain fade is smooth on all
+        // devices. The press itself is the soft "dimple" (scale 0.86 + halo).
+        icon: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 280),
+          switchInCurve: Curves.easeOut,
+          switchOutCurve: Curves.easeIn,
+          child: Icon(
+            key: ValueKey(widget.isSearching),
+            widget.isSearching ? Icons.close_rounded : Icons.search_rounded,
+          ),
+        ),
+      ),
     );
   }
 }
@@ -1353,20 +1851,96 @@ class _FadeSlideFab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AnimatedSlide(
-      // Smooth ease-in-out glide + fade + gentle scale — the control
-      // melts away instead of snapping.
-      duration: const Duration(milliseconds: 520),
-      curve: Curves.easeInOutCubic,
+      // One 300ms glide for all three layers. At 520ms the FAB was still
+      // sliding after a fast flick, so it lingered over the cards it should
+      // already be out of the way of.
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOutCubic,
       offset: visible ? Offset.zero : const Offset(0, 1.6),
       child: AnimatedScale(
-        duration: const Duration(milliseconds: 520),
-        curve: Curves.easeInOutCubic,
-        scale: visible ? 1.0 : 0.65,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOutCubic,
+        scale: visible ? 1.0 : 0.8,
         child: AnimatedOpacity(
-          duration: const Duration(milliseconds: 420),
-          curve: Curves.easeInOut,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOutCubic,
           opacity: visible ? 1.0 : 0.0,
           child: IgnorePointer(ignoring: !visible, child: child),
+        ),
+      ),
+    );
+  }
+}
+
+/// The circular "＋" button. A StatefulWidget so the press gives a tactile
+/// *dimple* — the whole disc dips to 0.92 with a soft halo while the finger
+/// is down, and springs back on release. Way smoother than the stock
+/// InkWell highlight, and the haptics are only fired once per press.
+class _PressFab extends StatefulWidget {
+  final VoidCallback onTap;
+  final VoidCallback onLongPress;
+  const _PressFab({required this.onTap, required this.onLongPress});
+
+  @override
+  State<_PressFab> createState() => _PressFabState();
+}
+
+class _PressFabState extends State<_PressFab> {
+  bool _pressed = false;
+  bool _wasLong = false;
+
+  void _down() {
+    _wasLong = false;
+    setState(() => _pressed = true);
+  }
+
+  void _up() {
+    if (!mounted) return;
+    setState(() => _pressed = false);
+    if (!_wasLong) widget.onTap();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return GestureDetector(
+      onTapDown: (_) => _down(),
+      onTapUp: (_) => _up(),
+      onTapCancel: () {
+        _wasLong = false;
+        if (mounted) setState(() => _pressed = false);
+      },
+      onLongPress: () {
+        _wasLong = true;
+        HapticFeedback.mediumImpact();
+        widget.onLongPress();
+      },
+      child: AnimatedScale(
+        scale: _pressed ? 0.93 : 1.0,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOutCubic,
+        child: Material(
+          color: scheme.primary,
+          elevation: _pressed ? 2 : 6,
+          shadowColor: scheme.primary.withValues(alpha: 0.4),
+          shape: const CircleBorder(),
+          clipBehavior: Clip.antiAlias,
+          // Gentle light halo when pressed, transparent otherwise.
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 260),
+            curve: Curves.easeOutCubic,
+            color: Colors.white.withValues(alpha: _pressed ? 0.16 : 0.0),
+            child: Container(
+              width: 56,
+              height: 56,
+              alignment: Alignment.center,
+              child: const Icon(
+                Icons.add_rounded,
+                color: Colors.white,
+                size: 28,
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -1406,31 +1980,27 @@ class _ListSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final firstId = entries.isNotEmpty ? entries.first.id : '';
-    final lastTs = entries.isNotEmpty
-        ? entries.last.updatedAt.millisecondsSinceEpoch
-        : 0;
-    final orderKey = entries.isNotEmpty
-        ? entries.take(5).map((e) => e.id.substring(0, 4)).join(',')
-        : '';
-    final signature = '${entries.length}:$firstId:$lastTs:$orderKey';
-    // The entrance animation plays only for the very first list built this
-    // session; later lists (tab switches, remounts, refreshes) render
-    // statically — replaying it caused visible jank on mid-range devices.
-    final animateEntrance = !_cardEntrancePlayed;
-    if (entries.isNotEmpty && animateEntrance) _cardEntrancePlayed = true;
+    // Cards animate whenever they are NEW to the list (per-entry keys make
+    // this precise); see the class-level comment above the file's header.
+    // NOTE: the scroll views deliberately keep a STABLE key. They used to be
+    // keyed by a content signature, which remounted the list on every tab /
+    // category switch — that reset the scroll offset and replayed every card's
+    // entrance at once, which is what read as a "jump".
+    const animateEntrance = true;
 
+    final Widget listChild;
     if (entries.isEmpty) {
-      // No AnimatedSwitcher here: during a category cross-fade the OLD
-      // (taller) and NEW (shorter) lists coexist and the section keeps the
-      // taller height — the practice-of-the-day banner appeared to "grow"
-      // while switching to an empty category like Random. A plain swap is
-      // instant and stable.
-      return RepaintBoundary(
+      // The empty↔populated swap is animated by the outer AnimatedSwitcher
+      // below. Its layoutBuilder sizes the transition to the INCOMING child
+      // and fades the outgoing one out clipped behind it — so the old
+      // (taller) list never inflates the shorter empty state mid-flight
+      // (the "banner grows" bug that forced an instant swap before).
+      listChild = RepaintBoundary(
         child: RefreshIndicator(
-          key: ValueKey('empty:$signature'),
+          key: const ValueKey('empty'),
           onRefresh: onRefresh,
           child: ListView(
+          scrollCacheExtent: const ScrollCacheExtent.pixels(600),
           // Same horizontal padding as the populated list, so the
           // practice-of-the-day header keeps the EXACT same width (and
           // height) whether the category has entries or not. Without it
@@ -1438,7 +2008,7 @@ class _ListSection extends StatelessWidget {
           // re-wrapped — the banner visually "grew" on empty categories.
           padding: const EdgeInsets.fromLTRB(16, 6, 16, 16),
           children: [
-            if (header != null) header!,
+            ?header,
             // Compact empty state — a fixed, modest height instead of
             // 60% of the screen. The old giant block made the section
             // "grow" when switching to an empty category (e.g. Random
@@ -1489,16 +2059,15 @@ class _ListSection extends StatelessWidget {
         ),
         ),
       );
-    }
-
-    // Populated list: also NO cross-fade — a category switch swaps the
-    // list content instantly, so the practice banner never "grows".
-    // Wrap with RepaintBoundary to isolate list repaints from the rest of the UI
-    return RepaintBoundary(
+    } else {
+      // Wrap with RepaintBoundary to isolate list repaints from the rest
+      // of the UI.
+      listChild = RepaintBoundary(
       child: RefreshIndicator(
-        key: ValueKey(signature),
+        key: const ValueKey('populated'),
         onRefresh: onRefresh,
         child: ReorderableListView.builder(
+          scrollCacheExtent: const ScrollCacheExtent.pixels(900),
           // Top padding kept minimal so the pills and the first card sit
           // close together (the pills row already provides its own 4px).
           padding: const EdgeInsets.fromLTRB(16, 6, 16, 16),
@@ -1545,6 +2114,34 @@ class _ListSection extends StatelessWidget {
           footer: const _MadeWithLove(key: ValueKey('footer')),
         ),
       ),
+      );
+    }
+
+    // Smooth empty↔populated transition (search clearing to "Записей пока
+    // нет", category/day filter switches): a 260ms cross-fade sized to the
+    // incoming child, so the swap reads as one soft dissolve.
+    return RepaintBoundary(
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 260),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeIn,
+        layoutBuilder: (currentChild, previousChildren) => ClipRect(
+          child: Stack(
+            alignment: Alignment.topCenter,
+            children: [
+              // Outgoing children are Positioned so they NEVER inflate the
+              // Stack's size (Stack sizes to non-positioned children only) —
+              // the incoming child defines the section height alone.
+              ...previousChildren.map((w) => Positioned.fill(child: w)),
+              ?currentChild,
+            ],
+          ),
+        ),
+        child: KeyedSubtree(
+          key: ValueKey(entries.isEmpty ? 'section-empty' : 'section-list'),
+          child: listChild,
+        ),
+      ),
     );
   }
 }
@@ -1565,6 +2162,7 @@ class _DailyGuideBanner extends StatelessWidget {
   static List<_DailyGuidePrompt> get _dreamPrompts => dp.dreamPrompts;
   static List<_DailyGuidePrompt> get _tulpaPrompts => dp.tulpaPrompts;
 
+  @override
   Widget build(BuildContext context) {
     final isDream = topic == DailyGuideTopic.lucidDreams;
     final prompts = isDream ? _dreamPrompts : _tulpaPrompts;
@@ -1579,8 +2177,11 @@ class _DailyGuideBanner extends StatelessWidget {
     // belongs to the ACTIVE theme (primary → tertiary) yet every day shifts
     // the hue slightly, so consecutive days stay visually distinct without
     // ever clashing with the app palette.
+    // The swing is deliberately capped at ±24°: the old `(idx * 17) % 360`
+    // walked the whole color wheel, so a lavender app could get a green
+    // banner — a palette clash rather than a daily variation.
     final scheme = Theme.of(context).colorScheme;
-    final shift = (idx * 17) % 360;
+    final shift = (((idx % 5) - 2) * 12).toDouble();
     Color shiftHue(Color c, double delta) => HSLColor.fromColor(c)
         .withHue((HSLColor.fromColor(c).hue + delta) % 360)
         .toColor();
@@ -2136,8 +2737,7 @@ class _NotesListScreenState extends State<_NotesListScreen> {
   }
 
   Future<void> _togglePin(JournalEntry entry) async {
-    final updated = entry.copyWith(pinned: !entry.pinned);
-    await widget.storage.updateEntry(updated);
+    await widget.storage.patchEntry(entry.id, {'pinned': !entry.pinned});
     widget.onChanged();
     final entries = await widget.storage.loadEntries();
     if (mounted) {
@@ -2164,11 +2764,7 @@ class _NotesListScreenState extends State<_NotesListScreen> {
           ),
         ),
         flexibleSpace: PremiumHeader(
-          colors: [
-            Theme.of(context).colorScheme.primary,
-            Theme.of(context).colorScheme.secondary,
-            Theme.of(context).colorScheme.tertiary,
-          ],
+          colors: AppTheme.headerColors(Theme.of(context).colorScheme),
         ),
       ),
       body: _notes.isEmpty
@@ -2195,6 +2791,7 @@ class _NotesListScreenState extends State<_NotesListScreen> {
                 }
               },
               child: ListView.builder(
+                scrollCacheExtent: const ScrollCacheExtent.pixels(900),
                 padding: const EdgeInsets.all(16),
                 itemCount: _notes.length + 1,
                 itemBuilder: (context, i) {
@@ -2215,6 +2812,38 @@ class _NotesListScreenState extends State<_NotesListScreen> {
               ),
             ),
     );
+  }
+}
+
+/// Keeps one built widget instance until [rev] changes.
+///
+/// The home feed is a few hundred widgets deep and used to rebuild on every
+/// frame of the pill-bar collapse (the app bar's `preferredSize` forces a
+/// screen-level rebuild). Returning the identical widget makes Flutter's
+/// rebuild elision stop here, so only the bars rebuild. Inherited lookups
+/// (theme, text direction, tab controller) still reach the cached subtree
+/// normally — those dependencies mark their own elements dirty.
+class _StableFeed extends StatefulWidget {
+  final int rev;
+  final WidgetBuilder builder;
+
+  const _StableFeed({required this.rev, required this.builder});
+
+  @override
+  State<_StableFeed> createState() => _StableFeedState();
+}
+
+class _StableFeedState extends State<_StableFeed> {
+  Widget? _cached;
+  int? _cachedRev;
+
+  @override
+  Widget build(BuildContext context) {
+    if (_cached == null || _cachedRev != widget.rev) {
+      _cached = widget.builder(context);
+      _cachedRev = widget.rev;
+    }
+    return _cached!;
   }
 }
 
@@ -2258,7 +2887,7 @@ class _EntryCardState extends State<_EntryCard>
     if (!widget.animate) return;
     _ctrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 300),
+      duration: const Duration(milliseconds: 220),
     );
     _opacity = CurvedAnimation(parent: _ctrl!, curve: Curves.easeOut);
     _slide = Tween<Offset>(
@@ -2270,7 +2899,9 @@ class _EntryCardState extends State<_EntryCard>
     // whole sequence finishes well within the splash's fully-opaque hold
     // (~770 ms), so the cards are already settled when the splash fades —
     // no "flash" of the home screen after the transition.
-    final delay = Duration(milliseconds: 10 + widget.index.clamp(0, 12) * 30);
+    // Subtle cascade: barely-there stagger so a batch of new cards (search
+    // results, category switch) reads as one soft wave, not a slow parade.
+    final delay = Duration(milliseconds: 8 + widget.index.clamp(0, 6) * 18);
     Future.delayed(delay, () {
       if (mounted) _ctrl?.forward();
     });
@@ -2344,28 +2975,25 @@ class _EntryCardBodyState extends State<_EntryCardBody> {
     // Wrap with RepaintBoundary to prevent card repaints from affecting other cards
     return RepaintBoundary(
       child: AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
+      duration: const Duration(milliseconds: 260),
       curve: Curves.easeOutCubic,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
           color: _pressed
-              ? scheme.primary.withValues(alpha: 0.55)
+              ? scheme.primary.withValues(alpha: 0.45)
               : Colors.transparent,
           width: 1.6,
         ),
       ),
       child: Card(
         clipBehavior: Clip.antiAlias,
-        // Elevation + soft shadow give the cards a volumetric "lift" that
-        // reads well on every theme (the old flat surfaceContainerLow fill
-        // plus the colored side accent bar clashed with custom themes).
-        // Kept low (2) on purpose: every blurred shadow in a scrollable
-        // list costs real GPU fill on low-end devices (Redmi), and the
-        // border + gradient already carry the depth.
-        elevation: 2,
+        // No elevation: a blurred shadow on every card is the #1 FPS killer
+        // in a scrolling list on low-end GPUs (Redmi). The border + gradient
+        // carry the depth instead — zero shadow cost.
+        elevation: 0,
         color: Colors.transparent,
-        shadowColor: scheme.shadow.withValues(alpha: 0.28),
+        surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(24),
           side: BorderSide(
@@ -2374,7 +3002,10 @@ class _EntryCardBodyState extends State<_EntryCardBody> {
           ),
         ),
         child: InkWell(
-          onTap: widget.onTap,
+          onTap: () {
+            HapticFeedback.lightImpact();
+            widget.onTap();
+          },
           onLongPress: widget.onPin,
           onHighlightChanged: (v) {
             if (mounted && v != _pressed) {
@@ -2382,19 +3013,22 @@ class _EntryCardBodyState extends State<_EntryCardBody> {
             }
           },
           borderRadius: BorderRadius.circular(24),
-          // Subtle top-left → bottom-right gradient adds depth without a
-          // colored side bar (which didn't fit the custom themes).
+          // The raw grey splash/highlight is muted out; the animated border
+          // + surface brighten (both 260ms) are the smooth replacement.
+          splashColor: Colors.transparent,
+          highlightColor: Colors.transparent,
+          hoverColor: Colors.transparent,
+          // Frosted-glass card: a single translucent surface layer so the
+          // ambient wash behind the feed shows through. One layer (not a
+          // two-stop gradient) — cheaper to composite on low-end GPUs.
           child: Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(24),
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  scheme.surfaceContainerLow,
-                  scheme.surfaceContainerHighest.withValues(alpha: 0.75),
-                ],
-              ),
+              // Press highlight: the surface brightens softly (same 260ms
+              // ease-out as the border) instead of the raw grey InkWell
+              // block flashing in.
+              color: scheme.surfaceContainerLow
+                  .withValues(alpha: _pressed ? 0.98 : 0.85),
             ),
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
@@ -2415,8 +3049,8 @@ class _EntryCardBodyState extends State<_EntryCardBody> {
                             ),
                             decoration: BoxDecoration(
                               color: widget.entry.isLucid!
-                                  ? Colors.amber.withValues(alpha: 0.2)
-                                  : Colors.blueGrey.withValues(alpha: 0.15),
+                                  ? scheme.tertiaryContainer
+                                  : scheme.surfaceContainerHighest,
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Text(
@@ -2428,9 +3062,12 @@ class _EntryCardBodyState extends State<_EntryCardBody> {
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
+                                // Theme containers instead of hardcoded amber:
+                                // a saturated yellow chip on a pastel palette
+                                // was the harshest element on the card.
                                 color: widget.entry.isLucid!
-                                    ? Colors.amber.shade800
-                                    : Colors.blueGrey,
+                                    ? scheme.onTertiaryContainer
+                                    : scheme.onSurfaceVariant,
                               ),
                             ),
                           ),
@@ -2565,11 +3202,13 @@ class _EntryCardBodyState extends State<_EntryCardBody> {
 }
 
 Color _categoryColor(EntryCategory c) {
+  // Muted accents from the shared palette: the stock green / redAccent /
+  // blueAccent dots were the most saturated pixels on every entry card.
   return switch (c) {
-    EntryCategory.good => Colors.green,
-    EntryCategory.bad => Colors.redAccent,
-    EntryCategory.random => Colors.blueAccent,
-    EntryCategory.none => Colors.grey,
+    EntryCategory.good => AppAccents.sage,
+    EntryCategory.bad => AppAccents.danger,
+    EntryCategory.random => AppAccents.sky,
+    EntryCategory.none => AppAccents.slate,
   };
 }
 

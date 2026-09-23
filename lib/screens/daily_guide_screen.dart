@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:dream_journal/l10n/strings.dart';
-import 'package:dream_journal/widgets/premium_header.dart';
+import 'package:ataraxy/l10n/strings.dart';
+import 'package:ataraxy/widgets/premium_header.dart';
 
 enum DailyGuideTopic { lucidDreams, tulpa }
 
@@ -42,7 +42,7 @@ class _DailyGuideScreenState extends State<DailyGuideScreen> {
             en: 'Intention',
             fr: 'Intention',
             textRu: 'Перед сном спокойно повтори: «Я замечу, что сплю». Без давления — только интерес.',
-            textEn: 'Before sleep, calmly repeat: \"I will notice that I am dreaming.\" No pressure — just curiosity.',
+            textEn: 'Before sleep, calmly repeat: "I will notice that I am dreaming." No pressure — just curiosity.',
             textFr: 'Avant de dormir, répète calmement : « Je remarquerai que je rêve ». Sans pression — juste la curiosité.',
             icon: Icons.nights_stay_rounded,
           ),
@@ -409,7 +409,7 @@ class _DailyGuideScreenState extends State<DailyGuideScreen> {
 
   List<(IconData, String)> _tips(bool isDream) {
     final code = Localizations.localeOf(context).languageCode;
-    final l = (String ru, String en, String fr) => switch (code) {
+    String l(String ru, String en, String fr) => switch (code) {
           'en' => en,
           'fr' => fr,
           _ => ru,

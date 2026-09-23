@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
-import 'package:dream_journal/models/chat_message.dart';
+import 'package:ataraxy/models/chat_message.dart';
 
 class ChatService {
   static const String _boxName = 'chat_messages';

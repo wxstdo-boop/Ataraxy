@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:intl/intl.dart';
-import 'package:dream_journal/l10n/strings.dart';
-import 'package:dream_journal/models/dream_signs.dart';
-import 'package:dream_journal/models/entry.dart';
-import 'package:dream_journal/screens/entry_screen.dart';
-import 'package:dream_journal/services/storage_service.dart';
-import 'package:dream_journal/widgets/animated_snack.dart';
-import 'package:dream_journal/widgets/em_dash_formatter.dart';
-import 'package:dream_journal/widgets/premium_header.dart';
+import 'package:ataraxy/l10n/strings.dart';
+import 'package:ataraxy/models/dream_signs.dart';
+import 'package:ataraxy/models/entry.dart';
+import 'package:ataraxy/screens/entry_screen.dart';
+import 'package:ataraxy/services/storage_service.dart';
+import 'package:ataraxy/theme/app_theme.dart';
+import 'package:ataraxy/widgets/animated_snack.dart';
+import 'package:ataraxy/widgets/app_route.dart';
+import 'package:ataraxy/widgets/em_dash_formatter.dart';
+import 'package:ataraxy/widgets/premium_header.dart';
+import 'package:ataraxy/widgets/pressable_icon_button.dart';
 
 class EntryDetailScreen extends StatefulWidget {
   final JournalEntry entry;
@@ -46,6 +49,29 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
 
   JournalEntry get entry => _entry;
 
+  @override
+  void initState() {
+    super.initState();
+    _syncFromDisk();
+  }
+
+  /// The feed passes a snapshot; an autosave from the editor may already be
+  /// newer. Show what is actually stored rather than the stale preview.
+  Future<void> _syncFromDisk() async {
+    final id = widget.entry.id;
+    final JournalEntry? stored;
+    try {
+      stored = await widget.storage.readEntry(id);
+    } catch (e) {
+      debugPrint('[Detail] readEntry failed: $e');
+      return;
+    }
+    if (stored == null || !mounted) return;
+    final fresh = stored;
+    if (fresh.id != id || !fresh.updatedAt.isAfter(_entry.updatedAt)) return;
+    setState(() => _entry = fresh);
+  }
+
   /// Matches the hero tag used on the home list card ("entry-title-"
   /// + tab prefix + entry id) so the shared-element flight connects.
   String get heroTag => 'entry-title-$heroPrefix-${entry.id}';
@@ -53,19 +79,23 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
   String get heroPrefix => widget.heroPrefix;
 
   Color _typeColor(EntryType type) {
+    // Muted, theme-independent accents — see [AppAccents]. The old values
+    // (purpleAccent / indigoAccent / deepOrangeAccent) were neon swatches
+    // sitting on top of a carefully tuned palette.
     return switch (type) {
-      EntryType.dream => Colors.purpleAccent,
-      EntryType.life => Colors.teal,
-      EntryType.general => Colors.deepOrangeAccent,
-      EntryType.tulpa => Colors.indigoAccent,
+      EntryType.dream => AppAccents.lilac,
+      EntryType.life => AppAccents.teal,
+      EntryType.general => AppAccents.clay,
+      EntryType.tulpa => AppAccents.slate,
     };
   }
 
   Future<void> _openEditor() async {
     final result = await Navigator.of(context).push<JournalEntry>(
-      MaterialPageRoute(
-        builder: (_) => EntryScreen(entry: widget.entry),
-      ),
+      // `entry`, not `widget.entry`: after one edit round the widget argument
+      // is the pre-edit snapshot, and handing it to the editor reloaded the
+      // old text — saving then wrote that stale body back over the new one.
+      fadeRoute(EntryScreen(entry: entry)),
     );
     if (result != null && mounted) {
       // Editor returns the SAVED entry: swap it into the preview in place,
@@ -104,29 +134,29 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
             bottomRight: Radius.circular(28),
           ),
         ),
-        flexibleSpace: PremiumHeader(
-          colors: [scheme.primary, scheme.secondary, scheme.tertiary],
-        ),
+        flexibleSpace: PremiumHeader(colors: AppTheme.headerColors(scheme)),
         title: Text(L.tr(context, entry.type.labelKey)),
         actions: [
-          IconButton(
+          PressableIconButton(
             icon: const Icon(Icons.edit_rounded),
             onPressed: _openEditor,
           ),
-          IconButton(
+          PressableIconButton(
             icon: Icon(
               entry.pinned ? Icons.push_pin_rounded : Icons.push_pin_outlined,
-              color: entry.pinned ? Colors.orange : null,
+              color: entry.pinned ? AppAccents.amber : null,
             ),
             onPressed: () async {
-              final updated = entry.copyWith(pinned: !entry.pinned);
-              await widget.storage.updateEntry(updated);
+              await widget.storage.patchEntry(
+                entry.id,
+                {'pinned': !entry.pinned},
+              );
               if (context.mounted) {
                 Navigator.of(context).pop(true);
               }
             },
           ),
-          IconButton(
+          PressableIconButton(
             icon: const Icon(Icons.delete_outline_rounded),
             onPressed: () async {
               final confirm = await showDialog<bool>(

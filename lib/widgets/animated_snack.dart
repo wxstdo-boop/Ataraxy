@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import 'package:ataraxy/theme/app_theme.dart';
+
 /// Типы снекбаров — влияют на иконку и акцент.
 /// Цвет фона/текста всегда берётся из snackBarTheme текущей темы.
 enum SnackType { info, success, error, warning }
@@ -21,6 +23,12 @@ enum SnackType { info, success, error, warning }
 class AnimatedSnack {
   static OverlayEntry? _current;
   static _AnimatedSnackHostState? _currentState;
+  // Dedupe: the same message within the window below is dropped instead of
+  // queued. Hammering "Разблокировать" with a wrong dev password used to
+  // stack a pile of identical "Неверный пароль" bars, each queued for 3s.
+  static String? _lastMessage;
+  static DateTime _lastShownAt = DateTime.fromMillisecondsSinceEpoch(0);
+  static const Duration _dedupeWindow = Duration(milliseconds: 2500);
 
   static void show(
     BuildContext context,
@@ -29,6 +37,13 @@ class AnimatedSnack {
     Duration duration = const Duration(seconds: 3),
     SnackBarAction? action,
   }) {
+    final now = DateTime.now();
+    if (message == _lastMessage &&
+        now.difference(_lastShownAt) < _dedupeWindow) {
+      return;
+    }
+    _lastMessage = message;
+    _lastShownAt = now;
     final overlay = Overlay.of(context, rootOverlay: true);
     _showAfter(overlay, message, type, duration, action);
   }
@@ -127,7 +142,7 @@ class _AnimatedSnackHostState extends State<_AnimatedSnackHost>
     _slide = Tween<Offset>(
       begin: const Offset(0, 1.4),
       end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutBack));
+    ).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic));
 
     // Enter: animate in, then hold, then animate out.
     _ctrl.forward().then((_) {
@@ -173,9 +188,11 @@ class _AnimatedSnackHostState extends State<_AnimatedSnackHost>
     final fg = snackTheme.contentTextStyle?.color ?? scheme.onInverseSurface;
 
     final (icon, accent) = switch (widget.type) {
-      SnackType.success => (Icons.check_circle_rounded, Colors.green),
-      SnackType.error => (Icons.error_rounded, Colors.redAccent),
-      SnackType.warning => (Icons.warning_amber_rounded, Colors.orange),
+      // Muted semantic accents (see [AppAccents]) — the stock green /
+      // redAccent / orange icons were the loudest thing in every snackbar.
+      SnackType.success => (Icons.check_circle_rounded, AppAccents.sage),
+      SnackType.error => (Icons.error_rounded, AppAccents.danger),
+      SnackType.warning => (Icons.warning_amber_rounded, AppAccents.amber),
       // Info gets its own icon too, so ALL notifications share the same
       // layout (icon tile + text) — previously info bars had no icon and
       // looked different from success/error ones.

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:dream_journal/l10n/strings.dart';
+import 'package:ataraxy/l10n/strings.dart';
 
 /// Toolbar with only Cut, Copy, Paste — replaces the default Android
 /// context menu (which would also surface Lookup, Web search, etc.).

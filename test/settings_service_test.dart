@@ -2,9 +2,9 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
-import 'package:dream_journal/models/settings.dart';
-import 'package:dream_journal/services/settings_service.dart';
-import 'package:dream_journal/theme/app_theme.dart';
+import 'package:ataraxy/models/settings.dart';
+import 'package:ataraxy/services/settings_service.dart';
+import 'package:ataraxy/theme/app_theme.dart';
 
 void main() {
   group('SettingsService', () {

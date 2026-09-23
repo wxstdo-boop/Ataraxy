@@ -32,7 +32,16 @@ class BloodFlowBackground extends StatelessWidget {
 class _BloodPainter extends CustomPainter {
   _BloodPainter() : super(repaint: _BloodTicker.instance);
 
-  static const Color _crimson = Color(0xFFC1121F); // fresh bright blood
+  // This painter is created when the MUTILATED theme mounts the blood layer,
+  // so its OWN clock (not the app-wide ticker's) drives the entry fade: the
+  // stains gently bloom in right after switching TO the theme and never pop
+  // in at full strength (the old code faded in from app launch, so toggling
+  // the theme mid-session snapped the stains on immediately).
+  final DateTime _born = DateTime.now();
+  double get _life =>
+      DateTime.now().difference(_born).inMilliseconds / 1000.0;
+
+  static const Color _crimson = Color(0xFFA85752); // dusty blood, not neon
 
   /// Per-stain cached shader + the quantized alpha bucket it was built for.
   /// The gradient is created ONCE per unit circle per stain and reused for
@@ -51,7 +60,7 @@ class _BloodPainter extends CustomPainter {
     if (size.isEmpty) return;
     final w = size.width;
     final h = size.height;
-    final t = _BloodTicker.instance.elapsed;
+    final t = _life;
     // Gentle entry: the layer breathes in over the first ~2.4s instead of
     // snapping on (matches the splash cross-fade) — an extra-slow ease so
     // the stain entry reads as a soft bloom, never a pop.
@@ -102,8 +111,10 @@ class _BloodPainter extends CustomPainter {
         _buckets[i] = bucket.toDouble();
         paint.shader = RadialGradient(
           colors: [
-            _crimson.withValues(alpha: 0.11 * fade),
-            _crimson.withValues(alpha: 0.045 * fade),
+            // Gentler peak alpha: the vivid crimson at 0.11 read as a stain
+            // ON TOP of the UI rather than a tint under it.
+            _crimson.withValues(alpha: 0.08 * fade),
+            _crimson.withValues(alpha: 0.032 * fade),
             _crimson.withValues(alpha: 0.0),
           ],
           // Unit-circle gradient; drawn scaled/translated below.

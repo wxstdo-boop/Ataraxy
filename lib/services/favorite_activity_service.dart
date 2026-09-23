@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:hive/hive.dart';
-import 'package:dream_journal/models/favorite_activity.dart';
+import 'package:ataraxy/models/favorite_activity.dart';
 
 class FavoriteActivityService {
   static const String _boxName = 'favorite_activities';

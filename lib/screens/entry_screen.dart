@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -6,19 +6,23 @@ import 'package:intl/intl.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 import 'package:speech_to_text/speech_recognition_result.dart';
-import 'package:dream_journal/l10n/strings.dart';
-import 'package:dream_journal/models/dream_signs.dart';
-import 'package:dream_journal/models/entry.dart';
-import 'package:dream_journal/providers/settings_provider.dart';
-import 'package:dream_journal/screens/entry_detail_screen.dart';
-import 'package:dream_journal/screens/pomodoro_screen.dart';
-import 'package:dream_journal/services/storage_service.dart';
-import 'package:dream_journal/widgets/limited_context_menu.dart';
-import 'package:dream_journal/widgets/animated_snack.dart';
-import 'package:dream_journal/widgets/animated_chip.dart';
-import 'package:dream_journal/widgets/em_dash_formatter.dart';
-import 'package:dream_journal/widgets/premium_header.dart';
-import 'package:dream_journal/widgets/themed_time_picker.dart';
+import 'package:ataraxy/l10n/strings.dart';
+import 'package:ataraxy/widgets/animated_field_counter.dart';
+import 'package:ataraxy/widgets/app_route.dart';
+import 'package:ataraxy/models/dream_signs.dart';
+import 'package:ataraxy/models/entry.dart';
+import 'package:ataraxy/widgets/pressable_icon_button.dart';
+import 'package:ataraxy/providers/settings_provider.dart';
+import 'package:ataraxy/screens/entry_detail_screen.dart';
+import 'package:ataraxy/screens/pomodoro_screen.dart';
+import 'package:ataraxy/services/storage_service.dart';
+import 'package:ataraxy/theme/app_theme.dart';
+import 'package:ataraxy/widgets/limited_context_menu.dart';
+import 'package:ataraxy/widgets/animated_snack.dart';
+import 'package:ataraxy/widgets/animated_chip.dart';
+import 'package:ataraxy/widgets/em_dash_formatter.dart';
+import 'package:ataraxy/widgets/premium_header.dart';
+import 'package:ataraxy/widgets/themed_time_picker.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 
 class EntryScreen extends StatefulWidget {
@@ -37,7 +41,7 @@ class EntryScreen extends StatefulWidget {
   State<EntryScreen> createState() => _EntryScreenState();
 }
 
-class _EntryScreenState extends State<EntryScreen> {
+class _EntryScreenState extends State<EntryScreen> with WidgetsBindingObserver {
   final _titleController = TextEditingController();
   final _contentController = TextEditingController();
   final _tagController = TextEditingController();
@@ -60,6 +64,10 @@ class _EntryScreenState extends State<EntryScreen> {
   String? _pomodoroEnd;
   String? _hrtTime;
   late DateTime _createdAt;
+  // Frozen sort key. Used to be `DateTime.now()` inside `_buildEntry()`, so
+  // every autosave tick of a NEW entry stamped a fresh `updatedAt` and the
+  // half-written note kept jumping to the top of the feed while typing.
+  late DateTime _updatedAt;
   late final String _id;
   bool _listening = false;
   bool _pinned = false;
@@ -84,6 +92,93 @@ class _EntryScreenState extends State<EntryScreen> {
   // conditions where rapid taps could overwrite or lose data.
   bool _saving = false;
 
+  // Serializes ALL storage writes (manual save, autosave tick, dispose
+  // save) through a single FIFO queue. Hive's box.put is async and NOT
+  // ordered: a stale autosave that started earlier can finish its write
+  // AFTER a newer manual save and silently revert the entry to older text
+  // ("some of what I typed got erased"). Because every write is chained,
+  // the most recently queued write is always the LAST to hit the disk, so
+  // the freshest text wins.
+  Future<void> _writeQueue = Future.value();
+
+  /// Signature of the entry that last reached the disk. Used only to skip a
+  /// redundant flush — so it must be refreshed on SUCCESS, never when the
+  /// write is merely queued: a failed write that marked itself as done made
+  /// every later flush of the same text a no-op, and those words were gone.
+  String _lastWrittenSig = '';
+
+  /// Re-entrancy latch for the exit-flush: the back gesture can fire several
+  /// pop attempts while the final write is still in flight.
+  bool _closing = false;
+
+  Future<void> _enqueueWrite(JournalEntry entry) {
+    final sig = _signature(entry);
+    final next = _writeQueue.then((_) async {
+      await _storage.addEntry(entry);
+      // Only now, with the bytes on disk, is this text considered saved.
+      _lastWrittenSig = sig;
+    });
+    // Keep the chain alive even if one write fails, and don't unhandled-zone
+    // a storage error here (that used to kill the app on release builds).
+    _writeQueue = next.then<void>((_) {}, onError: (_) {});
+    return next;
+  }
+
+  /// Writes the editors' current content and AWAITS the disk. This is the
+  /// single safety net behind "I typed a wall of text, left, and it was gone":
+  /// `autosave` in Settings only controls the 1s tick while typing — it used
+  /// to gate the save-on-exit as well, so with the (default) off setting any
+  /// exit that wasn't the checkmark button discarded everything.
+  ///
+  /// Skips a completely empty note (so opening the editor and backing out
+  /// can't leave ghost entries) and a note identical to the last write.
+  /// Returns the entry as it now stands on disk, or null when there was
+  /// nothing to save — the caller needs it to hand the fresh entry back to
+  /// the preview screen.
+  Future<({JournalEntry? entry, bool ok})> _flushUnsaved() async {
+    final title = _titleController.text.trim();
+    final content = _contentController.text.trim();
+    if (title.isEmpty && content.isEmpty) return (entry: null, ok: true);
+    final entry = _buildEntry();
+    if (_signature(entry) == _lastWrittenSig) return (entry: entry, ok: true);
+    try {
+      await _enqueueWrite(entry);
+      return (entry: entry, ok: true);
+    } catch (e) {
+      debugPrint('[Save] flush error: $e');
+      return (entry: null, ok: false);
+    }
+  }
+
+  /// System back / the AppBar arrow / a swipe: flush first, close only after
+  /// the write is on disk, so the feed the previous screen reloads already
+  /// contains the note.
+  Future<void> _exitWithSave() async {
+    if (_closing) return;
+    _closing = true;
+    final result = await _flushUnsaved();
+    _closing = false;
+    if (!mounted) return;
+    if (!result.ok) {
+      AnimatedSnack.show(
+        context,
+        L.tr(context, 'saveFailed'),
+        type: SnackType.error,
+      );
+    }
+    Navigator.of(context).pop(result.entry);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // MIUI is aggressive about killing backgrounded apps; the last second of
+    // typing must not live only in memory.
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
+      _flushUnsaved();
+    }
+  }
+
   void _startAutosaveTimer() {
     _autosaveTimer?.cancel();
     _autosaveTimer = Timer.periodic(
@@ -95,38 +190,72 @@ class _EntryScreenState extends State<EntryScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _type = widget.defaultType ?? EntryType.life;
     final e = widget.entry;
     if (e != null) {
-      _titleController.text = e.title;
-      _contentController.text = e.content;
-      _type = e.type;
-      _mood = e.mood;
-      _tags = List.from(e.tags);
-      _isLucid = e.isLucid;
-      _forcingDuration = e.forcingDuration;
-      _dreamSigns = List.from(e.dreamSigns);
-      _category = e.category;
-      _fastingStart = e.fastingStart;
-      _fastingEnd = e.fastingEnd;
-      _pomodoroStart = e.pomodoroStart;
-      _pomodoroEnd = e.pomodoroEnd;
-      _hrtTime = e.hrtTime;
-      if (e.hrtDosage != null) _hrtDosageController.text = e.hrtDosage!;
-      _createdAt = e.createdAt;
-      _id = e.id;
-      _pinned = e.pinned;
-      if (e.waterLiters != null) {
-        _waterController.text = e.waterLiters!.toString();
-      }
+      _applyEntry(e);
+      // The caller hands us a snapshot taken when its own screen was built.
+      // If a later autosave already moved the stored copy forward, seeding
+      // from the snapshot and saving would push the older body back over the
+      // user's newest words — the reported "words disappear" bug. Adopt the
+      // newer copy while the field still shows exactly what we were given.
+      unawaited(_adoptNewerCopy(e));
     } else {
       _createdAt = DateTime.now();
+      _updatedAt = _createdAt;
       // Use microseconds for more unique IDs to avoid collisions
       _id = _createdAt.microsecondsSinceEpoch.toString();
       _category = widget.defaultCategory;
     }
     // НЕ читаем autosave в initState — context ещё не привязан к SettingsProvider!
     // Чтение произойдёт в didChangeDependencies.
+  }
+
+  void _applyEntry(JournalEntry e) {
+    _updatedAt = e.updatedAt;
+    _titleController.text = e.title;
+    _contentController.text = e.content;
+    _type = e.type;
+    _mood = e.mood;
+    _tags = List.from(e.tags);
+    _isLucid = e.isLucid;
+    _forcingDuration = e.forcingDuration;
+    _dreamSigns = List.from(e.dreamSigns);
+    _category = e.category;
+    _fastingStart = e.fastingStart;
+    _fastingEnd = e.fastingEnd;
+    _pomodoroStart = e.pomodoroStart;
+    _pomodoroEnd = e.pomodoroEnd;
+    _hrtTime = e.hrtTime;
+    _hrtDosageController.text = e.hrtDosage ?? '';
+    _createdAt = e.createdAt;
+    _id = e.id;
+    _pinned = e.pinned;
+    _waterController.text = e.waterLiters?.toString() ?? '';
+  }
+
+  Future<void> _adoptNewerCopy(JournalEntry from) async {
+    final JournalEntry? disk;
+    try {
+      disk = await _storage.readEntry(from.id);
+    } catch (e) {
+      debugPrint('[Editor] readEntry failed: $e');
+      return;
+    }
+    if (disk == null || !mounted) return;
+    if (!disk.updatedAt.isAfter(from.updatedAt)) return;
+    // Anything already written by this session outranks the stored copy.
+    if (_lastWrittenSig.isNotEmpty) return;
+    // The user has typed: their keystrokes are the freshest data.
+    if (_titleController.text != from.title ||
+        _contentController.text != from.content) {
+      return;
+    }
+    _applyEntry(disk);
+    _lastSig = '';
+    _lastSigTitle = '';
+    _lastSigContent = '';
   }
 
   @override
@@ -151,24 +280,13 @@ class _EntryScreenState extends State<EntryScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _autosaveTimer?.cancel();
-    // Auto-save on exit if autosave is enabled and there's unsaved content.
-    // Fire-and-forget, but guarded: an unhandled async write error here
-    // used to escape into the zone and could crash the app (release-mode
-    // Android) right as the route was closing — the "kicked back to home
-    // screen" bug.
-    if (_autosave &&
-        (_titleController.text.isNotEmpty ||
-            _contentController.text.isNotEmpty)) {
-      try {
-        final entry = _buildEntry();
-        _storage
-            .addEntry(entry)
-            .catchError((e) => debugPrint('[Autosave] dispose save error: $e'));
-      } catch (e) {
-        debugPrint('[Autosave] dispose save error: $e');
-      }
-    }
+    // Last-resort net for a route torn down without going through
+    // `_exitWithSave` (a programmatic pop from elsewhere in the tree). The
+    // normal exit path already awaited its write by the time we get here, and
+    // `_flushUnsaved` dedupes on the signature, so this is usually a no-op.
+    unawaited(_flushUnsaved());
     if (_listening) _speech?.stop();
     _titleController.dispose();
     _contentController.dispose();
@@ -179,9 +297,15 @@ class _EntryScreenState extends State<EntryScreen> {
     super.dispose();
   }
 
+  // Covers every field that lives outside the two text editors. The old
+  // signature stopped at the fasting timers, so flipping only the pin or the
+  // lucidity switch never looked like a change and never got written.
   String _signature(JournalEntry e) =>
-      '${e.title}|${e.content}|${e.mood}|${e.tags.join(',')}|${e.category.name}|'
-      '${e.waterLiters}|${e.fastingStart}|${e.fastingEnd}|${e.pomodoroStart}|${e.pomodoroEnd}';
+      '${e.type.name}|${e.title}|${e.content}|${e.mood}|${e.tags.join(',')}|'
+      '${e.category.name}|${e.isLucid}|${e.dreamSigns.join(',')}|'
+      '${e.forcingDuration}|${e.waterLiters}|${e.fastingStart}|'
+      '${e.fastingEnd}|${e.pomodoroStart}|${e.pomodoroEnd}|${e.hrtTime}|'
+      '${e.hrtDosage}|${e.pinned}';
 
   JournalEntry _buildEntry() {
     return JournalEntry(
@@ -194,7 +318,7 @@ class _EntryScreenState extends State<EntryScreen> {
       // updatedAt, so setting it to now on every save (incl. autosave) made
       // the entry jump to the top mid-edit. Keep the original timestamp
       // when editing an existing entry — it stays exactly where it was.
-      updatedAt: widget.entry != null ? widget.entry!.updatedAt : DateTime.now(),
+      updatedAt: _updatedAt,
       mood: _mood,
       tags: _tags,
       isLucid: _type == EntryType.dream ? _isLucid : null,
@@ -236,6 +360,11 @@ class _EntryScreenState extends State<EntryScreen> {
         // error in release mode kills the app and the user's typed text is
         // gone with it ("the app reloads and my entry is erased").
         debugPrint('[Autosave] tick error: $e');
+        // Forget the "already stored" markers so the next tick retries this
+        // exact text instead of short-circuiting on it.
+        _lastSig = '';
+        _lastSigTitle = '';
+        _lastSigContent = '';
       }
     } finally {
       _autosaveRunning = false;
@@ -245,16 +374,21 @@ class _EntryScreenState extends State<EntryScreen> {
   /// Builds and stores the current entry for the autosave timer. The write
   /// itself is isolated so a storage failure can't take the editor down.
   Future<void> _autosaveWrite() async {
+    // Never clobber a manual save that's in flight: the user has just hit
+    // the checkmark, so their freshest text must be the last one on disk.
+    if (_saving) return;
     final entry = _buildEntry();
     // Сохраняем даже пустые записи — пользователь мог начать вводить текст
     final sig = _signature(entry);
     if (sig == _lastSig && entry.title.isEmpty && entry.content.isEmpty) {
       return;
     }
+    await _enqueueWrite(entry);
+    // Marked after the write: a tick that threw must stay retryable, or the
+    // text it failed on is silently never stored again.
     _lastSig = sig;
     _lastSigTitle = entry.title;
     _lastSigContent = entry.content;
-    await _storage.addEntry(entry);
   }
 
   void _addTag() {
@@ -576,7 +710,7 @@ class _EntryScreenState extends State<EntryScreen> {
       if (!mounted) return;
       final entry = _buildEntry();
       try {
-        await _storage.addEntry(entry);
+        await _enqueueWrite(entry);
       } catch (e) {
         debugPrint('[Save] Error saving entry: $e');
         if (mounted) {
@@ -587,7 +721,10 @@ class _EntryScreenState extends State<EntryScreen> {
           );
         }
         // Keep the editor open with all the typed text — do NOT navigate
-        // away or crash, so nothing the user wrote is lost.
+        // away or crash, so nothing the user wrote is lost. Re-arm the tick
+        // that was cancelled above, otherwise the rest of this session would
+        // have no autosave at all.
+        if (_autosave && mounted) _startAutosaveTimer();
         return;
       }
       if (!mounted) return;
@@ -595,11 +732,8 @@ class _EntryScreenState extends State<EntryScreen> {
         // New entry: land on its preview instead of dropping the user back
         // onto the feed — they want to see what was just saved.
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (_) => EntryDetailScreen(
-              entry: entry,
-              storage: _storage,
-            ),
+          fadeRoute(
+            EntryDetailScreen(entry: entry, storage: _storage),
           ),
         );
       } else {
@@ -616,7 +750,16 @@ class _EntryScreenState extends State<EntryScreen> {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final settings = SettingsProvider.of(context).settings;
-    return Scaffold(
+    return PopScope(
+      // No way out of this screen that skips the disk: the system back
+      // gesture, the AppBar arrow and `maybePop` all land in `_exitWithSave`,
+      // which awaits the final write and only then pops. (`Navigator.pop`
+      // itself bypasses PopScope, so the flush can close the route.)
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _exitWithSave();
+      },
+      child: Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         foregroundColor: Colors.white,
@@ -629,14 +772,12 @@ class _EntryScreenState extends State<EntryScreen> {
             bottomRight: Radius.circular(28),
           ),
         ),
-        flexibleSpace: PremiumHeader(
-          colors: [scheme.primary, scheme.secondary, scheme.tertiary],
-        ),
+        flexibleSpace: PremiumHeader(colors: AppTheme.headerColors(scheme)),
         title: Text(widget.entry == null
             ? L.tr(context, 'entryNew')
             : L.tr(context, 'entryEdit')),
         actions: [
-          IconButton(
+          PressableIconButton(
             // Smooth pin toggle: the pin rotates 90° and springs to the
             // filled/outline state with a scale pop, themed by primary.
             onPressed: () => setState(() => _pinned = !_pinned),
@@ -662,7 +803,7 @@ class _EntryScreenState extends State<EntryScreen> {
               ),
             ),
           ),
-          IconButton(
+          PressableIconButton(
             onPressed: () => _save(),
             icon: const Icon(Icons.check_rounded),
           ),
@@ -890,6 +1031,7 @@ class _EntryScreenState extends State<EntryScreen> {
                 children: [
                   Expanded(
                     child: TextField(
+        cursorOpacityAnimates: true,
         magnifierConfiguration: TextMagnifierConfiguration.disabled,
                       controller: _signController,
                       contextMenuBuilder: (ctx, state) =>
@@ -949,6 +1091,7 @@ class _EntryScreenState extends State<EntryScreen> {
                         widget.entry?.waterLiters != null) ...[
                       const SizedBox(height: 14),
                       TextField(
+        cursorOpacityAnimates: true,
         magnifierConfiguration: TextMagnifierConfiguration.disabled,
                         controller: _waterController,
                         keyboardType: TextInputType.number,
@@ -1041,9 +1184,7 @@ class _EntryScreenState extends State<EntryScreen> {
                 const SizedBox(height: 10),
                 FilledButton.icon(
                   onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const PomodoroScreen(),
-                    ),
+                    fadeRoute(const PomodoroScreen()),
                   ),
                   icon: const Icon(Icons.timer_rounded),
                   label: Text(L.tr(context, 'pomodoroStartFocus')),
@@ -1073,6 +1214,7 @@ class _EntryScreenState extends State<EntryScreen> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: TextField(
+        cursorOpacityAnimates: true,
         magnifierConfiguration: TextMagnifierConfiguration.disabled,
                       controller: _hrtDosageController,
                       contextMenuBuilder: (ctx, state) =>
@@ -1094,9 +1236,11 @@ class _EntryScreenState extends State<EntryScreen> {
             // entry — previously it was hidden entirely on the edit screen.
             const SizedBox(height: 16),
             TextField(
+        cursorOpacityAnimates: true,
         magnifierConfiguration: TextMagnifierConfiguration.disabled,
               controller: _titleController,
               maxLength: 100,
+              buildCounter: animatedFieldCounter,
               inputFormatters: const [EmDashInputFormatter()],
               contextMenuBuilder: (ctx, state) =>
                   buildLimitedContextMenu(ctx, state),
@@ -1185,6 +1329,7 @@ class _EntryScreenState extends State<EntryScreen> {
                             ),
                     )
                   : TextField(
+        cursorOpacityAnimates: true,
         magnifierConfiguration: TextMagnifierConfiguration.disabled,
                       key: const ValueKey('editor'),
                       controller: _contentController,
@@ -1255,6 +1400,7 @@ class _EntryScreenState extends State<EntryScreen> {
               children: [
                 Expanded(
                   child: TextField(
+        cursorOpacityAnimates: true,
         magnifierConfiguration: TextMagnifierConfiguration.disabled,
                     controller: _tagController,
                     contextMenuBuilder: (ctx, state) =>
@@ -1289,6 +1435,7 @@ class _EntryScreenState extends State<EntryScreen> {
             ),
           ],
         ),
+      ),
       ),
     );
   }

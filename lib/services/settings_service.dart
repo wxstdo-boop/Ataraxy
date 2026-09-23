@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:hive/hive.dart';
-import 'package:dream_journal/models/settings.dart';
+import 'package:ataraxy/models/settings.dart';
 
 class SettingsService {
   static const String _boxName = 'app_settings';

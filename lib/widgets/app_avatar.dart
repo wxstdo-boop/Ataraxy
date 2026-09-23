@@ -15,6 +15,12 @@ class AppAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    // Decode at PHYSICAL resolution (logical size x DPR): cacheWidth in
+    // logical px decoded the 512px art down to ~70px and then upscaled it
+    // on screen — that's what made the avatar look soft. Exact-size decode
+    // is both hyper-sharp and memory-cheap.
+    final dpr = MediaQuery.devicePixelRatioOf(context);
+    final facePx = (radius * 1.6 * dpr).ceil();
 
     return Container(
       decoration: BoxDecoration(
@@ -70,8 +76,8 @@ class AppAvatar extends StatelessWidget {
             width: radius * 1.6,
             height: radius * 1.6,
             fit: BoxFit.cover,
-            cacheWidth: (radius * 1.6).ceil(),
-            cacheHeight: (radius * 1.6).ceil(),
+            cacheWidth: facePx,
+            cacheHeight: facePx,
           ),
         ),
       ),

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:dream_journal/services/reply_cleaner.dart';
+import 'package:ataraxy/services/reply_cleaner.dart';
 
 void main() {
   group('cleanReply (regression: FormatException Invalid group)', () {
@@ -73,8 +73,8 @@ void main() {
     test('English self-talk WITHOUT a marker is cut (Horde gemma)', () {
       // Horde's gemma pastes its chain-of-thought as plain English prose
       // with no "Reasoning:" label — the real reply comes last.
-      const t = 'The user is asking in Russian: \"tell me something '
-          'interesting\". I need to respond as ADA, warm and witty. Should I '
+      const t = 'The user is asking in Russian: "tell me something '
+          'interesting". I need to respond as ADA, warm and witty. Should I '
           'create a journal entry? No, just respond.\n\nLet me craft a '
           'response. Maybe share a psychological fact.\n\nО, с удовольствием! '
           'Знаешь ли ты, что мозг запоминает яркие сны лучше обычных мыслей?';

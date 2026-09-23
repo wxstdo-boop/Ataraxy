@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'models/settings.dart';
 import 'services/notification_service.dart';
+import 'theme/app_theme.dart';
 
 class WelcomeScreen extends StatefulWidget {
   final AppSettings settings;
@@ -25,6 +26,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   late bool _dontShowAgain;
   bool _notificationsGranted = false;
   bool _requesting = false;
+  bool _isClosing = false;
   late AnimationController _animCtrl;
   late Animation<double> _fadeAnim;
   late Animation<Offset> _slideAnim;
@@ -37,9 +39,9 @@ class _WelcomeScreenState extends State<WelcomeScreen>
       vsync: this,
       duration: const Duration(milliseconds: 480),
     );
-    _fadeAnim = CurvedAnimation(parent: _animCtrl, curve: Curves.easeIn);
+    _fadeAnim = CurvedAnimation(parent: _animCtrl, curve: Curves.easeInOut);
     _slideAnim = Tween<Offset>(
-      begin: const Offset(0, 0.1),
+      begin: const Offset(0, 0.05),
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _animCtrl, curve: Curves.easeOutCubic));
     _animCtrl.forward();
@@ -54,66 +56,110 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   Future<void> _requestNotifications() async {
     setState(() => _requesting = true);
     try {
+      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+        // Already granted in a previous session? Surface the green
+        // "granted" state and let the user finish with the Start button —
+        // nothing to request, and the onboarding is NEVER force-closed.
+        final notif = await Permission.notification.status;
+        final battery = await Permission.ignoreBatteryOptimizations.status;
+        if ((notif.isGranted || notif.isRestricted) &&
+            (battery.isGranted || battery.isRestricted)) {
+          if (mounted) {
+            setState(() => _notificationsGranted = true);
+            // Permissions were already granted in a previous session —
+            // show the green state briefly, then glide away smoothly.
+            _finishSoon();
+          }
+          return;
+        }
+      }
+
       final granted = await NotificationService().requestPermissions();
       if (mounted) {
-        setState(() => _notificationsGranted = granted);
+        if (granted) {
+          // Battery optimization is requested at the same moment
+          if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+            final battery = await Permission.ignoreBatteryOptimizations.status;
+            if (!battery.isGranted && !battery.isRestricted) {
+              await Permission.ignoreBatteryOptimizations.request();
+            }
+          }
+          setState(() => _notificationsGranted = true);
+          // Permissions granted — show the green state briefly, then glide
+          // the whole welcome screen away as ONE piece (no layout reflow).
+          _finishSoon();
+          return;
+        }
         // On web, permission_handler has limited/no support — skip the
         // detailed permission checks that would throw.
         if (kIsWeb) return;
-        if (!granted) {
-          final status = await Permission.notification.status;
-          final exact = await Permission.scheduleExactAlarm.status;
-          final battery = await Permission.ignoreBatteryOptimizations.status;
-          if (status.isPermanentlyDenied && mounted) {
-            final openSettings = await showDialog<bool>(
-              context: context,
-              builder: (ctx) => _PermissionDeniedDialog(),
-            );
-            if (openSettings == true && mounted) {
-              await openAppSettings();
-            }
-          } else if (mounted) {
-            final problems = <String>[];
-            if (status.isDenied) problems.add('уведомления');
-            if (exact.isDenied) problems.add('точные будильники');
-            if (battery.isDenied) problems.add('оптимизацию батареи');
-            await showDialog<void>(
-              context: context,
-              builder: (ctx) => AlertDialog(
-                title: const Text('Разрешения не получены'),
-                content: Text(
-                  problems.isEmpty
-                      ? 'Разрешение не было предоставлено. Попробуйте ещё раз.'
-                      : 'Не хватает разрешений: ${problems.join(', ')}.\n'
-                        'На MIUI это часто нужно включать вручную в настройках приложения.',
-                ),
-                actions: [
-                  FilledButton(
-                    onPressed: () => Navigator.pop(ctx),
-                    child: const Text('Понятно'),
-                  ),
-                ],
+
+        final status = await Permission.notification.status;
+        final exact = await Permission.scheduleExactAlarm.status;
+        final battery = await Permission.ignoreBatteryOptimizations.status;
+        if (status.isPermanentlyDenied && mounted) {
+          final openSettings = await showDialog<bool>(
+            context: context,
+            builder: (ctx) => _PermissionDeniedDialog(),
+          );
+          if (openSettings == true && mounted) {
+            await openAppSettings();
+          }
+        } else if (mounted) {
+          final problems = <String>[];
+          if (status.isDenied) problems.add('уведомления');
+          if (exact.isDenied) problems.add('точные будильники');
+          if (battery.isDenied) problems.add('оптимизацию батареи');
+          await showDialog<void>(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Text('Разрешения не получены'),
+              content: Text(
+                problems.isEmpty
+                    ? 'Разрешение не было предоставлено. Попробуйте ещё раз.'
+                    : 'Не хватает разрешений: ${problems.join(', ')}.\n'
+                      'На MIUI это часто нужно включать вручную в настройках приложения.',
               ),
-            );
-          }
-        } else {
-          final details = await NotificationService.requestAllPermissions();
-          if (mounted) {
-            debugPrint('[Notif] Permission summary:\n$details');
-          }
+              actions: [
+                FilledButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Понятно'),
+                ),
+              ],
+            ),
+          );
         }
       }
     } finally {
-      if (mounted) setState(() => _requesting = false);
+      // Don't touch state while the exit animation is already playing.
+      if (mounted && !_isClosing) setState(() => _requesting = false);
     }
   }
 
   void _finish() {
-    final updated = widget.settings.copyWith(
-      showWelcome: !_dontShowAgain,
-      reminderEnabled: _notificationsGranted,
-    );
-    widget.onComplete(updated);
+    if (_isClosing) return; // prevent double-fire
+    _isClosing = true;
+    // Animate out: the whole screen FADES and glides down gently as one
+    // piece — nothing in the layout changes mid-animation, so no jerk.
+    _animCtrl.reverse().then((_) {
+      if (mounted) {
+        final updated = widget.settings.copyWith(
+          // The welcome returns next launch UNLESS the user explicitly
+          // checked "Больше не показывать" (keep that contract intact).
+          showWelcome: !_dontShowAgain,
+          reminderEnabled: _notificationsGranted,
+        );
+        widget.onComplete(updated);
+      }
+    });
+  }
+
+  /// Lets the user SEE the green "Разрешение получено" for a beat before
+  /// the whole window glides away in one smooth piece.
+  void _finishSoon() {
+    Future<void>.delayed(const Duration(milliseconds: 350)).then((_) {
+      if (mounted && !_isClosing) _finish();
+    });
   }
 
   @override
@@ -149,7 +195,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                     const SizedBox(height: 12),
                     _WelcomeSubtitle(style: style),
                     const SizedBox(height: 40),
-                    if (!_notificationsGranted && !_requesting) ...[
+                    if (!_notificationsGranted) ...[
                       _PermissionCard(
                         notificationsGranted: _notificationsGranted,
                         requesting: _requesting,
@@ -299,7 +345,7 @@ class _PermissionCard extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             notificationsGranted
-                ? const Icon(Icons.check_circle_rounded, color: Colors.green)
+                ? const Icon(Icons.check_circle_rounded, color: AppAccents.sage)
                 : FilledButton.tonalIcon(
                     onPressed: requesting ? null : onEnable,
                     icon: requesting
@@ -329,7 +375,7 @@ class _PermissionIcon extends StatelessWidget {
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: notificationsGranted
-            ? Colors.green.withValues(alpha: 0.15)
+            ? AppAccents.sage.withValues(alpha: 0.15)
             : scheme.primaryContainer,
         borderRadius: BorderRadius.circular(12),
       ),
@@ -337,7 +383,7 @@ class _PermissionIcon extends StatelessWidget {
         notificationsGranted
             ? Icons.notifications_active_rounded
             : Icons.notifications_none_rounded,
-        color: notificationsGranted ? Colors.green : scheme.primary,
+        color: notificationsGranted ? AppAccents.sage : scheme.primary,
       ),
     );
   }
@@ -363,7 +409,9 @@ class _PermissionText extends StatelessWidget {
               ? 'Разрешение получено'
               : 'Для напоминаний о записях в дневник',
           style: style.bodySmall?.copyWith(
-            color: notificationsGranted ? Colors.green : Theme.of(context).colorScheme.onSurfaceVariant,
+            color: notificationsGranted
+                ? AppAccents.sage
+                : Theme.of(context).colorScheme.onSurfaceVariant,
           ),
         ),
       ],

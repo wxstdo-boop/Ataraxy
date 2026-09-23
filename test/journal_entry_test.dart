@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:dream_journal/models/entry.dart';
+import 'package:ataraxy/models/entry.dart';
 
 void main() {
   group('JournalEntry defensive fromJson', () {

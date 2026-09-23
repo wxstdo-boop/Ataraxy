@@ -1,4 +1,4 @@
-import 'dart:io';
+﻿import 'dart:io';
 import 'dart:math';
 import 'dart:ui' as ui;
 
@@ -9,13 +9,15 @@ import 'dart:typed_data';
 import 'package:video_player/video_player.dart';
 import 'package:image/image.dart' as img;
 
-import 'package:dream_journal/l10n/strings.dart';
-import 'package:dream_journal/models/chat_message.dart';
-import 'package:dream_journal/services/chat_service.dart';
-import 'package:dream_journal/widgets/animated_snack.dart';
-import 'package:dream_journal/widgets/limited_context_menu.dart';
-import 'package:dream_journal/widgets/skeleton.dart';
-import 'package:dream_journal/widgets/premium_header.dart';
+import 'package:ataraxy/l10n/strings.dart';
+import 'package:ataraxy/widgets/animated_field_counter.dart';
+import 'package:ataraxy/models/chat_message.dart';
+import 'package:ataraxy/services/chat_service.dart';
+import 'package:ataraxy/theme/app_theme.dart';
+import 'package:ataraxy/widgets/animated_snack.dart';
+import 'package:ataraxy/widgets/limited_context_menu.dart';
+import 'package:ataraxy/widgets/skeleton.dart';
+import 'package:ataraxy/widgets/premium_header.dart';
 
 /// Personal saved messages: text, photos, videos and arbitrary files.
 class FavoritesScreen extends StatefulWidget {
@@ -411,7 +413,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                       ),
                       child: Icon(
                         isPinned ? Icons.push_pin_rounded : Icons.push_pin_outlined,
-                        color: isPinned ? const Color(0xFFFFD166) : Colors.white,
+                        color: isPinned ? AppAccents.amber : Colors.white,
                       ),
                     ),
                     onPressed: () async {
@@ -452,9 +454,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
             bottomRight: Radius.circular(28),
           ),
         ),
-        flexibleSpace: PremiumHeader(
-          colors: [scheme.primary, scheme.secondary, scheme.tertiary],
-        ),
+        flexibleSpace: PremiumHeader(colors: AppTheme.headerColors(scheme)),
         title: Row(
           children: [
             Container(
@@ -506,7 +506,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                                   padding: const EdgeInsets.only(right: 24),
                                   margin: const EdgeInsets.only(bottom: 10),
                                   decoration: BoxDecoration(
-                                    color: Colors.redAccent,
+                                    color: AppAccents.danger,
                                     borderRadius: BorderRadius.circular(20),
                                   ),
                                   child: const Icon(Icons.delete_rounded, color: Colors.white),
@@ -516,7 +516,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                                   padding: const EdgeInsets.only(left: 24),
                                   margin: const EdgeInsets.only(bottom: 10),
                                   decoration: BoxDecoration(
-                                    color: Colors.blueAccent,
+                                    color: AppAccents.sky,
                                     borderRadius: BorderRadius.circular(20),
                                   ),
                                   child: const Icon(Icons.edit_rounded, color: Colors.white),
@@ -572,6 +572,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
             ),
             Expanded(
               child: TextField(
+        cursorOpacityAnimates: true,
         magnifierConfiguration: TextMagnifierConfiguration.disabled,
                 contextMenuBuilder: (ctx, state) =>
                     buildLimitedContextMenu(ctx, state),
@@ -858,11 +859,13 @@ class _EditDialogState extends State<_EditDialog> {
           children: [
             if (hasMedia) ...[
               TextField(
+        cursorOpacityAnimates: true,
         magnifierConfiguration: TextMagnifierConfiguration.disabled,
                 contextMenuBuilder: (ctx, state) =>
                     buildLimitedContextMenu(ctx, state),
                 controller: _nameController,
                 maxLength: 25,
+                buildCounter: animatedFieldCounter,
                 autofocus: false,
                 focusNode: _focusNode,
                 decoration: InputDecoration(
@@ -872,12 +875,14 @@ class _EditDialogState extends State<_EditDialog> {
               ),
             ] else ...[
               TextField(
+        cursorOpacityAnimates: true,
         magnifierConfiguration: TextMagnifierConfiguration.disabled,
                 contextMenuBuilder: (ctx, state) =>
                     buildLimitedContextMenu(ctx, state),
                 controller: _textController,
                 maxLines: 6,
                 maxLength: 6000,
+                buildCounter: animatedFieldCounter,
                 autofocus: false,
                 focusNode: _focusNode,
                 decoration: InputDecoration(
@@ -1005,7 +1010,7 @@ class _MediaPlayerWidgetState extends State<_MediaPlayerWidget> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const Icon(Icons.broken_image_rounded,
-                  size: 56, color: Colors.orangeAccent),
+                  size: 56, color: AppAccents.amber),
               const SizedBox(height: 12),
               Text(
                 L.tr(context, 'fileNotFound'),
@@ -1050,7 +1055,7 @@ class _MediaPlayerWidgetState extends State<_MediaPlayerWidget> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.error_outline_rounded, size: 64, color: Colors.redAccent),
+              const Icon(Icons.error_outline_rounded, size: 64, color: AppAccents.danger),
               const SizedBox(height: 12),
               Text(
                 widget.fileName,
@@ -1360,13 +1365,19 @@ class _VideoSeekBarState extends State<_VideoSeekBar>
                     child: Container(
                       height: 10,
                       decoration: BoxDecoration(
+                        // Muted rose ramp instead of the neon
+                        // #FF6B9D → #FF9FB6 → #FFC3D9 gradient.
                         gradient: const LinearGradient(
-                          colors: [Color(0xFFFF6B9D), Color(0xFFFF9FB6), Color(0xFFFFC3D9)],
+                          colors: [
+                            AppAccents.rose,
+                            AppAccents.roseLight,
+                            AppAccents.rosePale,
+                          ],
                         ),
                         borderRadius: BorderRadius.circular(5),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFFFF6B9D).withValues(alpha: 0.45),
+                            color: AppAccents.rose.withValues(alpha: 0.35),
                             blurRadius: 8,
                             spreadRadius: 1,
                           ),
@@ -1389,12 +1400,12 @@ class _VideoSeekBarState extends State<_VideoSeekBar>
                         shape: BoxShape.circle,
                         color: Colors.white,
                         border: Border.all(
-                          color: const Color(0xFFFF6B9D),
+                          color: AppAccents.rose,
                           width: 2.5,
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFFFF6B9D).withValues(alpha: 0.5),
+                            color: AppAccents.rose.withValues(alpha: 0.35),
                             blurRadius: 10,
                             spreadRadius: 2,
                           ),
@@ -1426,8 +1437,8 @@ class _VideoSeekBarState extends State<_VideoSeekBar>
                     boxShadow: glow > 0
                         ? [
                             BoxShadow(
-                              color: const Color(0xFFFF6B9D)
-                                  .withValues(alpha: glow * 0.5),
+                              color: AppAccents.rose
+                                  .withValues(alpha: glow * 0.35),
                               blurRadius: 18 + glow * 12,
                               spreadRadius: glow * 1.5,
                             ),
@@ -1546,10 +1557,11 @@ class _AudioVisualizerPainter extends CustomPainter {
     final baseGradient = LinearGradient(
       begin: Alignment.bottomCenter,
       end: Alignment.topCenter,
+      // Rose → mauve instead of the neon pink/violet waveform.
       colors: const [
-        Color(0xFFFF6B9D),
-        Color(0xFFFF9FB6),
-        Color(0xFFC084FC),
+        AppAccents.rose,
+        AppAccents.roseLight,
+        AppAccents.mauve,
       ],
     );
 

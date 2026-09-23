@@ -142,11 +142,19 @@ class AiService {
   ///   `nvapi-…`   → NVIDIA NIM
   ///   `AIza…`     → Google AI Studio (Gemini)
   ///   `sk-or-…`   → OpenRouter
+  ///   `hf_…`      → HuggingFace router (the user's own ADA access)
   ///   anything else → Laguna (poolside.ai)
   static ({String endpoint, String model, String label}) providerForKey(
     String? key,
   ) {
     final k = key?.trim() ?? '';
+    if (k.startsWith('hf_')) {
+      return (
+        endpoint: adaEndpoint,
+        model: adaModel,
+        label: 'HuggingFace',
+      );
+    }
     if (k.startsWith('gsk_')) {
       return (endpoint: groqEndpoint, model: groqModel, label: 'Groq');
     }
@@ -199,19 +207,61 @@ class AiService {
         (adaEndpoint, adaPublicModel),
         (adaEndpointFallback, adaModel),
       ];
-  // The token is stored base64(XOR) so it doesn't sit in the repo as
-  // plaintext. Decoded at call time; never logged.
-  static const String _adaKeyObf =
-      'CRI+Bw4xNlgNDQkJEQwbNgkjYCgcOSUeAD8jGy5OLwgmCicCBA==';
+  // ---- Embedded ADA credential (split & masked) ----
+  //
+  // The HuggingFace token NEVER appears contiguously in source or in the
+  // compiled binary: it is stored as two independently-masked fragments in
+  // different encodings (base64-with-mask / masked byte list) and is
+  // reassembled lazily, only when an ADA request is actually made. The old
+  // single base64(XOR literal-key) form was reversible in one step by
+  // anyone who opened the APK; this costs materially more effort.
+  //
+  // This is HARDENING, not cryptography — a determined attacker with the
+  // APK can still recover it. The real fix: paste your own `hf_…` key in
+  // Settings (it ALWAYS overrides the embedded one — see [keyFor]), and
+  // once no old build is around, delete these fragments entirely.
+  static const String _credFragA = 'zcP60Mrs6tDJzM3NwMjM8tT/6A==';
+  static const List<int> _credFragB = [
+    117,
+    68,
+    100,
+    120,
+    86,
+    93,
+    113,
+    126,
+    95,
+    107,
+    95,
+    114,
+    80,
+    123,
+    87,
+    111,
+    95,
+    74,
+  ];
+  static const int _credMaskA = 0xA5;
+  static const int _credMaskB = 0x3C;
 
+  static String? _adaKeyCache;
+
+  /// Reassembles the embedded ADA credential. Never logged. Fails CLOSED:
+  /// if any fragment is corrupted/tampered, the integrity gate throws
+  /// instead of sending garbage (or half a token) over the network.
   static String get adaKey {
-    final bytes = base64Decode(_adaKeyObf);
-    const k = 'ataraxy-ada';
-    final out = StringBuffer();
-    for (var i = 0; i < bytes.length; i++) {
-      out.writeCharCode(bytes[i] ^ k.codeUnitAt(i % k.length));
+    final cached = _adaKeyCache;
+    if (cached != null) return cached;
+    final bytes = <int>[
+      for (final b in base64Decode(_credFragA)) b ^ _credMaskA,
+      for (final b in _credFragB) b ^ _credMaskB,
+    ];
+    // The credential is printable ASCII (`hf_…`). Anything else means the
+    // fragment was mangled — refuse to proceed.
+    if (bytes.isEmpty || !bytes.every((b) => b >= 0x21 && b <= 0x7E)) {
+      throw StateError('ADA credential integrity check failed');
     }
-    return out.toString();
+    return _adaKeyCache = String.fromCharCodes(bytes);
   }
 
   /// Free model list (pollinations): only models the CURRENT text API
@@ -229,11 +279,16 @@ class AiService {
   /// True when the given endpoint is the Laguna (poolside.ai) endpoint.
   static bool isLaguna(String endpoint) => endpoint == lagunaEndpoint;
 
-  /// The key to send for [endpoint]: the embedded ADA key for ADA, the
-  /// user-configured key otherwise (or null → pollinations, no key).
+  /// The key to send for [endpoint]: the embedded ADA key for ADA (a
+  /// user-pasted `hf_…` key takes priority — rotate off the embedded one by
+  /// simply filling the Settings field), the user-configured key otherwise
+  /// (or null → pollinations, no key).
   static String? keyFor(String endpoint, String? userKey) {
-    if (isAda(endpoint)) return adaKey;
-    return (userKey == null || userKey.isEmpty) ? null : userKey;
+    final k = userKey?.trim() ?? '';
+    if (isAda(endpoint)) {
+      return k.startsWith('hf_') ? k : adaKey;
+    }
+    return k.isEmpty ? null : k;
   }
 
   /// Sends the conversation and returns the assistant reply (visible text
@@ -305,12 +360,10 @@ class AiService {
       final rb = StringBuffer(); // chain-of-thought, shown in a pill
       // When the caller cancels (chat cleared), close the client → the
       // underlying request aborts and the stream ends immediately.
-      final cancelWatch = cancelled == null
-          ? null
-          : cancelled.then((_) {
-              client.close();
-              throw const AiCancelledException();
-            });
+      final cancelWatch = cancelled?.then((_) {
+        client.close();
+        throw const AiCancelledException();
+      });
       try {
         // Generous header wait: slow providers (Laguna cold starts, shared
         // queues) can take a while before the first SSE byte. 120s covers
@@ -397,17 +450,17 @@ class AiService {
           .timeout(timeout);
       debugPrint('[AI] response ${resp.statusCode} in ${DateTime.now()}');
     } on Exception catch (e) {
-      // In the browser, HuggingFace api-inference doesn't send CORS headers,
-      // so a direct call fails with a network error. Try a few public CORS
-      // proxies in order so ADA still works on web.
-      if (kIsWeb && isAda(endpoint)) {
-        debugPrint('[AI] direct ADA failed ($e), retrying via CORS proxy');
-        resp = await _postViaProxies(endpoint, headers, body);
-      } else if (endpoint == adaEndpoint) {
+      // SECURITY: requests are NOT retried through public CORS proxies
+      // anymore. The old web path forwarded `Authorization` (including the
+      // embedded ADA credential) through corsproxy.io / codetabs /
+      // thingproxy — those operators see every header, so the token was
+      // effectively public. On web a blocked endpoint now fails here and
+      // the chat's own fallback chain glides to a reachable backend.
+      if (endpoint == adaEndpoint) {
         // Primary ADA endpoint failed → try the fallback endpoint once
         // (also 10s), before giving up and letting the chat switch to Free.
         debugPrint(
-            '[AI] $endpoint failed ($e), retrying ${adaEndpointFallback}');
+            '[AI] $endpoint failed ($e), retrying $adaEndpointFallback');
         try {
           resp = await http
               .post(
@@ -466,37 +519,6 @@ class AiService {
       throw AiException('Empty content from provider');
     }
     return AiReply(content.trim(), reasoning: reasoning.trim());
-  }
-
-  /// Tries public CORS proxies in order for a browser-blocked endpoint.
-  static Future<http.Response> _postViaProxies(
-    String endpoint,
-    Map<String, String> headers,
-    String body,
-  ) async {
-    final proxies = <String>[
-      'https://corsproxy.io/?url=',
-      'https://api.codetabs.com/v1/proxy?quest=',
-      'https://thingproxy.freeboard.io/fetch/',
-    ];
-    Object? last;
-    for (final proxy in proxies) {
-      try {
-        final resp = await http
-            .post(
-              Uri.parse(proxy + Uri.encodeComponent(endpoint)),
-              headers: headers,
-              body: body,
-            )
-            .timeout(const Duration(seconds: 60));
-        // Proxy answered (any status) → use it.
-        return resp;
-      } catch (e) {
-        last = e;
-        debugPrint('[AI] proxy $proxy failed: $e');
-      }
-    }
-    throw AiException('CORS: $last');
   }
 
   // ---- Daily budget ----

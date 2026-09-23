@@ -253,6 +253,16 @@ class L {
       'en': 'Entries exported',
       'fr': 'Entrées exportées',
     },
+    'exportPickLocation': {
+      'ru': 'Куда сохранить резервную копию',
+      'en': 'Where to save the backup',
+      'fr': "Où enregistrer la sauvegarde",
+    },
+    'exportCancelled': {
+      'ru': 'Экспорт отменён',
+      'en': 'Export canceled',
+      'fr': 'Export annulé',
+    },
     'importDone': {
       'ru': 'Записи импортированы',
       'en': 'Entries imported',
@@ -1300,6 +1310,56 @@ class L {
       'ru': 'Кнопка «Обновить» теперь действительно обновляет записи',
       'en': 'The Refresh button now actually refreshes entries',
       'fr': 'Le bouton Actualiser actualise réellement les entrées',
+    },
+    'pn131Save': {
+      'ru': 'Записи больше не теряются: сохранение при любом выходе и при сворачивании',
+      'en': 'Entries no longer lost: saved on every exit and when the app is backgrounded',
+      'fr': 'Les notes ne se perdent plus : sauvegarde à chaque sortie et en arrière-plan',
+    },
+    'pn131Meta': {
+      'ru': 'Закрепление, метки сна, люидность и таблетки теперь сохраняются сразу',
+      'en': 'Pinning, dream signs, lucidity and medication now save right away',
+      'fr': 'Épinglage, signes, lucidité et médicaments sont enregistrés aussitôt',
+    },
+    'pn131Export': {
+      'ru': 'Экспорт: системный диалог «Куда сохранить» вместо доступа к файлам',
+      'en': 'Export: a system "Save as" sheet instead of file access',
+      'fr': 'Export : fenêtre « Enregistrer sous » au lieu d\'accéder aux fichiers',
+    },
+    'pn131Smooth': {
+      'ru': 'Плавность: лента не перестраивается при сворачивании пилюль, единый переход между экранами',
+      'en': 'Smoothness: the feed no longer rebuilds while the pills retract, one page transition everywhere',
+      'fr': 'Fluidité : le fil ne se reconstruit plus lors du repli des pastilles, une seule transition',
+    },
+    'pn132Words': {
+      'ru': 'Потеря слов из ленты: перетаскивание и закрепление больше не перезаписывают текст старым снимком',
+      'en': 'Word loss from the feed: dragging and pinning no longer overwrite text with a stale snapshot',
+      'fr': "Perte de texte depuis le fil : déplacer et épingler n'écrasent plus le texte",
+    },
+    'pn132Order': {
+      'ru': 'Ручной порядок записей сохраняется между запусками',
+      'en': 'Manual entry order now survives app restarts',
+      'fr': "L'ordre manuel des notes survit au redémarrage",
+    },
+    'pn132Editor': {
+      'ru': 'Редактор: сбой сохранения больше не помечает текст как записанный — слова пишутся заново',
+      'en': 'Editor: a failed save no longer marks text as written, so the words are retried',
+      'fr': "Éditeur : un échec d'enregistrement relance l'écriture du texte",
+    },
+    'pn132Spots': {
+      'ru': 'Цветные пятна под таблетками разделов: теперь читаемы и в тёмной, и в светлой теме',
+      'en': 'Section spots behind the pills: now legible on both dark and light themes',
+      'fr': 'Taches colorées sous les pastilles : lisibles en thème sombre et clair',
+    },
+    'pn133Repeat': {
+      'ru': 'Потеря слов при повторном открытии: карточка больше не передаёт редактору старый снимок записи',
+      'en': 'Word loss on re-open: a card no longer hands the editor a stale snapshot of the entry',
+      'fr': "Perte de texte à la réouverture : la fiche ne transmet plus d'ancienne copie",
+    },
+    'pn133Spots': {
+      'ru': 'Пятна разделов стали крупнее и насыщеннее: закрывают таблетку целиком, а не точку в центре',
+      'en': 'Section spots are larger and richer: they fill the whole pill, not a dot in the middle',
+      'fr': "Taches plus grandes et plus saturées : elles remplissent la pastille",
     },
     'importSummary': {
       'ru': 'Импорт завершён',

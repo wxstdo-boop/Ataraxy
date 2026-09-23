@@ -1,5 +1,7 @@
 name: ataraxy
-description: "A new Flutter project."
+description: "Дневник снов и жизни с AI-ассистентом"
+repository: https://github.com/wxstdo-boop/Ataraxy
+homepage: https://github.com/wxstdo-boop/Ataraxy
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev

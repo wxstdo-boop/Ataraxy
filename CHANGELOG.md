@@ -1,5 +1,13 @@
 # Ataraxy Changelog
 
+## [1.3.5] - 2026-11-09
+### Added
+- In-app Android update check and APK installation from GitHub Releases
+- Automatic signed APK releases when a matching version tag is pushed
+
+### Improved
+- Android release builds use a persistent release signing key
+
 ## [1.3.0] - 2026-08-18
 ### Added
 - Auto-export functionality: hourly backups to Downloads/Ataraxy

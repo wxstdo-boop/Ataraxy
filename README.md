@@ -72,6 +72,37 @@ flutter pub get
 flutter build apk --release --split-per-abi --target-platform android-arm64 --no-tree-shake-icons
 ```
 
+### GitHub releases and Android updates
+
+Pushing a version tag such as `v1.3.5` starts `.github/workflows/release.yml`.
+The workflow checks that the tag matches `pubspec.yaml`, runs analysis and tests,
+builds a signed ARM64-only split APK to keep the download small, and publishes
+it with a SHA-256 checksum. In Android
+Settings, **Update Ataraxy** checks the latest GitHub release, downloads the APK,
+and opens Android's installer. Android may ask once for permission to install
+apps from Ataraxy; the update still requires confirming the system installer.
+
+In the repository's **Settings → Secrets and variables → Actions**, add
+`ANDROID_KEYSTORE_BASE64` (the base64 encoding of that keystore),
+`ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` (`ataraxy`), and
+`ANDROID_KEY_PASSWORD`. Never commit the keystore or its passwords: every
+release must use this same key or Android will refuse to update existing
+installations. The repository's release keystore has already been created
+locally. In PowerShell, its base64 secret can be piped to GitHub without
+printing it:
+
+```powershell
+[Convert]::ToBase64String([IO.File]::ReadAllBytes("android/upload-keystore.jks")) | gh secret set ANDROID_KEYSTORE_BASE64 --repo wxstdo-boop/Ataraxy
+```
+
+The release workflow receives all four secrets automatically. To publish a
+release, push the version tag:
+
+```bash
+git tag v1.3.5
+git push origin v1.3.5
+```
+
 ## 📂 Структура проекта
 
 [```

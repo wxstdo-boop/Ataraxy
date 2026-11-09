@@ -936,6 +936,51 @@ class L {
       'en': 'Auto export disabled',
       'fr': 'Export automatique désactivé',
     },
+    'updateTitle': {
+      'ru': 'Обновление Ataraxy',
+      'en': 'Update Ataraxy',
+      'fr': 'Mettre à jour Ataraxy',
+    },
+    'updateHint': {
+      'ru': 'Проверить GitHub Releases и установить новую версию',
+      'en': 'Check GitHub Releases and install the latest version',
+      'fr': 'Vérifier GitHub Releases et installer la dernière version',
+    },
+    'updateChecking': {
+      'ru': 'Проверяем GitHub Releases…',
+      'en': 'Checking GitHub Releases…',
+      'fr': 'Vérification de GitHub Releases…',
+    },
+    'updateFound': {
+      'ru': 'Доступна версия',
+      'en': 'Version available:',
+      'fr': 'Version disponible :',
+    },
+    'updateDownloading': {
+      'ru': 'Скачиваем обновление',
+      'en': 'Downloading update',
+      'fr': 'Téléchargement de la mise à jour',
+    },
+    'updateCurrent': {
+      'ru': 'У вас установлена последняя версия',
+      'en': 'You have the latest version',
+      'fr': 'Vous avez la dernière version',
+    },
+    'updatePermission': {
+      'ru': 'Разрешите установку приложений для Ataraxy и нажмите ещё раз',
+      'en': 'Allow Ataraxy to install apps, then tap again',
+      'fr': 'Autorisez Ataraxy à installer des applications, puis réessayez',
+    },
+    'updateInstalling': {
+      'ru': 'Открылся установщик Android — подтвердите обновление',
+      'en': 'Android installer opened — confirm the update',
+      'fr': 'Installateur Android ouvert — confirmez la mise à jour',
+    },
+    'updateFailed': {
+      'ru': 'Не удалось проверить или установить обновление',
+      'en': 'Could not check or install the update',
+      'fr': 'Impossible de vérifier ou installer la mise à jour',
+    },
     'cloudBackupTitle': {
       'ru': 'Бэкап и восстановление',
       'en': 'Backup & Restore',

@@ -1,6 +1,7 @@
 ﻿import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:path_provider/path_provider.dart';
@@ -22,6 +23,7 @@ import 'package:ataraxy/services/notification_service.dart';
 import 'package:ataraxy/services/settings_service.dart';
 import 'package:ataraxy/services/ai_service.dart';
 import 'package:ataraxy/services/auto_export_service.dart';
+import 'package:ataraxy/services/github_update_service.dart';
 import 'package:ataraxy/widgets/reminder_dialog.dart';
 import 'package:ataraxy/widgets/animated_snack.dart';
 import 'package:ataraxy/widgets/sliding_selector.dart';
@@ -40,11 +42,27 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _autoExportEnabled = false;
+  bool _isUpdating = false;
+  double? _updateProgress;
+  String? _updateMessage;
+  late final GithubUpdateService _updateService = GithubUpdateService(
+    currentVersion: const String.fromEnvironment(
+      'APP_VERSION',
+      defaultValue: '1.3.5',
+    ),
+  );
+  static const _updateChannel = MethodChannel('ataraxy/updates');
 
   @override
   void initState() {
     super.initState();
     _loadAutoExportState();
+  }
+
+  @override
+  void dispose() {
+    _updateService.close();
+    super.dispose();
   }
   
   Future<void> _loadAutoExportState() async {
@@ -52,6 +70,78 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await service.loadState();
     if (mounted) {
       setState(() => _autoExportEnabled = service.enabled);
+    }
+  }
+
+  Future<void> _checkAndInstallUpdate() async {
+    if (_isUpdating) return;
+    setState(() {
+      _isUpdating = true;
+      _updateProgress = null;
+      _updateMessage = L.tr(context, 'updateChecking');
+    });
+
+    try {
+      final release = await _updateService.checkForUpdate();
+      if (!mounted) return;
+      if (release == null) {
+        setState(() => _updateMessage = L.tr(context, 'updateCurrent'));
+        return;
+      }
+      setState(() => _updateMessage =
+          '${L.tr(context, 'updateFound')} ${release.version}');
+
+      if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
+        final opened = await launchUrl(
+          Uri.parse(release.url),
+          mode: LaunchMode.externalApplication,
+        );
+        if (!opened) throw StateError('Could not open the GitHub release page');
+        setState(() => _updateMessage = release.tag);
+        return;
+      }
+
+      final allowed = await _updateChannel.invokeMethod<bool>(
+        'requestInstallPermission',
+      );
+      if (allowed != true) {
+        setState(() => _updateMessage = L.tr(context, 'updatePermission'));
+        return;
+      }
+
+      final apk = await _updateService.findDownloadedApk(
+        release,
+        onProgress: (received, total) {
+          if (!mounted) return;
+          setState(() {
+            _updateProgress = total == 0 ? null : received / total;
+            _updateMessage =
+                '${L.tr(context, 'updateDownloading')} ${(_updateProgress! * 100).round()}%';
+          });
+        },
+      );
+      if (!mounted) return;
+      final opened = await _updateChannel.invokeMethod<bool>(
+        'installApk',
+        {'path': apk.path},
+      );
+      if (!mounted) return;
+      setState(() {
+        _updateMessage = opened == true
+            ? L.tr(context, 'updateInstalling')
+            : L.tr(context, 'updatePermission');
+        _updateProgress = null;
+      });
+    } catch (error, stackTrace) {
+      debugPrint('GitHub update failed: $error\n$stackTrace');
+      if (mounted) {
+        setState(() {
+          _updateMessage = L.tr(context, 'updateFailed');
+          _updateProgress = null;
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _isUpdating = false);
     }
   }
 
@@ -499,6 +589,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
              trailing: const Icon(Icons.chevron_right_rounded),
              onTap: () => Navigator.of(context).push(
                fadeRoute(const AboutScreen()),
+             ),
+           ),
+           const SizedBox(height: 8),
+           Container(
+             decoration: BoxDecoration(
+               borderRadius: BorderRadius.circular(16),
+               border: Border.all(
+                 color: scheme.outline.withValues(alpha: 0.3),
+               ),
+             ),
+             child: Column(
+               children: [
+                 ListTile(
+                   leading: const Icon(Icons.system_update_alt_rounded),
+                   title: Text(L.tr(context, 'updateTitle')),
+                   subtitle: Text(_updateMessage ?? L.tr(context, 'updateHint')),
+                   trailing: _isUpdating
+                       ? const SizedBox(
+                           width: 22,
+                           height: 22,
+                           child: CircularProgressIndicator(strokeWidth: 2),
+                         )
+                       : const Icon(Icons.download_rounded),
+                   onTap: _isUpdating ? null : _checkAndInstallUpdate,
+                 ),
+                 if (_updateProgress != null)
+                   Padding(
+                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                     child: LinearProgressIndicator(value: _updateProgress),
+                   ),
+               ],
              ),
            ),
            const SizedBox(height: 12),

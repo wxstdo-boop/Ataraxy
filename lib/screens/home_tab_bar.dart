@@ -1,6 +1,6 @@
 part of 'home_screen.dart';
 
-/// Custom tab pills for the home screen. The white pill tracks the tab
+/// Custom tab pills for the home screen. The accent pill tracks the tab
 /// controller's animation continuously (so it glides with a swipe and eases
 /// between taps), and the label colour/weight animate smoothly instead of
 /// jumping between states.
@@ -70,15 +70,37 @@ class _SmoothTabPills extends StatelessWidget implements PreferredSizeWidget {
                     child: Container(
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(30),
-                        color: glass.withValues(alpha: 0.60),
+                        // Frosted glass: a white sheen melting into a
+                        // translucent tinted body, a bright hairline rim and
+                        // soft shadows. The flat single-fill bar from the
+                        // previous pass read as a plain grey rectangle and
+                        // swallowed the accent pill; the layered body lifts
+                        // the capsule back off the header so the pill pops.
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          stops: const [0.0, 0.35, 1.0],
+                          colors: [
+                            Colors.white.withValues(alpha: 0.34),
+                            glass.withValues(alpha: 0.55),
+                            glass.withValues(alpha: 0.42),
+                          ],
+                        ),
                         border: Border.all(
-                          color: scheme.outlineVariant.withValues(alpha: 0.30),
+                          color: Colors.white.withValues(alpha: 0.38),
+                          width: 1.2,
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: scheme.shadow.withValues(alpha: 0.12),
-                            blurRadius: 14,
+                            color: scheme.shadow.withValues(alpha: 0.18),
+                            blurRadius: 16,
                             offset: const Offset(0, 4),
+                          ),
+                          // Faint ambient glow in the accent colour below.
+                          BoxShadow(
+                            color: scheme.primary.withValues(alpha: 0.10),
+                            blurRadius: 22,
+                            offset: const Offset(0, 2),
                           ),
                         ],
                       ),
@@ -284,10 +306,20 @@ class _CategoryChips extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(15),
             border: Border.all(
-              color: scheme.outlineVariant.withValues(alpha: 0.28),
+              color: Colors.white.withValues(alpha: 0.28),
             ),
-            // Flat monotone glass, matching the section bar above.
-            color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+            // Layered glass: white sheen up top, tinted body below — the
+            // same premium capsule treatment as the section bar above.
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              stops: const [0.0, 0.3, 1.0],
+              colors: [
+                Colors.white.withValues(alpha: 0.20),
+                scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                scheme.surfaceContainerHighest.withValues(alpha: 0.36),
+              ],
+            ),
           ),
           child: Row(
         children: [
@@ -316,10 +348,17 @@ class _CategoryChips extends StatelessWidget {
                           margin: const EdgeInsets.all(3),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(12),
-                            color: scheme.primary,
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                scheme.primary.withValues(alpha: 0.88),
+                                scheme.primary,
+                              ],
+                            ),
                             boxShadow: [
                               BoxShadow(
-                                color: scheme.primary.withValues(alpha: 0.28),
+                                color: scheme.primary.withValues(alpha: 0.32),
                                 blurRadius: 8,
                                 offset: const Offset(0, 2),
                               ),

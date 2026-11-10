@@ -8,11 +8,17 @@ class SplashContent extends StatelessWidget {
   final Animation<double> contentOpacity;
   final bool opaque;
 
+  /// When false the loading "snake" stops animating. The splash exit passes
+  /// false once the fade begins so the spinner is not repainting the whole
+  /// screen every frame underneath the (cheap) opacity fade.
+  final bool spinning;
+
   const SplashContent({
     super.key,
     required this.opacity,
     required this.contentOpacity,
     this.opaque = false,
+    this.spinning = true,
   });
 
   @override
@@ -144,54 +150,36 @@ class SplashContent extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 22),
-                    Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          L.tr(context, 'launchTitle'),
-                          style: TextStyle(
-                            fontSize: 36,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                            letterSpacing: 0.6,
-                            shadows: [
-                              Shadow(
-                                color: scheme.shadow.withValues(alpha: 0.3),
-                                blurRadius: 14,
-                                offset: const Offset(0, 3),
-                              ),
-                            ],
+                    Text(
+                      L.tr(context, 'launchTitle'),
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                        letterSpacing: 0.6,
+                        shadows: [
+                          Shadow(
+                            color: scheme.shadow.withValues(alpha: 0.3),
+                            blurRadius: 14,
+                            offset: const Offset(0, 3),
                           ),
-                        ),
-                        const SizedBox(height: 6),
-                        // Hand-drawn underline: a rounded dashed rule under
-                        // the wordmark. CustomPaint (not a decoration) so the
-                        // dashes get round caps and a slight arc.
-                        SizedBox(
-                          width: 168,
-                          height: 12,
-                          child: CustomPaint(
-                            painter: _DashedUnderlinePainter(
-                              color: Colors.white.withValues(alpha: 0.85),
-                            ),
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 8),
                     Text(
                       L.tr(context, 'byWetidom'),
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: 11,
                         color: Colors.white.withValues(alpha: 0.9),
-                        letterSpacing: 4,
+                        letterSpacing: 3,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
                     const SizedBox(height: 28),
                     // Black "snake": a dark comet arc so it reads as ink on
                     // the themed wash, matching the black-field artwork.
-                    const CometSpinner(size: 46),
+                    CometSpinner(size: 46, spinning: spinning),
                   ],
                 ),
               ),
@@ -211,11 +199,15 @@ class CometSpinner extends StatefulWidget {
   final Color color;
   final double strokeWidth;
 
+  /// When false the arc stops rotating and holds its current frame.
+  final bool spinning;
+
   const CometSpinner({
     super.key,
     this.size = 46,
     this.color = const Color(0xE6000000),
     this.strokeWidth = 5,
+    this.spinning = true,
   });
 
   @override
@@ -232,7 +224,18 @@ class _CometSpinnerState extends State<CometSpinner>
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1150),
-    )..repeat();
+    );
+    if (widget.spinning) _controller.repeat();
+  }
+
+  @override
+  void didUpdateWidget(covariant CometSpinner old) {
+    super.didUpdateWidget(old);
+    if (widget.spinning && !_controller.isAnimating) {
+      _controller.repeat();
+    } else if (!widget.spinning && _controller.isAnimating) {
+      _controller.stop();
+    }
   }
 
   @override
@@ -307,48 +310,4 @@ class _CometPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _CometPainter old) =>
       old.color != color || old.strokeWidth != strokeWidth;
-}
-
-/// A gentle dashed underline with rounded caps, drawn along a shallow arc so
-/// it reads as a hand-drawn stroke rather than a machine-straight rule.
-class _DashedUnderlinePainter extends CustomPainter {
-  final Color color;
-
-  static const double _dash = 7;
-  static const double _gap = 6;
-  static const double _strokeWidth = 3;
-
-  _DashedUnderlinePainter({required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = _strokeWidth
-      ..strokeCap = StrokeCap.round;
-
-    // Shallow downward bow: ends sit slightly higher than the middle.
-    final path = Path()
-      ..moveTo(_strokeWidth, size.height * 0.35)
-      ..quadraticBezierTo(
-        size.width / 2,
-        size.height,
-        size.width - _strokeWidth,
-        size.height * 0.35,
-      );
-
-    for (final metric in path.computeMetrics()) {
-      var distance = 0.0;
-      while (distance < metric.length) {
-        final next = (distance + _dash).clamp(0.0, metric.length);
-        canvas.drawPath(metric.extractPath(distance, next), paint);
-        distance = next + _gap;
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _DashedUnderlinePainter old) =>
-      old.color != color;
 }

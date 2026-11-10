@@ -152,33 +152,49 @@ class _WelcomeScreenState extends State<WelcomeScreen>
               position: _slideAnim,
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Column(
-                  children: [
-                    _WelcomeHeader(onDismiss: widget.onDismiss),
-                    const Spacer(flex: 1),
-                    _WelcomeIcon(scheme: scheme),
-                    const SizedBox(height: 32),
-                    _WelcomeTitle(style: style),
-                    const SizedBox(height: 12),
-                    _WelcomeSubtitle(style: style),
-                    const SizedBox(height: 40),
-                    _PermissionCard(
-                      notificationsGranted: _notificationsGranted,
-                      requesting: _requesting,
-                      onEnable: _requestNotifications,
-                      scheme: scheme,
-                      style: style,
+                // On a short or narrow phone the welcome column can be taller
+                // than the viewport (the permission card alone grows with the
+                // text wrap). Make it scrollable when it doesn't fit, but keep
+                // the two Spacers pushing the content apart when it does, so
+                // the layout still breathes on a tall screen.
+                child: LayoutBuilder(
+                  builder: (context, constraints) => SingleChildScrollView(
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minHeight: constraints.maxHeight,
+                      ),
+                      child: IntrinsicHeight(
+                        child: Column(
+                          children: [
+                            _WelcomeHeader(onDismiss: widget.onDismiss),
+                            const Spacer(flex: 1),
+                            _WelcomeIcon(scheme: scheme),
+                            const SizedBox(height: 32),
+                            _WelcomeTitle(style: style),
+                            const SizedBox(height: 12),
+                            _WelcomeSubtitle(style: style),
+                            const SizedBox(height: 40),
+                            _PermissionCard(
+                              notificationsGranted: _notificationsGranted,
+                              requesting: _requesting,
+                              onEnable: _requestNotifications,
+                              scheme: scheme,
+                              style: style,
+                            ),
+                            const Spacer(flex: 1),
+                            _DontShowAgainCheckbox(
+                              value: _dontShowAgain,
+                              onChanged: (v) =>
+                                  setState(() => _dontShowAgain = v ?? false),
+                            ),
+                            const SizedBox(height: 16),
+                            _StartButton(onPressed: _finish),
+                            const SizedBox(height: 32),
+                          ],
+                        ),
+                      ),
                     ),
-                    const Spacer(flex: 1),
-                    _DontShowAgainCheckbox(
-                      value: _dontShowAgain,
-                      onChanged: (v) =>
-                          setState(() => _dontShowAgain = v ?? false),
-                    ),
-                    const SizedBox(height: 16),
-                    _StartButton(onPressed: _finish),
-                    const SizedBox(height: 32),
-                  ],
+                  ),
                 ),
               ),
             ),
@@ -338,22 +354,41 @@ class _PermissionCard extends StatelessWidget {
   }
 
   Widget _content() {
+    // Vertical layout: icon + text on top, a full-width button below. The old
+    // inline Row let the wide "Включить" pill eat the text column down to a
+    // few pixels on a 360dp phone, so the copy wrapped into a tall ribbon and
+    // the two states ended up different heights (the card visibly jumped on
+    // switch). Stacking keeps the text width stable and the frame constant.
     return Padding(
       padding: const EdgeInsets.all(16),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _PermissionIcon(
-            notificationsGranted: notificationsGranted,
-            scheme: scheme,
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: _PermissionText(
-              notificationsGranted: notificationsGranted,
-              style: style,
+          // Fixed two-line footprint: "Разрешение получено" is one line and
+          // "Для напоминаний о записях в дневник" is two, so without a floor
+          // the card would still change height on switch (a 1-line vs 2-line
+          // jump). The min height locks both states to the same frame.
+          ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 56),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                _PermissionIcon(
+                  notificationsGranted: notificationsGranted,
+                  scheme: scheme,
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: _PermissionText(
+                    notificationsGranted: notificationsGranted,
+                    style: style,
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(height: 12),
           _button(),
         ],
       ),

@@ -562,9 +562,17 @@ class _HomeScreenState extends State<HomeScreen>
               opacity: _blurred ? 0.0 : 1.0,
               child: Align(
                 alignment: Alignment.centerLeft,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
+                // The wordmark + streak badge are fixed-width; on a narrow
+                // 360dp phone the AppBar's title slot is only ~184px, so the
+                // Row overflowed (41px on Redmi Note 12) and painted the
+                // yellow-black stripe. Scale the whole lockup down to fit
+                // instead of clipping or wrapping it.
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
                     // The wordmark stands clean — the winter beanie now sits
                     // on the streak badge (it belongs to the celebration,
                     // not to the static logo).
@@ -589,7 +597,8 @@ class _HomeScreenState extends State<HomeScreen>
                       offset: const Offset(-3, 0),
                       child: StreakBadge(streak: _streak),
                     ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),

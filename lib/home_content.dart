@@ -192,9 +192,12 @@ class HomeContentState extends State<HomeContent>
         content,
         IgnorePointer(
           ignoring: !_showSplash,
-          // RepaintBoundary: the splash subtree (big gradients + artwork) is
-          // rasterised ONCE into a texture and the fade is then a pure
-          // composited opacity — no re-rasterisation per frame.
+          // RepaintBoundary sits INSIDE the FadeTransition so the splash
+          // subtree (big gradients + artwork) is rasterised ONCE into a
+          // texture and the fade is then a pure composited opacity over that
+          // cached texture. With the boundary OUTSIDE (the old order) the
+          // opacity layer was re-composited from live children every frame,
+          // which is what made the exit stutter.
           //
           // NO ScaleTransition here on purpose. Scaling a full-screen texture
           // makes the GPU re-sample every pixel of the whole screen every
@@ -202,12 +205,16 @@ class HomeContentState extends State<HomeContent>
           // "подтормаживает выход со сплеша" the user kept feeling on
           // mid-range phones. A plain opacity fade is a single cheap blend
           // with zero resampling, so it stays smooth even on weak GPUs.
-          child: RepaintBoundary(
-            child: FadeTransition(
-              opacity: _splashOpacity,
+          child: FadeTransition(
+            opacity: _splashOpacity,
+            child: RepaintBoundary(
               child: SplashContent(
                 opacity: AlwaysStoppedAnimation(1.0),
                 contentOpacity: AlwaysStoppedAnimation(1.0),
+                // Stop the loading "snake" the moment the fade starts: a
+                // spinner repainting every frame underneath the fading layer
+                // forces a fresh composite per frame for the whole screen.
+                spinning: _showSplash,
                 // MUTILATED: the splash background is fully opaque; other
                 // themes keep the soft translucent theme gradient.
                 opaque: _lastSettings.themeMode == AppThemeMode.mutilated,

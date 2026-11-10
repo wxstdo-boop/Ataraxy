@@ -486,7 +486,6 @@ class _HomeScreenState extends State<HomeScreen>
                   : IconButton(
                       key: const ValueKey('refresh'),
                       icon: const Icon(Icons.refresh_rounded),
-                      tooltip: L.tr(context, 'refresh'),
                       onPressed: showRefresh
                           ? () {
                               // Reload the entries from storage — the
@@ -584,7 +583,6 @@ class _HomeScreenState extends State<HomeScreen>
             ),
             PressableIconButton(
               icon: const Icon(Icons.insights_rounded),
-              tooltip: L.tr(context, 'statistics'),
               onPressed: () {
                 _searchFocus.unfocus();
                 Navigator.of(
@@ -594,7 +592,6 @@ class _HomeScreenState extends State<HomeScreen>
             ),
             PressableIconButton(
               icon: const Icon(Icons.settings_rounded),
-              tooltip: L.tr(context, 'settings'),
               onPressed: () {
                 _searchFocus.unfocus();
                 Navigator.of(
@@ -1040,7 +1037,6 @@ class _HomeScreenState extends State<HomeScreen>
                               context,
                             ).colorScheme.primary,
                             foregroundColor: Colors.white,
-                            tooltip: L.tr(context, 'reminders'),
                             onPressed: _openReminderDialog,
                             child: const Icon(
                               Icons.notifications_active_rounded,

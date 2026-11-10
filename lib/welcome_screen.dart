@@ -56,79 +56,56 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   Future<void> _requestNotifications() async {
     setState(() => _requesting = true);
     try {
-      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
-        // Already granted in a previous session? Surface the green
-        // "granted" state and let the user finish with the Start button —
-        // nothing to request, and the onboarding is NEVER force-closed.
-        final notif = await Permission.notification.status;
-        final battery = await Permission.ignoreBatteryOptimizations.status;
-        if ((notif.isGranted || notif.isRestricted) &&
-            (battery.isGranted || battery.isRestricted)) {
-          if (mounted) {
-            setState(() => _notificationsGranted = true);
-            // Permissions were already granted in a previous session —
-            // show the green state briefly, then glide away smoothly.
-            _finishSoon();
-          }
-          return;
-        }
+      // Ask ONLY for the notification permission here — the system dialog.
+      // Battery-optimization / exact-alarm prompts are a separate, heavier
+      // step and are left for the settings screen, so tapping "Включить"
+      // never yanks the user into a background-app settings page.
+      final granted = await NotificationService().requestPermissions(
+        requestExactAlarms: false,
+      );
+      if (!mounted) return;
+
+      if (granted) {
+        // Stay on the card so the button glides into its "Включено" state;
+        // the user finishes the onboarding themselves with the Start button.
+        setState(() {
+          _notificationsGranted = true;
+          _requesting = false;
+        });
+        return;
       }
 
-      final granted = await NotificationService().requestPermissions();
-      if (mounted) {
-        if (granted) {
-          // Battery optimization is requested at the same moment
-          if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
-            final battery = await Permission.ignoreBatteryOptimizations.status;
-            if (!battery.isGranted && !battery.isRestricted) {
-              await Permission.ignoreBatteryOptimizations.request();
-            }
-          }
-          setState(() => _notificationsGranted = true);
-          // Permissions granted — show the green state briefly, then glide
-          // the whole welcome screen away as ONE piece (no layout reflow).
-          _finishSoon();
-          return;
-        }
-        // On web, permission_handler has limited/no support — skip the
-        // detailed permission checks that would throw.
-        if (kIsWeb) return;
+      // On web, permission_handler has limited/no support — skip the
+      // detailed permission checks that would throw.
+      if (kIsWeb) return;
 
-        final status = await Permission.notification.status;
-        final exact = await Permission.scheduleExactAlarm.status;
-        final battery = await Permission.ignoreBatteryOptimizations.status;
-        if (status.isPermanentlyDenied && mounted) {
-          final openSettings = await showDialog<bool>(
-            context: context,
-            builder: (ctx) => _PermissionDeniedDialog(),
-          );
-          if (openSettings == true && mounted) {
-            await openAppSettings();
-          }
-        } else if (mounted) {
-          final problems = <String>[];
-          if (status.isDenied) problems.add('уведомления');
-          if (exact.isDenied) problems.add('точные будильники');
-          if (battery.isDenied) problems.add('оптимизацию батареи');
-          await showDialog<void>(
-            context: context,
-            builder: (ctx) => AlertDialog(
-              title: const Text('Разрешения не получены'),
-              content: Text(
-                problems.isEmpty
-                    ? 'Разрешение не было предоставлено. Попробуйте ещё раз.'
-                    : 'Не хватает разрешений: ${problems.join(', ')}.\n'
-                      'На MIUI это часто нужно включать вручную в настройках приложения.',
-              ),
-              actions: [
-                FilledButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  child: const Text('Понятно'),
-                ),
-              ],
-            ),
-          );
+      final status = await Permission.notification.status;
+      if (!mounted) return;
+      if (status.isPermanentlyDenied) {
+        final openSettings = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => _PermissionDeniedDialog(),
+        );
+        if (openSettings == true && mounted) {
+          await openAppSettings();
         }
+      } else {
+        await showDialog<void>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Разрешение не получено'),
+            content: const Text(
+              'Без разрешения на уведомления напоминания не смогут '
+              'показаться. Нажмите «Включить» ещё раз, если передумали.',
+            ),
+            actions: [
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Понятно'),
+              ),
+            ],
+          ),
+        );
       }
     } finally {
       // Don't touch state while the exit animation is already playing.
@@ -154,14 +131,6 @@ class _WelcomeScreenState extends State<WelcomeScreen>
     });
   }
 
-  /// Lets the user SEE the green "Разрешение получено" for a beat before
-  /// the whole window glides away in one smooth piece.
-  void _finishSoon() {
-    Future<void>.delayed(const Duration(milliseconds: 350)).then((_) {
-      if (mounted && !_isClosing) _finish();
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -172,10 +141,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              scheme.primaryContainer,
-              scheme.surface,
-            ],
+            colors: [scheme.primaryContainer, scheme.surface],
           ),
         ),
         child: SafeArea(
@@ -195,23 +161,22 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                     const SizedBox(height: 12),
                     _WelcomeSubtitle(style: style),
                     const SizedBox(height: 40),
-                    if (!_notificationsGranted) ...[
-                      _PermissionCard(
-                        notificationsGranted: _notificationsGranted,
-                        requesting: _requesting,
-                        onEnable: _requestNotifications,
-                        scheme: scheme,
-                        style: style,
-                      ),
-                      const Spacer(flex: 1),
-                      _DontShowAgainCheckbox(
-                        value: _dontShowAgain,
-                        onChanged: (v) => setState(() => _dontShowAgain = v ?? false),
-                      ),
-                      const SizedBox(height: 16),
-                      _StartButton(onPressed: _finish),
-                      const SizedBox(height: 32),
-                    ],
+                    _PermissionCard(
+                      notificationsGranted: _notificationsGranted,
+                      requesting: _requesting,
+                      onEnable: _requestNotifications,
+                      scheme: scheme,
+                      style: style,
+                    ),
+                    const Spacer(flex: 1),
+                    _DontShowAgainCheckbox(
+                      value: _dontShowAgain,
+                      onChanged: (v) =>
+                          setState(() => _dontShowAgain = v ?? false),
+                    ),
+                    const SizedBox(height: 16),
+                    _StartButton(onPressed: _finish),
+                    const SizedBox(height: 32),
                   ],
                 ),
               ),
@@ -237,7 +202,6 @@ class _WelcomeHeader extends StatelessWidget {
         child: IconButton(
           icon: Icon(Icons.close_rounded, color: scheme.onSurface),
           onPressed: onDismiss,
-          tooltip: 'Пропустить',
         ),
       ),
     );
@@ -263,11 +227,7 @@ class _WelcomeIcon extends StatelessWidget {
           ),
         ],
       ),
-      child: Icon(
-        Icons.auto_stories_rounded,
-        size: 56,
-        color: scheme.primary,
-      ),
+      child: Icon(Icons.auto_stories_rounded, size: 56, color: scheme.primary),
     );
   }
 }
@@ -325,9 +285,7 @@ class _PermissionCard extends StatelessWidget {
     return Card(
       elevation: 0,
       color: scheme.surfaceContainerHighest,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Row(
@@ -344,22 +302,56 @@ class _PermissionCard extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            notificationsGranted
-                ? const Icon(Icons.check_circle_rounded, color: AppAccents.sage)
-                : FilledButton.tonalIcon(
-                    onPressed: requesting ? null : onEnable,
-                    icon: requesting
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.notifications_rounded, size: 18),
-                    label: const Text('Включить'),
-                  ),
+            // The button itself never moves: it fades + scales between the
+            // "Включить", spinner and green "Включено" states, so granting
+            // the permission reads as one smooth motion, not a layout jump.
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 320),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeIn,
+              transitionBuilder: (child, anim) => FadeTransition(
+                opacity: anim,
+                child: ScaleTransition(
+                  scale: Tween<double>(begin: 0.9, end: 1.0).animate(anim),
+                  child: child,
+                ),
+              ),
+              child: _button(),
+            ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _button() {
+    if (notificationsGranted) {
+      return FilledButton.tonalIcon(
+        key: const ValueKey('granted'),
+        onPressed: null,
+        icon: const Icon(
+          Icons.check_circle_rounded,
+          size: 18,
+          color: AppAccents.sage,
+        ),
+        label: const Text('Включено', style: TextStyle(color: AppAccents.sage)),
+        style: FilledButton.styleFrom(
+          disabledBackgroundColor: AppAccents.sage.withValues(alpha: 0.15),
+          disabledForegroundColor: AppAccents.sage,
+        ),
+      );
+    }
+    return FilledButton.tonalIcon(
+      key: const ValueKey('enable'),
+      onPressed: requesting ? null : onEnable,
+      icon: requesting
+          ? const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : const Icon(Icons.notifications_rounded, size: 18),
+      label: const Text('Включить'),
     );
   }
 }
@@ -367,7 +359,10 @@ class _PermissionCard extends StatelessWidget {
 class _PermissionIcon extends StatelessWidget {
   final bool notificationsGranted;
   final ColorScheme scheme;
-  const _PermissionIcon({required this.notificationsGranted, required this.scheme});
+  const _PermissionIcon({
+    required this.notificationsGranted,
+    required this.scheme,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -392,7 +387,10 @@ class _PermissionIcon extends StatelessWidget {
 class _PermissionText extends StatelessWidget {
   final bool notificationsGranted;
   final TextTheme style;
-  const _PermissionText({required this.notificationsGranted, required this.style});
+  const _PermissionText({
+    required this.notificationsGranted,
+    required this.style,
+  });
 
   @override
   Widget build(BuildContext context) {

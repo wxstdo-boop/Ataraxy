@@ -519,7 +519,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get unpinned => 'Откреплено';
 
   @override
-  String get byWetidom => 'BY WETIDOM';
+  String get byWetidom => 'POWERED BY LARAF';
 
   @override
   String get launchTitle => 'Ataraxy';

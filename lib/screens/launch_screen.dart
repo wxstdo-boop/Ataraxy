@@ -23,13 +23,11 @@ class _LaunchScreenState extends State<LaunchScreen>
       vsync: this,
       duration: const Duration(milliseconds: 900),
     );
-    _scale = CurvedAnimation(
-      parent: _controller,
-      curve: Curves.elasticOut,
-    );
-    _opacity = Tween(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeIn),
-    );
+    _scale = CurvedAnimation(parent: _controller, curve: Curves.elasticOut);
+    _opacity = Tween(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeIn));
     _controller.forward();
   }
 
@@ -40,7 +38,7 @@ class _LaunchScreenState extends State<LaunchScreen>
   }
 
   @override
-    Widget build(BuildContext context) {
+  Widget build(BuildContext context) {
     // Soft rose/lilac instead of the neon #FF9FB6 / #B9A7FF pair.
     final pink = AppAccents.roseLight;
     final lavender = AppAccents.lilac;
@@ -59,71 +57,99 @@ class _LaunchScreenState extends State<LaunchScreen>
             colors: [Color(0xFF100F13), Color(0xFF1A181D)],
           ),
         ),
-        child: Center(
-          child: FadeTransition(
-            opacity: _opacity,
-            child: ScaleTransition(
-              scale: _scale,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(18),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [pink.withValues(alpha: 0.35), lavender.withValues(alpha: 0.45)],
-                      ),
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.10),
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.35),
-                          blurRadius: 18,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
-                    ),
-                    child: ClipOval(
-                      child: Image.asset(
-                        'assets/ataraxy.png',
-                        width: 96,
-                        height: 96,
-                        fit: BoxFit.cover,
-                        cacheWidth: 96,
-                        cacheHeight: 96,
-                      ),
-                    ),
+        child: Stack(
+          children: [
+            // Faint crimson bloom behind the logo so the crescent feels lit.
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: RadialGradient(
+                    center: const Alignment(0, -0.1),
+                    radius: 0.75,
+                    colors: [pink.withValues(alpha: 0.14), Colors.transparent],
                   ),
-                  const SizedBox(height: 22),
-                  Text(
-                    L.tr(context, 'launchTitle'),
-                    style: TextStyle(
-                      fontSize: 36,
-                      fontWeight: FontWeight.bold,
-                      color: onSurface,
-                      letterSpacing: 0.6,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'BY WETIDOM',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: onSurface,
-                      letterSpacing: 4,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 28),
-                  const CircularProgressIndicator(color: Colors.white),
-                ],
+                ),
               ),
             ),
-          ),
+            Center(
+              child: FadeTransition(
+                opacity: _opacity,
+                child: ScaleTransition(
+                  scale: _scale,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(18),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              pink.withValues(alpha: 0.35),
+                              lavender.withValues(alpha: 0.45),
+                            ],
+                          ),
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.10),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.35),
+                              blurRadius: 18,
+                              offset: const Offset(0, 8),
+                            ),
+                          ],
+                        ),
+                        child: ClipOval(
+                          child: Image.asset(
+                            'assets/ataraxy.png',
+                            width: 96,
+                            height: 96,
+                            fit: BoxFit.cover,
+                            cacheWidth: 96,
+                            cacheHeight: 96,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 22),
+                      Text(
+                        L.tr(context, 'launchTitle'),
+                        style: TextStyle(
+                          fontSize: 36,
+                          fontWeight: FontWeight.bold,
+                          color: onSurface,
+                          letterSpacing: 0.6,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        L.tr(context, 'byWetidom'),
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: onSurface,
+                          letterSpacing: 4,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 28),
+                      const SizedBox(
+                        width: 46,
+                        height: 46,
+                        child: CircularProgressIndicator(
+                          color: Color(0xE6B03A38),
+                          backgroundColor: Color(0x33B03A38),
+                          strokeWidth: 5,
+                          strokeCap: StrokeCap.round,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

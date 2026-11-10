@@ -12,74 +12,34 @@ class _ReminderDialog extends StatelessWidget {
 }
 
 /// Search now only acts as a compact toggle; it does not open a text field.
-/// A fixed-size icon keeps the toolbar from moving between states.
-///
-/// The tooltip label ("Поиск" ↔ "Закрыть поиск") deliberately LAGS the icon by
-/// one transition: the icon cross-fades (280ms) and the current tooltip fades
-/// out (showDuration 400ms) FIRST — only then does the label swap, while the
-/// tooltip is hidden. Swapping the label in lockstep with the icon made the
-/// text jump mid-fade, which read as a glitch.
+/// A fixed-size icon keeps the toolbar from moving between states, and the
+/// glass/X pair cross-fades cleanly (no tooltip).
 class _SearchToggleButton extends StatefulWidget {
   final bool isSearching;
   final VoidCallback onTap;
 
-  const _SearchToggleButton({
-    required this.isSearching,
-    required this.onTap,
-  });
+  const _SearchToggleButton({required this.isSearching, required this.onTap});
 
   @override
   State<_SearchToggleButton> createState() => _SearchToggleButtonState();
 }
 
 class _SearchToggleButtonState extends State<_SearchToggleButton> {
-  /// Currently shown tooltip label. Kept stable during the icon cross-fade so
-  /// the tooltip text never swaps in the middle of the transition.
-  String _tooltipText = '';
-
-  int _swapToken = 0;
-
-  String _labelFor(BuildContext context) =>
-      L.tr(context, widget.isSearching ? 'closeSearch' : 'search');
-
-  @override
-  void didUpdateWidget(covariant _SearchToggleButton old) {
-    super.didUpdateWidget(old);
-    if (old.isSearching == widget.isSearching) return;
-    final token = ++_swapToken;
-    // Delay the label swap until the icon fade (280ms) has finished AND the
-    // previous tooltip has faded out (400ms) — the swap then happens while
-    // the tooltip is hidden, so the state change reads as ONE smooth motion.
-    Future<void>.delayed(const Duration(milliseconds: 520)).then((_) {
-      if (!mounted || token != _swapToken) return;
-      final next = _labelFor(context);
-      if (_tooltipText != next) setState(() => _tooltipText = next);
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
-    if (_tooltipText.isEmpty) _tooltipText = _labelFor(context);
-    return Tooltip(
-      message: _tooltipText,
-      // Hold the tooltip for only a beat after a long-press release, then let
-      // it fade — so a quick tap right after never catches the label swap
-      // while the tooltip is still on screen.
-      showDuration: const Duration(milliseconds: 400),
-      child: PressableIconButton(
-        onPressed: widget.onTap,
-        // Clean cross-fade between the search glass and the X. The earlier
-        // rotation + easeOutBack version overshot the icon scale and flashed
-        // a big blurry block on low-end GPUs — a plain fade is smooth on all
-        // devices. The press itself is the soft "dimple" (scale 0.86 + halo).
-        icon: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 280),
-          switchInCurve: Curves.easeOut,
-          switchOutCurve: Curves.easeIn,
-          child: Icon(
-            key: ValueKey(widget.isSearching),
-            widget.isSearching ? Icons.close_rounded : Icons.search_rounded,
-          ),
+    return PressableIconButton(
+      onPressed: widget.onTap,
+      // Clean cross-fade between the search glass and the X. The earlier
+      // rotation + easeOutBack version overshot the icon scale and flashed
+      // a big blurry block on low-end GPUs — a plain fade is smooth on all
+      // devices. The press itself is the soft "dimple" (scale 0.86 + halo).
+      icon: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 280),
+        switchInCurve: Curves.easeOut,
+        switchOutCurve: Curves.easeIn,
+        child: Icon(
+          key: ValueKey(widget.isSearching),
+          widget.isSearching ? Icons.close_rounded : Icons.search_rounded,
         ),
       ),
     );
@@ -245,120 +205,120 @@ class _ListSection extends StatelessWidget {
           key: const ValueKey('empty'),
           onRefresh: onRefresh,
           child: ListView(
-          scrollCacheExtent: const ScrollCacheExtent.pixels(600),
-          // Same horizontal padding as the populated list, so the
-          // practice-of-the-day header keeps the EXACT same width (and
-          // height) whether the category has entries or not. Without it
-          // the header rendered full-bleed (504px vs 472px) and its text
-          // re-wrapped — the banner visually "grew" on empty categories.
-          padding: const EdgeInsets.fromLTRB(16, 6, 16, 16),
-          children: [
-            ?header,
-            // Compact empty state — a fixed, modest height instead of
-            // 60% of the screen. The old giant block made the section
-            // "grow" when switching to an empty category (e.g. Random
-            // with no matches) — the practice-of-the-day card seemed to
-            // inflate because a 500px empty well appeared beneath it.
-            SizedBox(
-              height: 220,
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      width: 72,
-                      height: 72,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [scheme.primary, scheme.tertiary],
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: scheme.primary.withValues(alpha: 0.28),
-                            blurRadius: 20,
-                            offset: const Offset(0, 8),
+            scrollCacheExtent: const ScrollCacheExtent.pixels(600),
+            // Same horizontal padding as the populated list, so the
+            // practice-of-the-day header keeps the EXACT same width (and
+            // height) whether the category has entries or not. Without it
+            // the header rendered full-bleed (504px vs 472px) and its text
+            // re-wrapped — the banner visually "grew" on empty categories.
+            padding: const EdgeInsets.fromLTRB(16, 6, 16, 16),
+            children: [
+              ?header,
+              // Compact empty state — a fixed, modest height instead of
+              // 60% of the screen. The old giant block made the section
+              // "grow" when switching to an empty category (e.g. Random
+              // with no matches) — the practice-of-the-day card seemed to
+              // inflate because a 500px empty well appeared beneath it.
+              SizedBox(
+                height: 220,
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 72,
+                        height: 72,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [scheme.primary, scheme.tertiary],
                           ),
-                        ],
+                          boxShadow: [
+                            BoxShadow(
+                              color: scheme.primary.withValues(alpha: 0.28),
+                              blurRadius: 20,
+                              offset: const Offset(0, 8),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.auto_stories_rounded,
+                          size: 32,
+                          color: Colors.white,
+                        ),
                       ),
-                      child: const Icon(
-                        Icons.auto_stories_rounded,
-                        size: 32,
-                        color: Colors.white,
+                      const SizedBox(height: 14),
+                      Text(
+                        emptyText,
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          color: scheme.onSurface.withValues(alpha: 0.6),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 14),
-                    Text(
-                      emptyText,
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: scheme.onSurface.withValues(alpha: 0.6),
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
-        ),
+            ],
+          ),
         ),
       );
     } else {
       // Wrap with RepaintBoundary to isolate list repaints from the rest
       // of the UI.
       listChild = RepaintBoundary(
-      child: RefreshIndicator(
-        key: const ValueKey('populated'),
-        onRefresh: onRefresh,
-        child: ReorderableListView.builder(
-          scrollCacheExtent: const ScrollCacheExtent.pixels(900),
-          // Top padding kept minimal so the pills and the first card sit
-          // close together (the pills row already provides its own 4px).
-          padding: const EdgeInsets.fromLTRB(16, 6, 16, 16),
-          header: header,
-          onReorderItem: onReorder ?? (_, _) {},
-          buildDefaultDragHandles: false,
-          // Keep the dragged item visually rounded. Without this proxyDecorator,
-          // Flutter lifts each child on a rectangular Material that erases the
-          // card's rounded corners — the floating "ghost" looked like a sharp
-          // rectangle slid over a round list. Here we re-wrap the child in a
-          // rounded Material that scales subtly as the drag engages.
-          proxyDecorator: (child, index, animation) {
-            // Wrap the dragged child in a rounded Material + ClipRRect so
-            // the active list card retains rounded corners during the lift
-            // (without this the dragged "ghost" was a sharp rectangle that
-            // visibly erased the card's radius). Elevation 8 + tinted
-            // shadow do the lifting; no Transform.scale — scaling would
-            // smear the elevation halo and look detached from the list.
-            final scheme = Theme.of(context).colorScheme;
-            return Material(
-              elevation: 8,
-              color: Colors.transparent,
-              shadowColor: scheme.primary.withValues(alpha: 0.30),
-              borderRadius: BorderRadius.circular(20),
-              child: ClipRRect(
+        child: RefreshIndicator(
+          key: const ValueKey('populated'),
+          onRefresh: onRefresh,
+          child: ReorderableListView.builder(
+            scrollCacheExtent: const ScrollCacheExtent.pixels(900),
+            // Top padding kept minimal so the pills and the first card sit
+            // close together (the pills row already provides its own 4px).
+            padding: const EdgeInsets.fromLTRB(16, 6, 16, 16),
+            header: header,
+            onReorderItem: onReorder ?? (_, _) {},
+            buildDefaultDragHandles: false,
+            // Keep the dragged item visually rounded. Without this proxyDecorator,
+            // Flutter lifts each child on a rectangular Material that erases the
+            // card's rounded corners — the floating "ghost" looked like a sharp
+            // rectangle slid over a round list. Here we re-wrap the child in a
+            // rounded Material that scales subtly as the drag engages.
+            proxyDecorator: (child, index, animation) {
+              // Wrap the dragged child in a rounded Material + ClipRRect so
+              // the active list card retains rounded corners during the lift
+              // (without this the dragged "ghost" was a sharp rectangle that
+              // visibly erased the card's radius). Elevation 8 + tinted
+              // shadow do the lifting; no Transform.scale — scaling would
+              // smear the elevation halo and look detached from the list.
+              final scheme = Theme.of(context).colorScheme;
+              return Material(
+                elevation: 8,
+                color: Colors.transparent,
+                shadowColor: scheme.primary.withValues(alpha: 0.30),
                 borderRadius: BorderRadius.circular(20),
-                child: child,
-              ),
-            );
-          },
-          itemCount: entries.length,
-          // Lazy item builder — cards (and their markdown previews) are only
-          // built for what's actually visible, instead of eagerly building
-          // every entry on every list build.
-          itemBuilder: (context, i) => _EntryCard(
-            key: ValueKey(entries[i].id),
-            index: i,
-            entry: entries[i],
-            heroTag: '$heroPrefix-${entries[i].id}',
-            animate: animateEntrance,
-            onTap: () => onTap(entries[i]),
-            onPin: () => onPin(entries[i]),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: child,
+                ),
+              );
+            },
+            itemCount: entries.length,
+            // Lazy item builder — cards (and their markdown previews) are only
+            // built for what's actually visible, instead of eagerly building
+            // every entry on every list build.
+            itemBuilder: (context, i) => _EntryCard(
+              key: ValueKey(entries[i].id),
+              index: i,
+              entry: entries[i],
+              heroTag: '$heroPrefix-${entries[i].id}',
+              animate: animateEntrance,
+              onTap: () => onTap(entries[i]),
+              onPin: () => onPin(entries[i]),
+            ),
+            footer: const _MadeWithLove(key: ValueKey('footer')),
           ),
-          footer: const _MadeWithLove(key: ValueKey('footer')),
         ),
-      ),
       );
     }
 

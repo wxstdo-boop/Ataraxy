@@ -572,7 +572,6 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
             IconButton(
               icon: Icon(Icons.attach_file_rounded, color: scheme.primary),
               onPressed: _pickMedia,
-              tooltip: L.tr(context, 'attachFile'),
             ),
             Expanded(
               child: TextField(
@@ -605,7 +604,6 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
             IconButton(
               icon: Icon(Icons.send_rounded, color: scheme.primary),
               onPressed: _sendText,
-              tooltip: L.tr(context, 'saveText'),
             ),
           ],
         ),

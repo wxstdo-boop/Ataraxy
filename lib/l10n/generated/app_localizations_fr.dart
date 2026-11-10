@@ -520,7 +520,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get unpinned => 'Détaché';
 
   @override
-  String get byWetidom => 'BY WETIDOM';
+  String get byWetidom => 'POWERED BY LARAF';
 
   @override
   String get launchTitle => 'Ataraxy';

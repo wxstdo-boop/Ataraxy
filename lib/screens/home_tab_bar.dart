@@ -637,13 +637,6 @@ class _CategoryChips extends StatelessWidget {
                     : Icons.sort_by_alpha_rounded,
               ),
             ),
-            tooltip: sortMode == -1
-                ? L.tr(context, 'sortManual')
-                : sortMode == 0
-                ? L.tr(context, 'sortNewest')
-                : sortMode == 1
-                ? L.tr(context, 'sortOldest')
-                : L.tr(context, 'sortAlpha'),
             onPressed: onSort,
             style: IconButton.styleFrom(
               minimumSize: const Size(34, 30),

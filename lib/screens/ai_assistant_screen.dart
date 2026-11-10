@@ -722,7 +722,6 @@ class AiFloatingAssistantState extends State<AiFloatingAssistant>
               const Spacer(),
               PressableIconButton(
                 size: 36,
-                tooltip: L.tr(context, 'aiClearChat'),
                 icon: Icon(
                   Icons.delete_sweep_rounded,
                   size: 18,
@@ -732,7 +731,6 @@ class AiFloatingAssistantState extends State<AiFloatingAssistant>
               ),
               PressableIconButton(
                 size: 36,
-                tooltip: L.tr(context, 'minimize'),
                 icon: Icon(
                   Icons.remove_rounded,
                   size: 18,
@@ -752,7 +750,6 @@ class AiFloatingAssistantState extends State<AiFloatingAssistant>
               ),
               PressableIconButton(
                 size: 36,
-                tooltip: L.tr(context, 'close'),
                 icon: Icon(
                   Icons.close_rounded,
                   size: 18,

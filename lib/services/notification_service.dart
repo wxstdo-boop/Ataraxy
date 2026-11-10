@@ -11,7 +11,8 @@ import 'package:timezone/data/latest.dart' as tz_data;
 // Conditional web helpers: real Notification API on web, no-op stub on
 // native — importing package:web directly here breaks VM tests/native builds.
 import 'web_notifications_stub.dart'
-    if (dart.library.js_interop) 'web_notifications.dart' as webnotif;
+    if (dart.library.js_interop) 'web_notifications.dart'
+    as webnotif;
 
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _notifications =
@@ -42,16 +43,16 @@ class NotificationService {
     // flutter_local_notifications has no web implementation and `dart:io`
     // Platform is unavailable in the browser — skip all plugin work on web.
     if (kIsWeb) {
-      debugPrint('[Notif] Web platform — notifications are not supported, skipping init');
+      debugPrint(
+        '[Notif] Web platform — notifications are not supported, skipping init',
+      );
       return;
     }
 
     // Small-icon for the status bar MUST be a white monochrome drawable —
     // a colorful launcher icon renders as a solid blob / blank square on
     // Android (incl. MIUI). ic_notification is our custom white vector.
-    const androidSettings = AndroidInitializationSettings(
-      'ic_notification',
-    );
+    const androidSettings = AndroidInitializationSettings('ic_notification');
     const iosSettings = DarwinInitializationSettings(
       requestAlertPermission: true,
       requestBadgePermission: true,
@@ -179,7 +180,13 @@ class NotificationService {
     debugPrint('Notification tapped: ${response.payload}');
   }
 
-  Future<bool> requestPermissions() async {
+  /// Requests the notification permission and returns whether it was granted.
+  ///
+  /// [requestExactAlarms] additionally asks for the exact-alarm permission on
+  /// Android, which opens the system settings page. Onboarding passes `false`
+  /// so a single tap only shows the notification dialog; the settings screen
+  /// asks for everything.
+  Future<bool> requestPermissions({bool requestExactAlarms = true}) async {
     if (kIsWeb) return webnotif.webRequestPermission();
     if (Platform.isAndroid) {
       final android = _notifications
@@ -188,7 +195,7 @@ class NotificationService {
           >();
       if (android != null) {
         final granted = await android.requestNotificationsPermission();
-        if (granted == true) {
+        if (granted == true && requestExactAlarms) {
           await android.requestExactAlarmsPermission();
         }
         return granted ?? false;
@@ -325,7 +332,12 @@ class NotificationService {
     if (parts.length < 2) return null;
     final hour = int.tryParse(parts[0]);
     final minute = int.tryParse(parts[1]);
-    if (hour == null || minute == null || hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+    if (hour == null ||
+        minute == null ||
+        hour < 0 ||
+        hour > 23 ||
+        minute < 0 ||
+        minute > 59) {
       return null;
     }
     return (hour: hour, minute: minute);
@@ -374,7 +386,9 @@ class NotificationService {
       scheduledDate = scheduledDate.add(const Duration(days: 1));
     }
 
-    debugPrint('[Notif] Scheduled date (local): ${scheduledDate.toIso8601String()}');
+    debugPrint(
+      '[Notif] Scheduled date (local): ${scheduledDate.toIso8601String()}',
+    );
 
     // Use calendar fields so the selected time remains a wall-clock time in
     // the local timezone instead of being converted from a different instant.
@@ -386,7 +400,9 @@ class NotificationService {
       hour,
       minute,
     );
-    debugPrint('[Notif] TZ scheduled: ${tzScheduled.toIso8601String()}, zone: ${tzScheduled.location.name}');
+    debugPrint(
+      '[Notif] TZ scheduled: ${tzScheduled.toIso8601String()}, zone: ${tzScheduled.location.name}',
+    );
 
     final details = notificationDetails ?? _defaultDetails();
 
@@ -394,17 +410,18 @@ class NotificationService {
     // On Android 14+, also check for USE_EXACT_ALARM permission
     AndroidScheduleMode mode;
     bool exactGranted = false;
-    
+
     if (Platform.isAndroid) {
       // Check SCHEDULE_EXACT_ALARM permission
       final scheduleExactStatus = await Permission.scheduleExactAlarm.status;
-      exactGranted = scheduleExactStatus.isGranted || scheduleExactStatus.isRestricted;
-      
+      exactGranted =
+          scheduleExactStatus.isGranted || scheduleExactStatus.isRestricted;
+
       // Use exact mode if permission is granted
       mode = exactGranted
           ? AndroidScheduleMode.exactAllowWhileIdle
           : AndroidScheduleMode.inexactAllowWhileIdle;
-      
+
       // If exact alarm not granted and this is user-initiated, try to request it
       if (!exactGranted && requestBatteryExemption) {
         try {
@@ -448,9 +465,13 @@ class NotificationService {
         final batt = await Permission.ignoreBatteryOptimizations.status;
         if (!batt.isGranted && !batt.isRestricted) {
           final ok = await Permission.ignoreBatteryOptimizations.request();
-          debugPrint('[Notif] battery-optimization request → ${ok == PermissionStatus.granted ? 'GRANTED' : 'DENIED'}');
+          debugPrint(
+            '[Notif] battery-optimization request → ${ok == PermissionStatus.granted ? 'GRANTED' : 'DENIED'}',
+          );
         } else {
-          debugPrint('[Notif] battery-optimization already granted or restricted');
+          debugPrint(
+            '[Notif] battery-optimization already granted or restricted',
+          );
         }
       } catch (e) {
         debugPrint('[Notif] battery-optimization request failed: $e');
@@ -473,7 +494,9 @@ class NotificationService {
         androidScheduleMode: mode,
         matchDateTimeComponents: DateTimeComponents.time,
       );
-      debugPrint('[NOTIF SUCCESS] Reminder scheduled! Mode=$mode, Next fire: ${tzScheduled.toIso8601String()}');
+      debugPrint(
+        '[NOTIF SUCCESS] Reminder scheduled! Mode=$mode, Next fire: ${tzScheduled.toIso8601String()}',
+      );
     } catch (e) {
       debugPrint('[NOTIF ERROR] Failed to schedule: $e');
       rethrow;
@@ -484,24 +507,32 @@ class NotificationService {
     AppSettings settings, {
     bool requestBatteryExemption = false,
   }) async {
-    debugPrint('[NOTIF SETTINGS] reminderEnabled=${settings.reminderEnabled}, time=${settings.reminderTime}');
+    debugPrint(
+      '[NOTIF SETTINGS] reminderEnabled=${settings.reminderEnabled}, time=${settings.reminderTime}',
+    );
     if (settings.reminderEnabled &&
         settings.reminderTime != null &&
         settings.reminderTime!.isNotEmpty) {
       final body = settings.reminderText?.isNotEmpty == true
           ? settings.reminderText!
           : 'Не забудьте записать свои мысли в дневник';
-      debugPrint('[NOTIF] Scheduling daily at ${settings.reminderTime}, body: $body');
+      debugPrint(
+        '[NOTIF] Scheduling daily at ${settings.reminderTime}, body: $body',
+      );
       await scheduleDaily(
         settings.reminderTime!,
         'Напоминание',
         body,
         requestBatteryExemption: requestBatteryExemption,
       );
-      debugPrint('[NOTIF SETTINGS] ✓ Scheduled daily notification at ${settings.reminderTime}');
+      debugPrint(
+        '[NOTIF SETTINGS] ✓ Scheduled daily notification at ${settings.reminderTime}',
+      );
     } else {
       await cancelAll();
-      debugPrint('[NOTIF SETTINGS] × Cancelled all notifications (reminder disabled or no time set)');
+      debugPrint(
+        '[NOTIF SETTINGS] × Cancelled all notifications (reminder disabled or no time set)',
+      );
     }
   }
 
@@ -528,11 +559,7 @@ class NotificationService {
   /// Arms a repeating web timer: fires once at [nextFire], shows the
   /// notification, then re-arms for the following day. The actual browser
   /// permission + show calls are delegated to the conditional web module.
-  static void _webScheduleDaily(
-    DateTime nextFire,
-    String title,
-    String body,
-  ) {
+  static void _webScheduleDaily(DateTime nextFire, String title, String body) {
     _webTimer?.cancel();
     var fire = nextFire;
     final now = DateTime.now();

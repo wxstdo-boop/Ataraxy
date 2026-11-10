@@ -23,22 +23,46 @@ class SplashContent extends StatelessWidget {
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
-          // Three-stop diagonal wash: primary glow up top melting into the
-          // tertiary depth below — richer than a flat two-color ramp.
+          // Layered wash: a warm primary glow up top melting through a
+          // mid tone into the tertiary depth, with a soft radial bloom at
+          // the top so the logo tile reads as if lit from above.
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            stops: const [0.0, 0.55, 1.0],
+            stops: const [0.0, 0.4, 0.72, 1.0],
             colors: [
               scheme.primary.withValues(alpha: a),
-              Color.lerp(scheme.primary, scheme.tertiary, 0.45)!
-                  .withValues(alpha: a),
+              Color.lerp(
+                scheme.primary,
+                scheme.secondary,
+                0.4,
+              )!.withValues(alpha: a),
+              Color.lerp(
+                scheme.primary,
+                scheme.tertiary,
+                0.6,
+              )!.withValues(alpha: a),
               scheme.tertiary.withValues(alpha: a),
             ],
           ),
         ),
         child: Stack(
           children: [
+            // Soft top bloom so the logo tile reads as lit from above.
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: RadialGradient(
+                    center: const Alignment(0, -0.55),
+                    radius: 0.9,
+                    colors: [
+                      Colors.white.withValues(alpha: opaque ? 0.10 : 0.14),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+              ),
+            ),
             // Soft bokeh circles for depth (same language as the guide banner).
             Positioned(
               top: -60,
@@ -92,10 +116,7 @@ class SplashContent extends StatelessWidget {
                         gradient: const LinearGradient(
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
-                          colors: [
-                            Color(0xFF000000),
-                            Color(0xFF121014),
-                          ],
+                          colors: [Color(0xFF000000), Color(0xFF121014)],
                         ),
                         boxShadow: [
                           BoxShadow(
@@ -139,7 +160,7 @@ class SplashContent extends StatelessWidget {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      'BY WETIDOM',
+                      L.tr(context, 'byWetidom'),
                       style: TextStyle(
                         fontSize: 14,
                         color: Colors.white.withValues(alpha: 0.9),
@@ -149,12 +170,12 @@ class SplashContent extends StatelessWidget {
                     ),
                     const SizedBox(height: 28),
                     const SizedBox(
-                      width: 44,
-                      height: 44,
+                      width: 46,
+                      height: 46,
                       child: CircularProgressIndicator(
-                        color: Colors.white,
-                        backgroundColor: Colors.white24,
-                        strokeWidth: 3.5,
+                        color: Color(0xE6B03A38),
+                        backgroundColor: Color(0x33B03A38),
+                        strokeWidth: 5,
                         strokeCap: StrokeCap.round,
                       ),
                     ),

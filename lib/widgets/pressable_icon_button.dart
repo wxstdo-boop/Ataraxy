@@ -5,10 +5,9 @@ import 'package:flutter/services.dart';
 /// gently scales down into a faint halo (a "dimple"), releasing springs it
 /// back in 220ms. Replaces the raw InkWell splash — which flashed a hard grey
 /// block on low-end GPUs — with a smooth, expensive-feeling press. Long-press
-/// and tooltip supported.
+/// supported.
 class PressableIconButton extends StatefulWidget {
   final Widget icon;
-  final String? tooltip;
   final VoidCallback? onPressed;
   final VoidCallback? onLongPress;
   final double size;
@@ -16,7 +15,6 @@ class PressableIconButton extends StatefulWidget {
   const PressableIconButton({
     super.key,
     required this.icon,
-    this.tooltip,
     this.onPressed,
     this.onLongPress,
     this.size = 40,
@@ -74,9 +72,6 @@ class _PressableIconButtonState extends State<PressableIconButton> {
         ),
       ),
     );
-    if (widget.tooltip != null) {
-      inner = Tooltip(message: widget.tooltip!, child: inner);
-    }
     return Semantics(
       button: true,
       enabled: widget.onPressed != null,

@@ -1,5 +1,21 @@
 # Ataraxy Changelog
 
+## [1.3.7] - 2026-11-10
+### Changed
+- Splash/launch loading spinner is now a rounded, semi-transparent crimson
+  arc on a richer multi-stop themed wash with a soft top bloom.
+- Branding line changed from "BY WETIDOM" to "POWERED BY LARAF".
+- Onboarding notification button now animates "Включить" → spinner →
+  "Включено" in place instead of the screen jumping away.
+
+### Fixed
+- Onboarding "Включить" no longer requests the background/exact-alarm
+  permissions, so it shows only the notification dialog and never opens a
+  settings page mid-flow.
+
+### Removed
+- All tooltips across the app (and the shared tooltip theme).
+
 ## [1.3.6] - 2026-11-10
 ### Changed
 - Screen widget tests for the home and entry editors, plus shared test

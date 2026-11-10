@@ -1087,7 +1087,7 @@ abstract class AppLocalizations {
   /// No description provided for @byWetidom.
   ///
   /// In ru, this message translates to:
-  /// **'BY WETIDOM'**
+  /// **'POWERED BY LARAF'**
   String get byWetidom;
 
   /// No description provided for @launchTitle.

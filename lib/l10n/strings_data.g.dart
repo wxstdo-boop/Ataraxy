@@ -169,7 +169,7 @@ const Map<String, Map<String, String>> kStrings = {
   'voiceUnavailable': {'ru': 'Голосовой ввод недоступен', 'en': 'Voice input unavailable', 'fr': 'Saisie vocale indisponible'},
   'pinned': {'ru': 'Закреплено', 'en': 'Pinned', 'fr': 'Épinglé'},
   'unpinned': {'ru': 'Откреплено', 'en': 'Unpinned', 'fr': 'Détaché'},
-  'byWetidom': {'ru': 'BY WETIDOM', 'en': 'BY WETIDOM', 'fr': 'BY WETIDOM'},
+  'byWetidom': {'ru': 'POWERED BY LARAF', 'en': 'POWERED BY LARAF', 'fr': 'POWERED BY LARAF'},
   'launchTitle': {'ru': 'Ataraxy', 'en': 'Ataraxy', 'fr': 'Ataraxy'},
   'newReminder': {'ru': 'Новое напоминание', 'en': 'New reminder', 'fr': 'Nouveau rappel'},
   'themeSystem': {'ru': 'Системная (Material You)', 'en': 'System (Material You)', 'fr': 'Système (Material You)'},

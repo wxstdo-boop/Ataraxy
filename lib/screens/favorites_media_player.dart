@@ -697,7 +697,6 @@ class _CropScreenState extends State<_CropScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.check_rounded),
-            tooltip: L.tr(context, 'apply'),
             onPressed: _applyCrop,
           ),
         ],

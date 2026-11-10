@@ -457,39 +457,6 @@ class AppTheme {
         ),
       ),
       progressIndicatorTheme: ProgressIndicatorThemeData(color: scheme.primary),
-      tooltipTheme: TooltipThemeData(
-        // Consistent Material-style tooltips BELOW their button by default
-        // (preferBelow: true). Clean rounded pill — no pointer arrow: a
-        // floating bubble reads calmer than a speech bubble with a tail.
-        preferBelow: true,
-        decoration: ShapeDecoration(
-          color: scheme.brightness == Brightness.light
-              ? Colors.white
-              : scheme.inverseSurface,
-          shadows: [
-            BoxShadow(
-              color: scheme.shadow.withValues(alpha: 0.18),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
-            ),
-          ],
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-        textStyle: TextStyle(
-          color: scheme.brightness == Brightness.light
-              ? scheme.onSurface
-              : scheme.onInverseSurface,
-          fontWeight: FontWeight.w600,
-          fontSize: 12,
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-        margin: const EdgeInsets.symmetric(horizontal: 8),
-        excludeFromSemantics: false,
-        waitDuration: const Duration(milliseconds: 400),
-        showDuration: const Duration(seconds: 3),
-      ),
     );
   }
 

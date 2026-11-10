@@ -411,9 +411,6 @@ class _ReadingModeState extends State<_ReadingMode>
                   ),
                   const Spacer(),
                   IconButton(
-                    tooltip: widget.activity.pinned
-                        ? L.tr(context, 'favoriteActivityUnpin')
-                        : L.tr(context, 'favoriteActivityPin'),
                     icon: Icon(
                       widget.activity.pinned
                           ? Icons.push_pin_rounded
@@ -423,7 +420,6 @@ class _ReadingModeState extends State<_ReadingMode>
                     onPressed: widget.onPin,
                   ),
                   IconButton(
-                    tooltip: L.tr(context, 'favoriteActivityEdit'),
                     icon: Icon(Icons.edit_rounded, color: scheme.primary),
                     onPressed: widget.onEdit,
                   ),
@@ -683,9 +679,6 @@ class _ActivityCardState extends State<_ActivityCard> {
                 ),
               ),
               IconButton(
-                tooltip: activity.pinned
-                    ? L.tr(context, 'favoriteActivityUnpin')
-                    : L.tr(context, 'favoriteActivityPin'),
                 icon: Icon(
                   activity.pinned
                       ? Icons.push_pin_rounded
@@ -696,7 +689,6 @@ class _ActivityCardState extends State<_ActivityCard> {
                 onPressed: widget.onPin,
               ),
               IconButton(
-                tooltip: L.tr(context, 'delete'),
                 icon: const Icon(
                   Icons.delete_outline_rounded,
                   color: AppAccents.danger,

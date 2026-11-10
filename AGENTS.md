@@ -49,3 +49,28 @@ Common commands:
 
 WSL note: if `runpane doctor --json` cannot find `/tmp/pane-daemon.../daemon.sock` or `runpane` resolves to a broken Windows shim, Pane may be running on Windows. Try `powershell.exe -NoProfile -Command 'Set-Location $env:TEMP; runpane doctor --json'`, then create Panes through the same PowerShell form using the saved WSL repo name or id. Use `runpane agents doctor --agent <agent> --repo <selector> --json` to diagnose the repo environment Pane will actually use.
 <!-- pane-agent-context:end -->
+
+## Repository layout & asset pipeline
+
+- `lib/` — Flutter app (models, screens, services, providers, widgets, theme, l10n).
+- `docs/` — long-form docs (`apidocs.md`, `OPTIMIZATIONS_REDMI_NOTE_12.md`),
+  `docs/hf_models.json` (model catalogue reference), `docs/screenshots/`
+  (curated README screenshots).
+- `tools/` — developer scripts: `build_apk_arm64.{sh,bat}`, `analyze.ps1`,
+  `release_install.ps1`, and the asset generators `gen_avatar.dart` /
+  `gen_web_icons.dart`.
+- `test/` — unit/widget tests (`flutter test`).
+
+### App artwork (black background)
+
+The app art is a cream crescent moon on a **pure black field**
+(`assets/ataraxy.png`, 512px). Every platform icon, the native splash and the
+in-app avatar sit on black so the moon reads as a floating crescent.
+
+- Regenerate the art + Windows icon: `dart run tools/gen_avatar.dart`
+- Regenerate web/PWA icons: `dart run tools/gen_web_icons.dart`
+- Android adaptive background is `#000000` (`pubspec.yaml` +
+  `android/app/src/main/res/values/colors.xml`); the adaptive foreground and
+  monochrome layers are transparent PNGs sized to the 66/108 safe zone.
+- iOS/macOS/web/windows icons are committed directly; there is no CI step that
+  regenerates them, so regenerate locally and commit when the art changes.

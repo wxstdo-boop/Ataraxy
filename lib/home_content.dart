@@ -49,22 +49,23 @@ class HomeContentState extends State<HomeContent>
 
     _splashController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1400),
+      duration: const Duration(milliseconds: 1750),
     );
 
     // The splash is fully opaque from the first frame (so the avatar shows
-    // immediately), holds, then fades away smoothly. The content underneath
-    // is fully opaque the whole time — no cross-fade, so no background
-    // "flash" and no abrupt swap at the end.
+    // immediately), holds, then melts away: a long, soft fade (easeOutQuint)
+    // so the exit never blinks off, with the content drifting up a touch as
+    // it goes. The content underneath is fully opaque the whole time — no
+    // cross-fade, so no background "flash".
     _splashOpacity = TweenSequence<double>([
       TweenSequenceItem(
         tween: ConstantTween(1.0),
-        weight: 55,
+        weight: 50,
       ),
       TweenSequenceItem(
         tween: Tween(begin: 1.0, end: 0.0)
-            .chain(CurveTween(curve: Curves.easeInOutCubic)),
-        weight: 45,
+            .chain(CurveTween(curve: Curves.easeOutQuint)),
+        weight: 50,
       ),
     ]).animate(_splashController);
 
@@ -170,12 +171,23 @@ class HomeContentState extends State<HomeContent>
           ignoring: !_showSplash,
           child: FadeTransition(
             opacity: _splashOpacity,
-            child: SplashContent(
-              opacity: AlwaysStoppedAnimation(1.0),
-              contentOpacity: AlwaysStoppedAnimation(1.0),
-              // MUTILATED: the splash background is fully opaque; other
-              // themes keep the soft translucent theme gradient.
-              opaque: _lastSettings.themeMode == AppThemeMode.mutilated,
+            // A gentle scale-up as the splash fades: the whole panel breathes
+            // outward and dissolves, so the exit reads as a melt rather than
+            // a hard cut.
+            child: ScaleTransition(
+              scale: Tween<double>(begin: 1.0, end: 1.06).animate(
+                CurvedAnimation(
+                  parent: _splashController,
+                  curve: const Interval(0.5, 1.0, curve: Curves.easeOutCubic),
+                ),
+              ),
+              child: SplashContent(
+                opacity: AlwaysStoppedAnimation(1.0),
+                contentOpacity: AlwaysStoppedAnimation(1.0),
+                // MUTILATED: the splash background is fully opaque; other
+                // themes keep the soft translucent theme gradient.
+                opaque: _lastSettings.themeMode == AppThemeMode.mutilated,
+              ),
             ),
           ),
         ),

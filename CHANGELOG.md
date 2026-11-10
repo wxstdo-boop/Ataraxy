@@ -1,5 +1,23 @@
 # Ataraxy Changelog
 
+## [1.3.8] - 2026-11-10
+### Changed
+- App artwork regenerated at higher resolution with supersampled
+  antialiasing, so the crescent stays crisp at every icon and avatar size.
+- White "paint" now flows around the crescent: a wobbly band smeared along
+  the rim with clinging drops and thin drips running down.
+- Splash loading spinner is now a smooth "comet" arc — a snake whose head and
+  tail both fade to nothing, with a gently breathing arc length.
+- Splash exit is smoother: a longer, softer fade with a subtle scale-up, so
+  it melts away instead of blinking off.
+- Onboarding notification card animates as one piece: the plate tints toward
+  sage, the icon cross-fades with a pop, and the label colour eases in.
+- Home section pill-bar is calmer: a single monotone frosted-glass capsule
+  with no per-section hues, and a single monotone sliding pill.
+- Unselected tab and chip labels are more translucent for a quieter bar.
+- Buttons, close (×) icons, category chips, the sort icon and entry cards all
+  dip in with a spring-back on press, matching the icon buttons.
+
 ## [1.3.7] - 2026-11-10
 ### Changed
 - Splash/launch loading spinner is now a rounded, semi-transparent crimson

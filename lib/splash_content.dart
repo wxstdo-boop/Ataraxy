@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'l10n/strings.dart';
 
@@ -169,16 +171,7 @@ class SplashContent extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 28),
-                    const SizedBox(
-                      width: 46,
-                      height: 46,
-                      child: CircularProgressIndicator(
-                        color: Color(0xE6B03A38),
-                        backgroundColor: Color(0x33B03A38),
-                        strokeWidth: 5,
-                        strokeCap: StrokeCap.round,
-                      ),
-                    ),
+                    const CometSpinner(size: 46, color: Color(0xE6B03A38)),
                   ],
                 ),
               ),
@@ -188,4 +181,104 @@ class SplashContent extends StatelessWidget {
       ),
     );
   }
+}
+
+/// A smooth rotating "comet" arc: a blood-red stroke whose head and tail both
+/// fade to nothing (a snake), so the loading motion never shows a hard blunt
+/// end. The arc length gently breathes as it spins.
+class CometSpinner extends StatefulWidget {
+  final double size;
+  final Color color;
+  final double strokeWidth;
+
+  const CometSpinner({
+    super.key,
+    this.size = 46,
+    this.color = const Color(0xE6B03A38),
+    this.strokeWidth = 5,
+  });
+
+  @override
+  State<CometSpinner> createState() => _CometSpinnerState();
+}
+
+class _CometSpinnerState extends State<CometSpinner>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1150),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox.square(
+      dimension: widget.size,
+      child: CustomPaint(
+        painter: _CometPainter(
+          t: _controller,
+          color: widget.color,
+          strokeWidth: widget.strokeWidth,
+        ),
+      ),
+    );
+  }
+}
+
+class _CometPainter extends CustomPainter {
+  final Animation<double> t;
+  final Color color;
+  final double strokeWidth;
+
+  _CometPainter({
+    required this.t,
+    required this.color,
+    required this.strokeWidth,
+  }) : super(repaint: t);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = size.center(Offset.zero);
+    final radius = (size.shortestSide - strokeWidth) / 2;
+    final rect = Rect.fromCircle(center: center, radius: radius);
+
+    final phase = t.value * 2 * math.pi;
+    final start = phase;
+    // Breathe the arc length between ~215° and ~285°.
+    final sweep = 4.2 + 0.5 * math.sin(phase * 2);
+
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round
+      ..shader = SweepGradient(
+        startAngle: start,
+        endAngle: start + sweep,
+        colors: [
+          color.withValues(alpha: 0),
+          color.withValues(alpha: 0.35),
+          color,
+          color.withValues(alpha: 0.35),
+          color.withValues(alpha: 0),
+        ],
+        stops: const [0.0, 0.25, 0.5, 0.75, 1.0],
+      ).createShader(rect);
+
+    canvas.drawArc(rect, start, sweep, false, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _CometPainter old) =>
+      old.color != color || old.strokeWidth != strokeWidth;
 }

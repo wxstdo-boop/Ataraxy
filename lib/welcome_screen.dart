@@ -4,6 +4,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'models/settings.dart';
 import 'services/notification_service.dart';
 import 'theme/app_theme.dart';
+import 'widgets/press_scale.dart';
 
 class WelcomeScreen extends StatefulWidget {
   final AppSettings settings;
@@ -199,10 +200,13 @@ class _WelcomeHeader extends StatelessWidget {
       alignment: Alignment.topRight,
       child: Padding(
         padding: const EdgeInsets.only(top: 8),
+        child: PressScale(
+        scale: 0.88,
         child: IconButton(
           icon: Icon(Icons.close_rounded, color: scheme.onSurface),
           onPressed: onDismiss,
         ),
+      ),
       ),
     );
   }
@@ -282,44 +286,49 @@ class _PermissionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: 0,
-      color: scheme.surfaceContainerHighest,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            _PermissionIcon(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 340),
+      curve: Curves.easeOutCubic,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        // The plate itself shifts color (neutral -> sage) and radius smoothly
+        // as the state flips, so the whole card reacts, not just the button.
+        color: notificationsGranted
+            ? AppAccents.sage.withValues(alpha: 0.12)
+            : scheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          _PermissionIcon(
+            notificationsGranted: notificationsGranted,
+            scheme: scheme,
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: _PermissionText(
               notificationsGranted: notificationsGranted,
-              scheme: scheme,
+              style: style,
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: _PermissionText(
-                notificationsGranted: notificationsGranted,
-                style: style,
+          ),
+          const SizedBox(width: 8),
+          // The button itself never moves: it fades + scales between the
+          // "Включить", spinner and green "Включено" states, so granting
+          // the permission reads as one smooth motion, not a layout jump.
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 320),
+            switchInCurve: Curves.easeOutCubic,
+            switchOutCurve: Curves.easeIn,
+            transitionBuilder: (child, anim) => FadeTransition(
+              opacity: anim,
+              child: ScaleTransition(
+                scale: Tween<double>(begin: 0.9, end: 1.0).animate(anim),
+                child: child,
               ),
             ),
-            const SizedBox(width: 8),
-            // The button itself never moves: it fades + scales between the
-            // "Включить", spinner and green "Включено" states, so granting
-            // the permission reads as one smooth motion, not a layout jump.
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 320),
-              switchInCurve: Curves.easeOutCubic,
-              switchOutCurve: Curves.easeIn,
-              transitionBuilder: (child, anim) => FadeTransition(
-                opacity: anim,
-                child: ScaleTransition(
-                  scale: Tween<double>(begin: 0.9, end: 1.0).animate(anim),
-                  child: child,
-                ),
-              ),
-              child: _button(),
-            ),
-          ],
-        ),
+            child: _button(),
+          ),
+        ],
       ),
     );
   }
@@ -366,7 +375,9 @@ class _PermissionIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 340),
+      curve: Curves.easeOutCubic,
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: notificationsGranted
@@ -374,11 +385,23 @@ class _PermissionIcon extends StatelessWidget {
             : scheme.primaryContainer,
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Icon(
-        notificationsGranted
-            ? Icons.notifications_active_rounded
-            : Icons.notifications_none_rounded,
-        color: notificationsGranted ? AppAccents.sage : scheme.primary,
+      // The icon swaps with a cross-fade + a small scale pop, so the state
+      // change reads as the badge "turning on" rather than snapping.
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 320),
+        switchInCurve: Curves.easeOutBack,
+        switchOutCurve: Curves.easeIn,
+        transitionBuilder: (child, anim) => ScaleTransition(
+          scale: anim,
+          child: FadeTransition(opacity: anim, child: child),
+        ),
+        child: Icon(
+          key: ValueKey(notificationsGranted),
+          notificationsGranted
+              ? Icons.notifications_active_rounded
+              : Icons.notifications_none_rounded,
+          color: notificationsGranted ? AppAccents.sage : scheme.primary,
+        ),
       ),
     );
   }
@@ -394,6 +417,7 @@ class _PermissionText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -402,14 +426,20 @@ class _PermissionText extends StatelessWidget {
           style: style.titleSmall?.copyWith(fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 2),
-        Text(
-          notificationsGranted
-              ? 'Разрешение получено'
-              : 'Для напоминаний о записях в дневник',
-          style: style.bodySmall?.copyWith(
+        // Animate the label colour as the permission flips, so the wording
+        // and the tint change together instead of the text snapping colour.
+        AnimatedDefaultTextStyle(
+          duration: const Duration(milliseconds: 320),
+          curve: Curves.easeOutCubic,
+          style: (style.bodySmall ?? const TextStyle()).copyWith(
             color: notificationsGranted
                 ? AppAccents.sage
-                : Theme.of(context).colorScheme.onSurfaceVariant,
+                : scheme.onSurfaceVariant,
+          ),
+          child: Text(
+            notificationsGranted
+                ? 'Разрешение получено'
+                : 'Для напоминаний о записях в дневник',
           ),
         ),
       ],
@@ -441,12 +471,17 @@ class _StartButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 52,
-      child: FilledButton(
-        onPressed: onPressed,
-        child: const Text('Начать пользоваться'),
+    return PressScale(
+      onTap: onPressed,
+      scale: 0.96,
+      haptic: true,
+      child: SizedBox(
+        width: double.infinity,
+        height: 52,
+        child: FilledButton(
+          onPressed: onPressed,
+          child: const Text('Начать пользоваться'),
+        ),
       ),
     );
   }

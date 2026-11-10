@@ -127,6 +127,12 @@ class _EntryCardBodyState extends State<_EntryCardBody> {
     // fades out on release (no abrupt jump in either direction).
     // Wrap with RepaintBoundary to prevent card repaints from affecting other cards
     return RepaintBoundary(
+      // A held card dips in slightly (and springs back) so a press is felt,
+      // not just seen via the brightening surface.
+      child: AnimatedScale(
+      scale: _pressed ? 0.98 : 1.0,
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeOutCubic,
       child: AnimatedContainer(
       duration: const Duration(milliseconds: 260),
       curve: Curves.easeOutCubic,
@@ -348,6 +354,7 @@ class _EntryCardBodyState extends State<_EntryCardBody> {
             ),
           ),
         ),
+      ),
       ),
       ),
     );

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:ataraxy/l10n/strings.dart';
+import 'package:ataraxy/splash_content.dart';
 import 'package:ataraxy/theme/app_theme.dart';
 
 class LaunchScreen extends StatefulWidget {
@@ -134,16 +135,7 @@ class _LaunchScreenState extends State<LaunchScreen>
                         ),
                       ),
                       const SizedBox(height: 28),
-                      const SizedBox(
-                        width: 46,
-                        height: 46,
-                        child: CircularProgressIndicator(
-                          color: Color(0xE6B03A38),
-                          backgroundColor: Color(0x33B03A38),
-                          strokeWidth: 5,
-                          strokeCap: StrokeCap.round,
-                        ),
-                      ),
+                      const CometSpinner(size: 46, color: Color(0xE6B03A38)),
                     ],
                   ),
                 ),

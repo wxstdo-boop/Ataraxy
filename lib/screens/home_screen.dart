@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ataraxy/l10n/strings.dart';
 import 'package:ataraxy/widgets/animated_field_counter.dart';
 import 'package:ataraxy/widgets/pressable_icon_button.dart';
+import 'package:ataraxy/widgets/press_scale.dart';
 import 'package:ataraxy/models/entry.dart';
 import 'package:ataraxy/models/settings.dart';
 import 'package:ataraxy/providers/settings_provider.dart';

@@ -264,11 +264,16 @@ class _WelcomeTitle extends StatelessWidget {
       color: Theme.of(context).colorScheme.onSurface,
     );
     // The brand wordmark writes itself in letter by letter (and the whole
-    // card fades out smoothly on exit), so the greeting never just pops.
+    // card fades out smoothly on exit), so the greeting never just pops. A
+    // gentler stagger (longer per-letter duration, shorter delay) keeps the
+    // long greeting appearing as one soft, continuous wave instead of a
+    // staccato tick-tick-tick.
     return AnimatedLetters(
       'Добро пожаловать в Ataraxy.',
       style: base,
       alignment: WrapAlignment.center,
+      duration: const Duration(milliseconds: 620),
+      delay: const Duration(milliseconds: 22),
     );
   }
 }

@@ -1,4 +1,5 @@
 
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
 
@@ -97,5 +98,46 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 600));
     expect(find.text('Записей о жизни пока нет'), findsOneWidget);
+  });
+
+  testWidgets('entry cards do not replay their entrance on scroll',
+      (tester) async {
+    // Regression: the lazy feed disposes off-screen cards, so a card scrolled
+    // out and back used to rebuild with a fresh controller and replay its
+    // fade+slide — the "записи дёргает и мигает" flicker. The entrance is now
+    // a one-shot per entry, so a re-entering card renders fully opaque at once.
+    final now = DateTime(2026, 1, 2, 10);
+    final entries = [
+      for (var i = 0; i < 30; i++)
+        JournalEntry(
+          id: 'e$i',
+          type: EntryType.dream,
+          title: 'Запись $i',
+          content: 'Текст $i',
+          createdAt: now.subtract(Duration(days: i)),
+          updatedAt: now.subtract(Duration(days: i)),
+        ),
+    ];
+    await pumpHome(tester, entries: entries);
+
+    final listFinder = find.byType(Scrollable).first;
+    // Scroll far down so the first cards are disposed.
+    await tester.drag(listFinder, const Offset(0, -4000));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    // Scroll back to the top so those cards are rebuilt.
+    await tester.drag(listFinder, const Offset(0, 5000));
+    await tester.pump();
+    // On the very first frame after re-entering, the leading card must already
+    // be at full opacity (no replay). When the card does not animate it is not
+    // wrapped in its own FadeTransition, so every FadeTransition above it
+    // (app/page transitions) is fully opaque.
+    final cardFades = find.ancestor(
+      of: find.text('Запись 0'),
+      matching: find.byType(FadeTransition),
+    );
+    for (final element in cardFades.evaluate()) {
+      expect((element.widget as FadeTransition).opacity.value, 1.0);
+    }
   });
 }

@@ -331,17 +331,25 @@ class _WavyUnderlined extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Match the rule to the label's real width so it hugs the text edge to
+    // edge instead of floating as a fixed 150px bar under a wider label.
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         child,
-        const SizedBox(height: 4),
-        CustomPaint(
-          size: const Size(150, 7),
-          painter: _WavyUnderlinePainter(
-            // Translucent red: reads as ink, not a warning stripe.
-            color: const Color(0xFFE05A5A).withValues(alpha: 0.75),
-          ),
+        const SizedBox(height: 3),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final w = constraints.maxWidth.isFinite ? constraints.maxWidth : 150.0;
+            return CustomPaint(
+              size: Size(w, 6),
+              painter: _WavyUnderlinePainter(
+                // Translucent red: reads as ink, not a warning stripe. Lower
+                // alpha so it sits UNDER the text as a soft flourish.
+                color: const Color(0xFFE05A5A).withValues(alpha: 0.62),
+              ),
+            );
+          },
         ),
       ],
     );
@@ -349,15 +357,17 @@ class _WavyUnderlined extends StatelessWidget {
 }
 
 /// A rounded-cap sine wave, drawn as a single stroked path so both ends get
-/// the rounded terminal the request asked for.
+/// the rounded terminal the request asked for. Denser (tighter wavelength,
+/// thicker stroke, smaller amplitude) so it reads as a fine hand-drawn rule
+/// rather than a loose scribble.
 class _WavyUnderlinePainter extends CustomPainter {
   final Color color;
 
   const _WavyUnderlinePainter({required this.color});
 
-  static const double _strokeWidth = 2.4;
-  static const double _amplitude = 2.6;
-  static const double _wavelength = 14;
+  static const double _strokeWidth = 1.8;
+  static const double _amplitude = 1.7;
+  static const double _wavelength = 9;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -371,7 +381,7 @@ class _WavyUnderlinePainter extends CustomPainter {
     final midY = size.height / 2;
     final path = Path()..moveTo(0, midY);
     // Step finely so the polyline reads as a smooth curve.
-    const step = 1.0;
+    const step = 0.8;
     for (double x = step; x <= size.width; x += step) {
       final y = midY + _amplitude * math.sin(2 * math.pi * x / _wavelength);
       path.lineTo(x, y);

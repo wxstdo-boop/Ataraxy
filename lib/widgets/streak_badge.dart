@@ -151,11 +151,12 @@ class _StreakBadgeState extends State<StreakBadge>
     // recolors or resizes when the count changes — only the digits animate.
     final colors = [scheme.primary, scheme.tertiary];
 
-    // CONSTANT geometry: the disc is always 42px with the same digit size —
+    // CONSTANT geometry: the disc is always 34px with the same digit size —
     // nothing grows, shrinks or recolors as the streak increases. Huge
     // counts ('9999+') shrink INSIDE the fixed disc via FittedBox, so the
-    // header layout never jumps.
-    const size = 42.0;
+    // header layout never jumps. Kept in proportion with the 20px header
+    // wordmark so the lockup no longer towers over the bar.
+    const size = 34.0;
 
     return Semantics(
       container: true,
@@ -214,7 +215,7 @@ class _StreakBadgeState extends State<StreakBadge>
                               value >= 10000 ? '9999+' : '$value',
                               style: TextStyle(
                                 color: scheme.onPrimary,
-                                fontSize: 18,
+                                fontSize: 15,
                                 fontWeight: FontWeight.w900,
                                 height: 1,
                                 fontFeatures: const [
@@ -231,12 +232,12 @@ class _StreakBadgeState extends State<StreakBadge>
                   // the circle's top arc (y≈3..10) above the number, pompom
                   // pokes into the header's 30px headroom. Straight, centered.
                   Positioned(
-                    top: -10,
+                    top: -8,
                     left: 0,
                     right: 0,
                     child: Align(
                       alignment: Alignment.topCenter,
-                      child: const WinterHat(width: 32, height: 20),
+                      child: const WinterHat(width: 26, height: 16),
                     ),
                   ),
                 ],

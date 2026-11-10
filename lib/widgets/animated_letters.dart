@@ -70,32 +70,37 @@ class _AnimatedLettersState extends State<AnimatedLetters>
   Widget build(BuildContext context) {
     final words = widget.text.split(' ');
     final total = widget.text.replaceAll(' ', '').length;
-    // Running letter index so the stagger flows across word boundaries
-    // instead of restarting on every word.
-    var index = 0;
-    final rows = <Widget>[];
-    for (final word in words) {
-      final letters = <Widget>[];
-      for (final ch in word.characters) {
-        letters.add(
-          _Letter(
-            char: ch,
-            style: widget.style,
-            slide: widget.slide,
-            progress: _letterProgress(index, total),
-            curve: widget.curve,
-          ),
-        );
-        index++;
-      }
-      rows.add(Row(mainAxisSize: MainAxisSize.min, children: letters));
-    }
 
     return Semantics(
       label: widget.text,
+      // The glyph widgets must be created INSIDE the builder: building them
+      // outside froze each letter's opacity at the first frame (value 0), so
+      // the wordmark never faded in — and every unrelated rebuild snapped the
+      // letters to whatever progress happened to be current, which read as a
+      // jerky pop.
       child: AnimatedBuilder(
         animation: _controller,
         builder: (context, _) {
+          // Running letter index so the stagger flows across word boundaries
+          // instead of restarting on every word.
+          var index = 0;
+          final rows = <Widget>[];
+          for (final word in words) {
+            final letters = <Widget>[];
+            for (final ch in word.characters) {
+              letters.add(
+                _Letter(
+                  char: ch,
+                  style: widget.style,
+                  slide: widget.slide,
+                  progress: _letterProgress(index, total),
+                  curve: widget.curve,
+                ),
+              );
+              index++;
+            }
+            rows.add(Row(mainAxisSize: MainAxisSize.min, children: letters));
+          }
           return Wrap(
             alignment: widget.alignment,
             crossAxisAlignment: WrapCrossAlignment.center,

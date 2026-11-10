@@ -23,6 +23,51 @@ void main() {
     expect(find.byType(AnimatedLetters), findsOneWidget);
   });
 
+  testWidgets('AnimatedLetters actually reveals every glyph over time', (
+    tester,
+  ) async {
+    // Regression: the glyph widgets used to be built OUTSIDE the
+    // AnimatedBuilder, so each letter's opacity froze at the first frame
+    // (0) and the wordmark never faded in — the "Ataraxy пропал" bug.
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: Center(child: AnimatedLetters('Ataraxy.')),
+        ),
+      ),
+    );
+
+    double minOpacity() => tester
+        .widgetList<Opacity>(
+          find.descendant(
+            of: find.byType(AnimatedLetters),
+            matching: find.byType(Opacity),
+          ),
+        )
+        .map((o) => o.opacity)
+        .reduce((a, b) => a < b ? a : b);
+
+    double maxOpacity() => tester
+        .widgetList<Opacity>(
+          find.descendant(
+            of: find.byType(AnimatedLetters),
+            matching: find.byType(Opacity),
+          ),
+        )
+        .map((o) => o.opacity)
+        .reduce((a, b) => a > b ? a : b);
+
+    // First frame: nothing visible yet.
+    expect(minOpacity(), 0.0);
+    expect(maxOpacity(), 0.0);
+    // Mid-flight: the leading glyphs have started fading in.
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(maxOpacity(), greaterThan(0.0));
+    // Settled: every glyph fully visible.
+    await tester.pumpAndSettle();
+    expect(minOpacity(), 1.0);
+  });
+
   testWidgets('SplashContent paints the italic wordmark with the wave', (
     tester,
   ) async {

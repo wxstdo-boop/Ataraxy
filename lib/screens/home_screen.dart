@@ -99,6 +99,10 @@ class _HomeScreenState extends State<HomeScreen>
   /// through [_onBarsTick] and leave it alone — that is what lets [_StableFeed]
   /// hand back its cached widget while the pills retract.
   int _contentRev = 0;
+  /// Entries whose card entrance animation already played this session. The
+  /// lazy feed disposes off-screen cards, so this is what stops a card from
+  /// re-animating (the "дёргает и мигает" flicker) every time it scrolls back.
+  final Set<String> _seenEntranceIds = {};
   // The AI assistant is a plain widget mounted in this screen's Stack (NOT
   // a root-overlay OverlayEntry — that architecture caused the grey-screen
   // crash loop on this device). Long-pressing "+" toggles it; a second
@@ -579,7 +583,7 @@ class _HomeScreenState extends State<HomeScreen>
                       style: TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
-                        fontSize: 26,
+                        fontSize: 20,
                         // Explicitly opt OUT of the theme's italic
                         // display font (Cormorant) — the brand wordmark
                         // keeps its original system-sans look.
@@ -765,6 +769,7 @@ class _HomeScreenState extends State<HomeScreen>
                                                         newIdx,
                                                       ),
                                               emptyText: d.$3,
+                                              seenEntranceIds: _seenEntranceIds,
                                             )
                                           : d.$2 == EntryType.dream ||
                                                 d.$2 == EntryType.tulpa
@@ -811,6 +816,7 @@ class _HomeScreenState extends State<HomeScreen>
                                                         newIdx,
                                                       ),
                                               emptyText: d.$3,
+                                              seenEntranceIds: _seenEntranceIds,
                                             )
                                           : () {
                                               // Hide notes (general) from the
@@ -875,6 +881,7 @@ class _HomeScreenState extends State<HomeScreen>
                                                       newIdx,
                                                     ),
                                                 emptyText: d.$3,
+                                                seenEntranceIds: _seenEntranceIds,
                                               );
                                             }(),
                                     )

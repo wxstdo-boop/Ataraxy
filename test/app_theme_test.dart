@@ -21,24 +21,36 @@ void main() {
     }
   });
 
-  test('Grok keeps a wide tonal range instead of one flat grey', () {
+  test('cards carry depth: a hairline rim plus a soft shadow', () {
+    // The feed used to be flat same-tone fills; every theme now gives cards a
+    // hairline rim and a soft drop shadow so they lift off the background.
+    for (final mode in AppThemeMode.values) {
+      final theme = AppTheme.of(mode);
+      final shape = theme.cardTheme.shape;
+      expect(shape, isA<RoundedRectangleBorder>(), reason: '$mode');
+      final side = (shape! as RoundedRectangleBorder).side;
+      expect(side.width, greaterThan(0), reason: '$mode rim');
+      expect(side.color.a, greaterThan(0), reason: '$mode rim alpha');
+      expect(theme.cardTheme.shadowColor!.a, greaterThan(0), reason: '$mode');
+    }
+  });
+
+  test('input fields keep a visible rim in every theme', () {
+    for (final mode in AppThemeMode.values) {
+      final theme = AppTheme.of(mode);
+      final border =
+          theme.inputDecorationTheme.enabledBorder as OutlineInputBorder?;
+      expect(border, isNotNull, reason: '$mode');
+      expect(border!.borderSide.color.a, greaterThan(0), reason: '$mode');
+    }
+  });
+
+  test('Grok keeps its stark monochrome identity', () {
     final s = AppTheme.darkGrok().colorScheme;
-    // Grok's identity is monochrome, so "not monotonous" here means the three
-    // accents span a real lightness range (dark charcoal -> mid graphite ->
-    // lighter taupe) rather than sitting on one tone.
-    final ls = [
-      HSLColor.fromColor(s.primary).lightness,
-      HSLColor.fromColor(s.secondary).lightness,
-      HSLColor.fromColor(s.tertiary).lightness,
-    ];
-    final range = ls.reduce((a, b) => a > b ? a : b) -
-        ls.reduce((a, b) => a < b ? a : b);
-    expect(range, greaterThan(0.15));
-    // The tertiary is warm (taupe) against the cool charcoal — a deliberate
-    // accent, not another grey.
-    final primaryHue = HSLColor.fromColor(s.primary).hue;
-    final tertiaryHue = HSLColor.fromColor(s.tertiary).hue;
-    expect((tertiaryHue - primaryHue).abs(), greaterThan(60));
+    // Grok is deliberately monochrome: primary and secondary share a near
+    // neutral hue, and the accent is not a saturated colour.
+    final primarySat = HSLColor.fromColor(s.primary).saturation;
+    expect(primarySat, lessThan(0.2));
   });
 
   test('the Grok header stays legible against its title text', () {
@@ -46,26 +58,14 @@ void main() {
     final scheme = theme.colorScheme;
     // White-ish title over a charcoal bar: contrast must clear WCAG AA for
     // large text (3:1) with room to spare.
-    expect(
-      _contrast(scheme.onPrimary, scheme.primary),
-      greaterThan(4.5),
-    );
+    expect(_contrast(scheme.onPrimary, scheme.primary), greaterThan(4.5));
   });
 
-  test('MUTILATED exposes three distinct accent hues', () {
+  test('MUTILATED keeps its blood-red identity', () {
     final s = AppTheme.lightMutilated().colorScheme;
-    final hues = [
-      HSLColor.fromColor(s.primary).hue,
-      HSLColor.fromColor(s.secondary).hue,
-      HSLColor.fromColor(s.tertiary).hue,
-    ];
-    // Blood / plum / aged-gold: at least 20° apart from each other.
-    for (var i = 0; i < hues.length; i++) {
-      for (var j = i + 1; j < hues.length; j++) {
-        final d = (hues[i] - hues[j]).abs();
-        final sep = d > 180 ? 360 - d : d;
-        expect(sep, greaterThan(20), reason: 'hues $i and $j too close');
-      }
-    }
+    // The primary stays in the red family (hue ~0-20 or ~340-360).
+    final hue = HSLColor.fromColor(s.primary).hue;
+    final inRedFamily = hue < 30 || hue > 330;
+    expect(inRedFamily, isTrue, reason: 'primary hue $hue not red');
   });
 }

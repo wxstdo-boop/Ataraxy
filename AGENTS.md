@@ -111,6 +111,23 @@ release, so bump `version:` in `pubspec.yaml` before tagging.
   differs from the scaffold, those corners show up as white "просветы".
 - `PremiumHeader` is `ClipRRect`-ed to the same radius as the AppBar `shape`.
   Keep the two radii in sync or the gradient bleeds past the rounded corner.
+- `MUTILATED` and `Grok` themes override `cardTheme` in a `.copyWith`, which
+  replaces the base `cardTheme` entirely — re-declare the hairline rim +
+  shadow there too, or those themes lose the card depth every other theme has.
+- Don't over-"harmonise": pushing secondary/tertiary onto the primary's hue
+  (or cranking chroma) makes every theme collapse into one muddy wash. The
+  user prefers the calmer palette; keep hue offsets small and chroma capped.
+
+## Animation pitfalls
+
+- `AnimatedLetters` (`lib/widgets/animated_letters.dart`) must build its glyph
+  widgets INSIDE the `AnimatedBuilder` builder. Building them outside freezes
+  each letter's opacity at the first frame (0), so the wordmark never appears.
+  `test/splash_and_press_test.dart` guards this.
+- The home feed's lazy list DISPOSES off-screen cards, so a card's entrance
+  (fade+slide) replayed every time it scrolled back into view. `_ListSection`
+  now takes a shared `seenEntranceIds` set so the entrance is one-shot per
+  entry — without it the feed "дёргает и мигает".
 
 ## Performance notes
 

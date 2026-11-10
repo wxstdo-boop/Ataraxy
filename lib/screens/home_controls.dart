@@ -170,6 +170,12 @@ class _ListSection extends StatelessWidget {
   /// (e.g. "Сны" and "Все") never shares a tag with itself.
   final String heroPrefix;
 
+  /// Ids of entries whose entrance animation already played this session.
+  /// The lazy list disposes off-screen cards, so without this every card that
+  /// scrolled out and back replayed its fade+slide — the "записи дёргает и
+  /// мигает" flicker. Shared with the parent so the memory outlives the list.
+  final Set<String>? seenEntranceIds;
+
   const _ListSection({
     super.key,
     required this.entries,
@@ -180,6 +186,7 @@ class _ListSection extends StatelessWidget {
     required this.emptyText,
     this.header,
     this.heroPrefix = '',
+    this.seenEntranceIds,
   });
 
   @override
@@ -191,7 +198,6 @@ class _ListSection extends StatelessWidget {
     // keyed by a content signature, which remounted the list on every tab /
     // category switch — that reset the scroll offset and replayed every card's
     // entrance at once, which is what read as a "jump".
-    const animateEntrance = true;
 
     final Widget listChild;
     if (entries.isEmpty) {
@@ -306,16 +312,21 @@ class _ListSection extends StatelessWidget {
             itemCount: entries.length,
             // Lazy item builder — cards (and their markdown previews) are only
             // built for what's actually visible, instead of eagerly building
-            // every entry on every list build.
-            itemBuilder: (context, i) => _EntryCard(
-              key: ValueKey(entries[i].id),
-              index: i,
-              entry: entries[i],
-              heroTag: '$heroPrefix-${entries[i].id}',
-              animate: animateEntrance,
-              onTap: () => onTap(entries[i]),
-              onPin: () => onPin(entries[i]),
-            ),
+            // every entry on every list build. `seenEntranceIds` makes the
+            // fade+slide a one-shot per entry, so a card scrolled back into
+            // view does not replay it (the "мигает" flicker).
+            itemBuilder: (context, i) {
+              final entry = entries[i];
+              return _EntryCard(
+                key: ValueKey(entry.id),
+                index: i,
+                entry: entry,
+                heroTag: '$heroPrefix-${entry.id}',
+                animate: seenEntranceIds == null || seenEntranceIds!.add(entry.id),
+                onTap: () => onTap(entry),
+                onPin: () => onPin(entry),
+              );
+            },
             footer: const _MadeWithLove(key: ValueKey('footer')),
           ),
         ),

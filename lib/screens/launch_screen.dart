@@ -73,9 +73,12 @@ class _LaunchScreenState extends State<LaunchScreen>
                       gradient: LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
-                        colors: [pink.withValues(alpha: 0.45), lavender.withValues(alpha: 0.55)],
+                        colors: [pink.withValues(alpha: 0.35), lavender.withValues(alpha: 0.45)],
                       ),
                       shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.10),
+                      ),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withValues(alpha: 0.35),

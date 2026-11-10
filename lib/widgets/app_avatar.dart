@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
-/// The app's avatar: the actual app artwork (assets/ataraxy.png — the peach
-/// crescent-moon icon) inside a volumetric gradient ring + soft glow.
+/// The app's avatar: the actual app artwork (assets/ataraxy.png — the cream
+/// crescent moon on a pure black field) inside a volumetric gradient ring +
+/// soft glow.
 ///
 /// The ring's colors are pulled from the ACTIVE THEME (primary → tertiary
 /// sweep) and the glow uses scheme.primary, so the avatar visibly matches the
@@ -51,12 +52,13 @@ class AppAvatar extends StatelessWidget {
         ],
       ),
       padding: EdgeInsets.all(radius * 0.10),
-      // Inner face: the original app artwork, framed with a thin theme-tinted
-      // ring so it reads as one polished medallion on every theme.
+      // Inner face: the original app artwork on a black medallion, framed
+      // with a thin theme-tinted ring so it reads as one polished disc on
+      // every theme (the art's own black field melts into the black disc).
       child: Container(
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: Colors.white,
+          color: Colors.black,
           border: Border.all(
             color: scheme.primary.withValues(alpha: 0.35),
             width: radius * 0.05,

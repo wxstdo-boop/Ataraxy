@@ -82,28 +82,29 @@ class SplashContent extends StatelessWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Squircle logo tile: softer glow ring + layered shadow
-                    // instead of the old hard black26 drop.
+                    // Squircle logo tile: the black-field artwork sits on a
+                    // black tile so the moon reads as a floating crescent
+                    // against the themed wash, not a hard white square.
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(34),
-                        gradient: LinearGradient(
+                        gradient: const LinearGradient(
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                           colors: [
-                            Colors.white,
-                            Colors.white.withValues(alpha: 0.86),
+                            Color(0xFF000000),
+                            Color(0xFF121014),
                           ],
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: scheme.shadow.withValues(alpha: 0.25),
+                            color: scheme.shadow.withValues(alpha: 0.35),
                             blurRadius: 24,
                             offset: const Offset(0, 10),
                           ),
                           BoxShadow(
-                            color: Colors.white.withValues(alpha: 0.25),
+                            color: Colors.white.withValues(alpha: 0.12),
                             blurRadius: 40,
                             spreadRadius: 6,
                           ),

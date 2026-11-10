@@ -878,7 +878,7 @@ class _HomeScreenState extends State<HomeScreen>
                                                   16,
                                                 ),
                                                 decoration: BoxDecoration(
-                                                  color: Colors.white,
+                                                  color: Colors.black,
                                                   shape: BoxShape.circle,
                                                   boxShadow: const [
                                                     BoxShadow(

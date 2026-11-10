@@ -61,13 +61,12 @@ Android · iOS · Web · macOS · Linux · Windows
 - Java 17+
 
 ### Установка
-[[!TIP]
-Для сборки в пути с кириллицей добавьте в 
-[android/gradle.properties]:
-[android.overridePathCheck=true]
-)
 
-[```bash
+> [!TIP]
+> Для сборки в пути с кириллицей добавьте в `android/gradle.properties`
+> строку `android.overridePathCheck=true`.
+
+```bash
 flutter pub get
 flutter build apk --release --split-per-abi --target-platform android-arm64 --no-tree-shake-icons
 ```
@@ -105,7 +104,7 @@ git push origin v1.3.5
 
 ## 📂 Структура проекта
 
-[```
+```
 lib/
 ├── main.dart                # Точка входа
 ├── app_shell.dart           # Главный шелл приложения
@@ -118,9 +117,11 @@ lib/
 └── l10n/                    # Локализация
 ```
 
+Дополнительная документация — в каталоге [`docs/`](docs/).
+
 ## 🧪 Тестирование
 
-[```bash
+```bash
 flutter test
 ```
 
@@ -134,8 +135,8 @@ GitHub: [wxstdo-boop/Ataraxy](https://github.com/wxstdo-boop/Ataraxy)
 
 ## 📸 Скриншоты
 
-![Главный экран](shot_final.png)
-![AI-ассистент](shot_now.png)
-![Настройки](shot_view.png)
+![Главный экран](docs/screenshots/home.png)
+![AI-ассистент](docs/screenshots/ai-assistant.png)
+![Настройки](docs/screenshots/settings.png)
 
 > Скриншоты сделаны на Redmi Note 12 (Android 13, MIUI 14)

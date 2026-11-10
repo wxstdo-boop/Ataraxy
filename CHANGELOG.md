@@ -1,5 +1,13 @@
 # Ataraxy Changelog
 
+## [Unreleased]
+### Changed
+- New app artwork: cream crescent moon on a pure black field (was peach
+  gradient). Every launcher icon, splash screen and in-app avatar now sits on
+  black, so the moon reads as a floating crescent on all platforms.
+- Repository tidy-up: removed one-off `fix*.py` / `build*.cmd` scripts and
+  root screenshots; docs moved to `docs/`, build scripts to `tools/`.
+
 ## [1.3.5] - 2026-11-09
 ### Added
 - In-app Android update check and APK installation from GitHub Releases

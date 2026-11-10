@@ -61,12 +61,9 @@ app.*.map.json
 # Local build artifacts
 /*.apk
 
-# Debug screenshots & UI dumps in the repo root (README shots are kept)
-/test_artifacts/
+# Debug screenshots & UI dumps in the repo root (keep the tree clean;
+# curated README screenshots live in docs/screenshots/)
 /*.png
-!/shot_final.png
-!/shot_now.png
-!/shot_view.png
 /ui*.xml
 /window_dump.xml
 /shot_view.html

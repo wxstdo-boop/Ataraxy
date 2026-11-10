@@ -11,8 +11,9 @@ void main() {
     exit(1);
   }
 
-  // Light lavender background used for maskable safe-zone padding.
-  final bg = img.ColorRgba8(0xF6, 0xF3, 0xFC, 255);
+  // Black background used for maskable safe-zone padding — matches the
+  // artwork's own black field so the icons stay seamless.
+  final bg = img.ColorRgba8(0x00, 0x00, 0x00, 255);
 
   void writeFilled(String path, int size) {
     final resized = img.copyResize(

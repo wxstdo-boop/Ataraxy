@@ -1,14 +1,24 @@
 # Ataraxy Changelog
 
-## [Unreleased]
+## [1.3.6] - 2026-11-10
+### Changed
+- Screen widget tests for the home and entry editors, plus shared test
+  helpers; localization strings are now checked for parity across ru/en/fr.
+- Large screens (home, settings, favorites) split into focused part files.
+- Localization moved to ARB files (`lib/l10n/arb/`) as the single source of
+  truth, with `flutter gen-l10n` and a generated Dart map behind the existing
+  `L.tr` API.
+
+### Fixed
+- Reminder dialog showed a literal `{time}` placeholder instead of the time.
+
+## [1.3.5] - 2026-11-09
 ### Changed
 - New app artwork: cream crescent moon on a pure black field (was peach
   gradient). Every launcher icon, splash screen and in-app avatar now sits on
   black, so the moon reads as a floating crescent on all platforms.
 - Repository tidy-up: removed one-off `fix*.py` / `build*.cmd` scripts and
   root screenshots; docs moved to `docs/`, build scripts to `tools/`.
-
-## [1.3.5] - 2026-11-09
 ### Added
 - In-app Android update check and APK installation from GitHub Releases
 - Automatic signed APK releases when a matching version tag is pushed

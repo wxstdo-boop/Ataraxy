@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'ai_overlay_state.dart';
+import 'l10n/generated/app_localizations.dart';
 import 'home_content.dart';
 import 'models/settings.dart';
 import 'providers/settings_provider.dart';
@@ -121,8 +122,9 @@ class AppShellState extends State<AppShell> {
         AppThemeMode.mutilated => ThemeMode.light,
       },
       locale: widget.localeCode != null ? Locale(widget.localeCode!) : null,
-      supportedLocales: const [Locale('ru'), Locale('en'), Locale('fr')],
+      supportedLocales: AppLocalizations.supportedLocales,
       localizationsDelegates: const [
+        AppLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,

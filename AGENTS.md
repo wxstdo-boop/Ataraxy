@@ -74,3 +74,26 @@ in-app avatar sit on black so the moon reads as a floating crescent.
   monochrome layers are transparent PNGs sized to the 66/108 safe zone.
 - iOS/macOS/web/windows icons are committed directly; there is no CI step that
   regenerates them, so regenerate locally and commit when the art changes.
+
+## Localization pipeline
+
+The ARB files in `lib/l10n/arb/` (`app_ru.arb`, `app_en.arb`, `app_fr.arb`)
+are the single source of truth for every user-facing string.
+
+- Edit an ARB file, then regenerate the Dart map:
+  `python3 tools/build_l10n.py` (writes `lib/l10n/strings_data.g.dart`).
+- `flutter gen-l10n` (config in `l10n.yaml`) also runs on the ARB files and
+  generates `lib/l10n/generated/app_localizations.dart`, wired into
+  `MaterialApp` in `lib/app_shell.dart`.
+- Code keeps using the small string-key API `L.tr(context, 'key')` /
+  `L.trStatic('key', ...)` in `lib/l10n/strings.dart`; it reads the generated
+  map. Placeholders use `{name}` and are filled from the `params` map.
+- `test/l10n_test.dart` fails if a message is missing from a locale or if the
+  generated map drifts from the ARB files, so regenerate before committing.
+
+### Release
+
+Pushing a `v*` tag whose version matches `pubspec.yaml` triggers
+`.github/workflows/release.yml`, which builds a signed arm64 APK and publishes
+it as a GitHub release. The in-app updater (`GithubUpdateService`) reads that
+release, so bump `version:` in `pubspec.yaml` before tagging.

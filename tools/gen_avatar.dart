@@ -137,11 +137,129 @@ void main() {
     interpolation: Interpolation.average,
   );
 
+  // In-app artwork (splash + avatar).
   File('assets/ataraxy.png')
       .writeAsBytesSync(encodePng(copyResize(down, width: 512, height: 512)));
 
-  final ico = copyResize(down, width: 256, height: 256);
-  File('windows/runner/resources/app_icon.ico').writeAsBytesSync(encodeIco(ico));
+  // Windows icon.
+  File('windows/runner/resources/app_icon.ico')
+      .writeAsBytesSync(encodeIco(copyResize(down, width: 256, height: 256)));
+
+  // Android legacy launcher icons: the full black-field artwork fills the
+  // whole icon (used on pre-adaptive devices and by some launchers).
+  const androidDensities = {
+    'mdpi': 48,
+    'hdpi': 72,
+    'xhdpi': 96,
+    'xxhdpi': 144,
+    'xxxhdpi': 192,
+  };
+  androidDensities.forEach((density, px) {
+    _write('android/app/src/main/res/mipmap-$density/ic_launcher.png', down,
+        px);
+    // Adaptive layers are 2.25x the launcher size and put the artwork inside
+    // the central 66/108 safe zone on a transparent canvas (the adaptive
+    // background colour is solid black). Without this the icon carried the
+    // hard black square plus a huge empty margin and read as "unchanged".
+    final layer = px * 9 ~/ 4;
+    _writeAdaptive(
+        'android/app/src/main/res/drawable-$density/ic_launcher_foreground.png',
+        down,
+        layer);
+    _writeMonochrome(
+        'android/app/src/main/res/drawable-$density/ic_launcher_monochrome.png',
+        layer);
+  });
+
+  // iOS app icons (no alpha, opaque black field).
+  const iosIcons = {
+    'Icon-App-20x20@1x.png': 20,
+    'Icon-App-20x20@2x.png': 40,
+    'Icon-App-20x20@3x.png': 60,
+    'Icon-App-29x29@1x.png': 29,
+    'Icon-App-29x29@2x.png': 58,
+    'Icon-App-29x29@3x.png': 87,
+    'Icon-App-40x40@1x.png': 40,
+    'Icon-App-40x40@2x.png': 80,
+    'Icon-App-40x40@3x.png': 120,
+    'Icon-App-60x60@2x.png': 120,
+    'Icon-App-60x60@3x.png': 180,
+    'Icon-App-76x76@1x.png': 76,
+    'Icon-App-76x76@2x.png': 152,
+    'Icon-App-83.5x83.5@2x.png': 167,
+    'Icon-App-1024x1024@1x.png': 1024,
+  };
+  iosIcons.forEach((name, px) => _write(
+      'ios/Runner/Assets.xcassets/AppIcon.appiconset/$name', down, px));
+
+  // macOS app icons.
+  const macIcons = {
+    'app_icon_16.png': 16,
+    'app_icon_32.png': 32,
+    'app_icon_64.png': 64,
+    'app_icon_128.png': 128,
+    'app_icon_256.png': 256,
+    'app_icon_512.png': 512,
+    'app_icon_1024.png': 1024,
+  };
+  macIcons.forEach((name, px) => _write(
+      'macos/Runner/Assets.xcassets/AppIcon.appiconset/$name', down, px));
+
+  stdout.writeln('App artwork + platform icons regenerated.');
+}
+
+/// Writes [src] resized to a square [px] PNG at [path].
+void _write(String path, Image src, int px) {
+  File(path).writeAsBytesSync(encodePng(copyResize(src,
+      width: px, height: px, interpolation: Interpolation.average)));
+}
+
+/// Android adaptive foreground: the artwork scaled into the safe zone on a
+/// transparent canvas, so the launcher's own mask shapes the icon.
+void _writeAdaptive(String path, Image src, int px) {
+  final canvas = Image(width: px, height: px, numChannels: 4);
+  final inner = (px * 0.66).round();
+  compositeImage(
+    canvas,
+    copyResize(src,
+        width: inner, height: inner, interpolation: Interpolation.average),
+    dstX: (px - inner) ~/ 2,
+    dstY: (px - inner) ~/ 2,
+  );
+  File(path).writeAsBytesSync(encodePng(canvas));
+}
+
+/// Android monochrome layer: a white crescent silhouette the launcher tints
+/// with the user's wallpaper colours (Material You).
+void _writeMonochrome(String path, int px) {
+  final canvas = Image(width: px, height: px, numChannels: 4);
+  final inner = (px * 0.66).round();
+  compositeImage(
+    canvas,
+    _moonMask(inner),
+    dstX: (px - inner) ~/ 2,
+    dstY: (px - inner) ~/ 2,
+  );
+  File(path).writeAsBytesSync(encodePng(canvas));
+}
+
+/// A white crescent silhouette (transparent elsewhere) for the monochrome
+/// adaptive layer, using the same geometry as the main artwork.
+Image _moonMask(int size) {
+  final out = Image(width: size, height: size, numChannels: 4);
+  final s = size / 1024.0;
+  final cx = 512.0 * s, cy = 512.0 * s, outerR = 300.0 * s;
+  final ox = 660.0 * s, oy = 452.0 * s, cutR = 268.0 * s;
+  for (var y = 0; y < size; y++) {
+    for (var x = 0; x < size; x++) {
+      final dOuter = math.sqrt((x - cx) * (x - cx) + (y - cy) * (y - cy));
+      final dCut = math.sqrt((x - ox) * (x - ox) + (y - oy) * (y - oy));
+      final a = (outerR + 0.5 - dOuter).clamp(0.0, 1.0) *
+          (dCut - cutR + 0.5).clamp(0.0, 1.0);
+      if (a > 0) out.setPixelRgba(x, y, 255, 255, 255, (a * 255).round());
+    }
+  }
+  return out;
 }
 
 class _Rgba {

@@ -117,19 +117,19 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   void _finish() {
     if (_isClosing) return; // prevent double-fire
     _isClosing = true;
-    // Animate out: the whole screen FADES and glides down gently as one
-    // piece — nothing in the layout changes mid-animation, so no jerk.
-    _animCtrl.reverse().then((_) {
-      if (mounted) {
-        final updated = widget.settings.copyWith(
-          // The welcome returns next launch UNLESS the user explicitly
-          // checked "Больше не показывать" (keep that contract intact).
-          showWelcome: !_dontShowAgain,
-          reminderEnabled: _notificationsGranted,
-        );
-        widget.onComplete(updated);
-      }
-    });
+    // Do NOT fade this screen out here: the parent HomeContent already
+    // cross-fades the welcome screen into the home screen (AnimatedSwitcher).
+    // Running both meant the screen faded to the bare background first and
+    // THEN the home faded in — two fades in a row, which read as a blink /
+    // jerk with a blank frame between them. Handing straight to the parent
+    // leaves a single smooth cross-fade.
+    final updated = widget.settings.copyWith(
+      // The welcome returns next launch UNLESS the user explicitly checked
+      // "Больше не показывать" (keep that contract intact).
+      showWelcome: !_dontShowAgain,
+      reminderEnabled: _notificationsGranted,
+    );
+    widget.onComplete(updated);
   }
 
   @override
@@ -287,17 +287,59 @@ class _PermissionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 340),
+      duration: const Duration(milliseconds: 420),
       curve: Curves.easeOutCubic,
-      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        // The plate itself shifts color (neutral -> sage) and radius smoothly
-        // as the state flips, so the whole card reacts, not just the button.
+        // The plate itself shifts colour (neutral -> sage) and radius as the
+        // state flips, so the whole card reacts, not just the button.
         color: notificationsGranted
             ? AppAccents.sage.withValues(alpha: 0.12)
             : scheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(16),
       ),
+      // Clip so the sliding content never spills past the rounded plate.
+      clipBehavior: Clip.antiAlias,
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 420),
+        switchInCurve: Curves.easeOutCubic,
+        switchOutCurve: Curves.easeInCubic,
+        // Keep the outgoing card stacked under the incoming one so they
+        // glide past each other (a page turn) instead of blinking.
+        layoutBuilder: (current, previous) => Stack(
+          alignment: Alignment.center,
+          children: [...previous, ?current],
+        ),
+        transitionBuilder: (child, anim) {
+          // Incoming card slides in from the right; the outgoing one leaves
+          // to the left — a horizontal "card flip" rather than a fade.
+          final incoming = child.key == ValueKey(notificationsGranted);
+          final begin = incoming
+              ? const Offset(0.14, 0)
+              : const Offset(-0.14, 0);
+          return ClipRect(
+            child: FadeTransition(
+              opacity: anim,
+              child: SlideTransition(
+                position: Tween<Offset>(
+                  begin: begin,
+                  end: Offset.zero,
+                ).animate(anim),
+                child: child,
+              ),
+            ),
+          );
+        },
+        child: KeyedSubtree(
+          key: ValueKey(notificationsGranted),
+          child: _content(),
+        ),
+      ),
+    );
+  }
+
+  Widget _content() {
+    return Padding(
+      padding: const EdgeInsets.all(16),
       child: Row(
         children: [
           _PermissionIcon(
@@ -312,22 +354,7 @@ class _PermissionCard extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          // The button itself never moves: it fades + scales between the
-          // "Включить", spinner and green "Включено" states, so granting
-          // the permission reads as one smooth motion, not a layout jump.
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 320),
-            switchInCurve: Curves.easeOutCubic,
-            switchOutCurve: Curves.easeIn,
-            transitionBuilder: (child, anim) => FadeTransition(
-              opacity: anim,
-              child: ScaleTransition(
-                scale: Tween<double>(begin: 0.9, end: 1.0).animate(anim),
-                child: child,
-              ),
-            ),
-            child: _button(),
-          ),
+          _button(),
         ],
       ),
     );
@@ -336,7 +363,6 @@ class _PermissionCard extends StatelessWidget {
   Widget _button() {
     if (notificationsGranted) {
       return FilledButton.tonalIcon(
-        key: const ValueKey('granted'),
         onPressed: null,
         icon: const Icon(
           Icons.check_circle_rounded,
@@ -350,17 +376,20 @@ class _PermissionCard extends StatelessWidget {
         ),
       );
     }
-    return FilledButton.tonalIcon(
-      key: const ValueKey('enable'),
-      onPressed: requesting ? null : onEnable,
-      icon: requesting
-          ? const SizedBox(
-              width: 16,
-              height: 16,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
-          : const Icon(Icons.notifications_rounded, size: 18),
-      label: const Text('Включить'),
+    return PressScale(
+      scale: 0.94,
+      haptic: true,
+      child: FilledButton.tonalIcon(
+        onPressed: requesting ? null : onEnable,
+        icon: requesting
+            ? const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Icon(Icons.notifications_rounded, size: 18),
+        label: const Text('Включить'),
+      ),
     );
   }
 }
@@ -376,7 +405,7 @@ class _PermissionIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 340),
+      duration: const Duration(milliseconds: 420),
       curve: Curves.easeOutCubic,
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
@@ -385,23 +414,13 @@ class _PermissionIcon extends StatelessWidget {
             : scheme.primaryContainer,
         borderRadius: BorderRadius.circular(12),
       ),
-      // The icon swaps with a cross-fade + a small scale pop, so the state
-      // change reads as the badge "turning on" rather than snapping.
-      child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 320),
-        switchInCurve: Curves.easeOutBack,
-        switchOutCurve: Curves.easeIn,
-        transitionBuilder: (child, anim) => ScaleTransition(
-          scale: anim,
-          child: FadeTransition(opacity: anim, child: child),
-        ),
-        child: Icon(
-          key: ValueKey(notificationsGranted),
-          notificationsGranted
-              ? Icons.notifications_active_rounded
-              : Icons.notifications_none_rounded,
-          color: notificationsGranted ? AppAccents.sage : scheme.primary,
-        ),
+      // The whole card slides between states (see _PermissionCard), so the
+      // badge itself only needs to tint — no second animation on top.
+      child: Icon(
+        notificationsGranted
+            ? Icons.notifications_active_rounded
+            : Icons.notifications_none_rounded,
+        color: notificationsGranted ? AppAccents.sage : scheme.primary,
       ),
     );
   }
@@ -426,20 +445,16 @@ class _PermissionText extends StatelessWidget {
           style: style.titleSmall?.copyWith(fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 2),
-        // Animate the label colour as the permission flips, so the wording
-        // and the tint change together instead of the text snapping colour.
-        AnimatedDefaultTextStyle(
-          duration: const Duration(milliseconds: 320),
-          curve: Curves.easeOutCubic,
+        // The whole card slides between its two states (see _PermissionCard),
+        // so the wording simply swaps with it — no per-text animation needed.
+        Text(
+          notificationsGranted
+              ? 'Разрешение получено'
+              : 'Для напоминаний о записях в дневник',
           style: (style.bodySmall ?? const TextStyle()).copyWith(
             color: notificationsGranted
                 ? AppAccents.sage
                 : scheme.onSurfaceVariant,
-          ),
-          child: Text(
-            notificationsGranted
-                ? 'Разрешение получено'
-                : 'Для напоминаний о записях в дневник',
           ),
         ),
       ],

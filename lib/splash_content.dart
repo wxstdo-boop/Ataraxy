@@ -171,7 +171,9 @@ class SplashContent extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 28),
-                    const CometSpinner(size: 46, color: Color(0xE6B03A38)),
+                    // Black "snake": a dark comet arc so it reads as ink on
+                    // the themed wash, matching the black-field artwork.
+                    const CometSpinner(size: 46),
                   ],
                 ),
               ),
@@ -183,9 +185,9 @@ class SplashContent extends StatelessWidget {
   }
 }
 
-/// A smooth rotating "comet" arc: a blood-red stroke whose head and tail both
-/// fade to nothing (a snake), so the loading motion never shows a hard blunt
-/// end. The arc length gently breathes as it spins.
+/// A smooth rotating "comet" arc: a dark stroke whose head and tail both fade
+/// to nothing (a snake), so the loading motion never shows a hard blunt end.
+/// The arc length gently breathes as it spins.
 class CometSpinner extends StatefulWidget {
   final double size;
   final Color color;
@@ -194,7 +196,7 @@ class CometSpinner extends StatefulWidget {
   const CometSpinner({
     super.key,
     this.size = 46,
-    this.color = const Color(0xE6B03A38),
+    this.color = const Color(0xE6000000),
     this.strokeWidth = 5,
   });
 
@@ -225,11 +227,17 @@ class _CometSpinnerState extends State<CometSpinner>
   Widget build(BuildContext context) {
     return SizedBox.square(
       dimension: widget.size,
-      child: CustomPaint(
-        painter: _CometPainter(
-          t: _controller,
-          color: widget.color,
-          strokeWidth: widget.strokeWidth,
+      // Own layer: the arc repaints every frame, so isolating it keeps that
+      // per-frame repaint from dirtying the whole splash (which would force
+      // the big gradient + artwork to re-rasterise on every frame — the
+      // stutter felt while the splash was fading out).
+      child: RepaintBoundary(
+        child: CustomPaint(
+          painter: _CometPainter(
+            t: _controller,
+            color: widget.color,
+            strokeWidth: widget.strokeWidth,
+          ),
         ),
       ),
     );

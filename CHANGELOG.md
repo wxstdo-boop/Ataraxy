@@ -1,5 +1,27 @@
 # Ataraxy Changelog
 
+## [1.3.10] - 2026-11-10
+### Fixed
+- The launcher icon is now regenerated from the new artwork on **every**
+  platform — the APK previously kept the old Android launcher/adaptive
+  layers (only the in-app asset had been updated). The moon also fills the
+  adaptive icon's safe zone properly instead of sitting tiny in a big black
+  square.
+- Splash exit no longer stutters: the fade uses a single ease-in-out curve
+  (no sudden jump in speed where the hold ended) and the splash subtree is
+  rasterised once, so the fade is a pure composited transform.
+
+### Changed
+- Splash loading "snake" is now black instead of crimson.
+- Onboarding notification card now swaps its whole content with a horizontal
+  slide (a card-change motion) instead of cross-fading in place.
+- Leaving onboarding no longer blinks/jerks: the welcome screen hands straight
+  to the parent cross-fade instead of fading itself out first (that produced
+  two fades in a row with a blank frame between them).
+- Press feedback (spring-back dimple + haptic) now also on the reminders
+  button, the refresh button and the "Любимое дело", "Избранное" and notes
+  banners, matching the "+" button.
+
 ## [1.3.9] - 2026-11-10
 ### Fixed
 - The onboarding "Начать пользоваться" button fired its action twice per tap

@@ -67,11 +67,15 @@ The app art is a cream crescent moon on a **pure black field**
 (`assets/ataraxy.png`, 512px). Every platform icon, the native splash and the
 in-app avatar sit on black so the moon reads as a floating crescent.
 
-- Regenerate the art + Windows icon: `dart run tools/gen_avatar.dart`
+- Regenerate the art **and every platform icon** (Windows `.ico`, Android
+  launcher + adaptive foreground/monochrome layers, iOS and macOS icon sets):
+  `dart run tools/gen_avatar.dart`
 - Regenerate web/PWA icons: `dart run tools/gen_web_icons.dart`
 - Android adaptive background is `#000000` (`pubspec.yaml` +
   `android/app/src/main/res/values/colors.xml`); the adaptive foreground and
-  monochrome layers are transparent PNGs sized to the 66/108 safe zone.
+  monochrome layers are transparent PNGs with the artwork already placed
+  inside the 66/108 safe zone, so `mipmap-anydpi-v26/ic_launcher.xml` must
+  NOT add its own `inset` (that would shrink the moon twice).
 - iOS/macOS/web/windows icons are committed directly; there is no CI step that
   regenerates them, so regenerate locally and commit when the art changes.
 

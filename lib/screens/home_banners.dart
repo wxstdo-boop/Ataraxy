@@ -48,7 +48,10 @@ class _DailyGuideBanner extends StatelessWidget {
       // Inside the list header the list already applies 16px horizontal
       // padding — only keep vertical rhythm here.
       padding: const EdgeInsets.only(top: 12, bottom: 4),
-      child: Material(
+      child: PressScale(
+        scale: 0.97,
+        haptic: true,
+        child: Material(
         color: Colors.transparent,
         borderRadius: BorderRadius.circular(28),
         elevation: 6,
@@ -174,6 +177,7 @@ class _DailyGuideBanner extends StatelessWidget {
           ),
         ),
       ),
+      ),
     );
   }
 }
@@ -192,7 +196,10 @@ class _FavoritesBanner extends StatelessWidget {
       // Inside the list header the list already applies 16px horizontal
       // padding — only keep vertical rhythm here.
       padding: const EdgeInsets.only(top: 12, bottom: 4),
-      child: Material(
+      child: PressScale(
+        scale: 0.97,
+        haptic: true,
+        child: Material(
         borderRadius: BorderRadius.circular(16),
         color: scheme.primaryContainer.withValues(alpha: 0.5),
         child: InkWell(
@@ -260,6 +267,7 @@ class _FavoritesBanner extends StatelessWidget {
           ),
         ),
       ),
+      ),
     );
   }
 }
@@ -278,7 +286,10 @@ class _FavoriteActivitiesBanner extends StatelessWidget {
       // Inside the list header the list already applies 16px horizontal
       // padding — only keep vertical rhythm here.
       padding: const EdgeInsets.only(top: 12, bottom: 4),
-      child: Material(
+      child: PressScale(
+        scale: 0.97,
+        haptic: true,
+        child: Material(
         borderRadius: BorderRadius.circular(20),
         color: Colors.transparent,
         child: InkWell(
@@ -363,6 +374,7 @@ class _FavoriteActivitiesBanner extends StatelessWidget {
           ),
         ),
       ),
+      ),
     );
   }
 }
@@ -412,7 +424,10 @@ class _AllBanner extends StatelessWidget {
       // Inside the list header the list already applies 16px horizontal
       // padding — only keep vertical rhythm here.
       padding: const EdgeInsets.only(top: 12, bottom: 4),
-      child: Material(
+      child: PressScale(
+        scale: 0.97,
+        haptic: true,
+        child: Material(
         borderRadius: BorderRadius.circular(20),
         color: Colors.transparent,
         child: InkWell(
@@ -515,6 +530,7 @@ class _AllBanner extends StatelessWidget {
             ),
           ),
         ),
+      ),
       ),
     );
   }

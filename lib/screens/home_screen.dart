@@ -484,7 +484,10 @@ class _HomeScreenState extends State<HomeScreen>
                         ),
                       ),
                     )
-                  : IconButton(
+                  : PressScale(
+                      scale: 0.86,
+                      haptic: true,
+                      child: IconButton(
                       key: const ValueKey('refresh'),
                       icon: const Icon(Icons.refresh_rounded),
                       onPressed: showRefresh
@@ -510,6 +513,7 @@ class _HomeScreenState extends State<HomeScreen>
                               });
                             }
                           : null,
+                    ),
                     ),
             ),
           ),
@@ -1032,15 +1036,22 @@ class _HomeScreenState extends State<HomeScreen>
                         valueListenable: _fabVisible,
                         builder: (context, fabVisible, _) => _FadeSlideFab(
                           visible: fabVisible,
-                          child: FloatingActionButton(
-                            heroTag: 'reminders',
-                            backgroundColor: Theme.of(
-                              context,
-                            ).colorScheme.primary,
-                            foregroundColor: Colors.white,
-                            onPressed: _openReminderDialog,
-                            child: const Icon(
-                              Icons.notifications_active_rounded,
+                          // Same spring-back dimple as the "+" FAB (0.93), so
+                          // the two floating controls answer a press
+                          // identically.
+                          child: PressScale(
+                            scale: 0.93,
+                            haptic: true,
+                            child: FloatingActionButton(
+                              heroTag: 'reminders',
+                              backgroundColor: Theme.of(
+                                context,
+                              ).colorScheme.primary,
+                              foregroundColor: Colors.white,
+                              onPressed: _openReminderDialog,
+                              child: const Icon(
+                                Icons.notifications_active_rounded,
+                              ),
                             ),
                           ),
                         ),

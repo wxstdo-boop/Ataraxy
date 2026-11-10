@@ -49,25 +49,23 @@ class HomeContentState extends State<HomeContent>
 
     _splashController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1750),
+      duration: const Duration(milliseconds: 1450),
     );
 
     // The splash is fully opaque from the first frame (so the avatar shows
-    // immediately), holds, then melts away: a long, soft fade (easeOutQuint)
-    // so the exit never blinks off, with the content drifting up a touch as
-    // it goes. The content underneath is fully opaque the whole time — no
-    // cross-fade, so no background "flash".
-    _splashOpacity = TweenSequence<double>([
-      TweenSequenceItem(
-        tween: ConstantTween(1.0),
-        weight: 50,
+    // immediately), holds briefly, then melts away with a SINGLE
+    // easeInOutCubic fade. That curve starts and ends at zero velocity, so
+    // both the hand-off from the hold into the fade AND the end of the fade
+    // have no sudden change of speed — the old constant→easeOutQuint sequence
+    // jumped straight to full speed as the fade began, which read as a
+    // stutter. The content underneath stays fully opaque the whole time — no
+    // cross-fade, so no background flash.
+    _splashOpacity = Tween<double>(begin: 1.0, end: 0.0).animate(
+      CurvedAnimation(
+        parent: _splashController,
+        curve: const Interval(0.32, 1.0, curve: Curves.easeInOutCubic),
       ),
-      TweenSequenceItem(
-        tween: Tween(begin: 1.0, end: 0.0)
-            .chain(CurveTween(curve: Curves.easeOutQuint)),
-        weight: 50,
-      ),
-    ]).animate(_splashController);
+    );
 
     _splashController.addStatusListener((status) {
       if (status == AnimationStatus.completed && mounted) {
@@ -175,18 +173,28 @@ class HomeContentState extends State<HomeContent>
             // outward and dissolves, so the exit reads as a melt rather than
             // a hard cut.
             child: ScaleTransition(
-              scale: Tween<double>(begin: 1.0, end: 1.06).animate(
+              // A gentle scale-up that runs over the SAME window as the fade
+              // and eases in/out, so the panel breathes outward and dissolves
+              // as one motion (no separate mid-flight start).
+              scale: Tween<double>(begin: 1.0, end: 1.04).animate(
                 CurvedAnimation(
                   parent: _splashController,
-                  curve: const Interval(0.5, 1.0, curve: Curves.easeOutCubic),
+                  curve: const Interval(0.30, 1.0, curve: Curves.easeInOutCubic),
                 ),
               ),
-              child: SplashContent(
-                opacity: AlwaysStoppedAnimation(1.0),
-                contentOpacity: AlwaysStoppedAnimation(1.0),
-                // MUTILATED: the splash background is fully opaque; other
-                // themes keep the soft translucent theme gradient.
-                opaque: _lastSettings.themeMode == AppThemeMode.mutilated,
+              // RepaintBoundary: the splash subtree (big gradients + artwork)
+              // is rasterised ONCE into a texture, and the fade/scale below
+              // are then pure composited transforms of that cached texture.
+              // Without this the full-screen gradients were re-rasterised on
+              // every frame of the exit — the laggy fade-out.
+              child: RepaintBoundary(
+                child: SplashContent(
+                  opacity: AlwaysStoppedAnimation(1.0),
+                  contentOpacity: AlwaysStoppedAnimation(1.0),
+                  // MUTILATED: the splash background is fully opaque; other
+                  // themes keep the soft translucent theme gradient.
+                  opaque: _lastSettings.themeMode == AppThemeMode.mutilated,
+                ),
               ),
             ),
           ),

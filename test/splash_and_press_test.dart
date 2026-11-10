@@ -25,7 +25,6 @@ void main() {
         home: Scaffold(
           body: Center(
             child: PressScale(
-              onTap: () {},
               child: const SizedBox(width: 100, height: 40),
             ),
           ),

@@ -4,14 +4,17 @@ import 'package:flutter/services.dart';
 /// Wraps any tappable child and gives it a smooth "press dimple": while the
 /// finger is held the child eases down to [scale] and springs back on release.
 ///
-/// Used on buttons that are not [PressableIconButton] (the onboarding Start
+/// Used on controls that are not [PressableIconButton] (the onboarding Start
 /// button, close buttons, pills) so the whole app answers a touch the same
 /// soft, expensive-feeling way.
+///
+/// The child keeps its own tap handling — this widget only tracks the pressed
+/// state (so a button inside still receives its tap), optionally firing a
+/// light haptic the moment the finger lands.
 class PressScale extends StatefulWidget {
   final Widget child;
   final double scale;
   final Duration duration;
-  final VoidCallback? onTap;
   final bool haptic;
 
   const PressScale({
@@ -19,7 +22,6 @@ class PressScale extends StatefulWidget {
     required this.child,
     this.scale = 0.94,
     this.duration = const Duration(milliseconds: 180),
-    this.onTap,
     this.haptic = false,
   });
 
@@ -37,23 +39,18 @@ class _PressScaleState extends State<PressScale> {
   @override
   Widget build(BuildContext context) {
     return Listener(
-      onPointerDown: (_) => _set(true),
+      behavior: HitTestBehavior.opaque,
+      onPointerDown: (_) {
+        if (widget.haptic) HapticFeedback.lightImpact();
+        _set(true);
+      },
       onPointerUp: (_) => _set(false),
       onPointerCancel: (_) => _set(false),
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: widget.onTap == null
-            ? null
-            : () {
-                if (widget.haptic) HapticFeedback.lightImpact();
-                widget.onTap!.call();
-              },
-        child: AnimatedScale(
-          scale: _pressed ? widget.scale : 1.0,
-          duration: widget.duration,
-          curve: Curves.easeOut,
-          child: widget.child,
-        ),
+      child: AnimatedScale(
+        scale: _pressed ? widget.scale : 1.0,
+        duration: widget.duration,
+        curve: Curves.easeOut,
+        child: widget.child,
       ),
     );
   }

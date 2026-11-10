@@ -472,7 +472,6 @@ class _StartButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PressScale(
-      onTap: onPressed,
       scale: 0.96,
       haptic: true,
       child: SizedBox(

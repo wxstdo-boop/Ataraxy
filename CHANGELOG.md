@@ -1,5 +1,11 @@
 # Ataraxy Changelog
 
+## [1.3.9] - 2026-11-10
+### Fixed
+- The onboarding "Начать пользоваться" button fired its action twice per tap
+  (the press-dimple wrapper and the button both handled the gesture); the
+  wrapper now only tracks the pressed state and lets the button handle taps.
+
 ## [1.3.8] - 2026-11-10
 ### Changed
 - App artwork regenerated at higher resolution with supersampled

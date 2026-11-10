@@ -167,6 +167,20 @@ class HomeContentState extends State<HomeContent>
           )
         : _home();
 
+    // The wrapper around [base] must be the SAME widget type in every state.
+    // It used to be `Opacity(opacity: 0, child: base)` while onboarding and the
+    // bare `base` afterwards — a type change at this slot, so Flutter could not
+    // reuse the element and REMOUNTED the whole home subtree the moment the
+    // welcome left. Every card re-ran its entrance animation at once: that is
+    // the "записи дёргает по двойному" right after the greeting. A stable
+    // IgnorePointer (only its `ignoring` flag flips) keeps the home element
+    // alive, so the reveal is just the welcome fading off a home that already
+    // finished animating behind it.
+    final Widget baseLayer = IgnorePointer(
+      ignoring: _welcomeMounted,
+      child: base,
+    );
+
     // Always keep the same tree shape (base under the splash overlay). If we
     // swapped the Stack for the bare content when the splash finished, the
     // whole subtree would REMOUNT — re-running the welcome intro and the
@@ -176,11 +190,7 @@ class HomeContentState extends State<HomeContent>
       fit: StackFit.expand,
       children: [
         bg,
-        // While onboarding the home is laid out and painted but invisible and
-        // inert, warming up behind the welcome card.
-        _welcomeMounted
-            ? Opacity(opacity: 0, child: IgnorePointer(child: base))
-            : base,
+        baseLayer,
         // The welcome card, fading out over the already-painted home when
         // onboarding ends. The RepaintBoundary caches its raster so the fade
         // is a pure composited opacity, not a live re-composite every frame.

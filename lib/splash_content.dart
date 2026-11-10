@@ -153,9 +153,22 @@ class SplashContent extends StatelessWidget {
                     ),
                     const SizedBox(height: 22),
                     // Brand wordmark: italic display cut with a trailing
-                    // period, and each glyph writes itself in on a stagger.
+                    // period, and each glyph writes itself in on a stagger —
+                    // then erases again in reverse as the splash melts away, so
+                    // the letters both appear AND disappear smoothly.
                     AnimatedLetters(
                       '${L.tr(context, 'launchTitle')}.',
+                      erase: true,
+                      // Write-on finishes inside the splash's opaque hold
+                      // (~0.4 s) so the wordmark is FULLY written before the
+                      // fade begins — the old timings kept writing while the
+                      // splash was already fading, so the letters never read
+                      // as "appearing". Then they hold briefly and erase in
+                      // step with the fade.
+                      duration: const Duration(milliseconds: 200),
+                      delay: const Duration(milliseconds: 18),
+                      outDelay: const Duration(milliseconds: 240),
+                      outDuration: const Duration(milliseconds: 520),
                       style: TextStyle(
                         fontFamily: AppTheme.displayFont,
                         fontStyle: FontStyle.italic,
@@ -331,27 +344,28 @@ class _WavyUnderlined extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Match the rule to the label's real width so it hugs the text edge to
-    // edge instead of floating as a fixed 150px bar under a wider label.
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        child,
-        const SizedBox(height: 3),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final w = constraints.maxWidth.isFinite ? constraints.maxWidth : 150.0;
-            return CustomPaint(
-              size: Size(w, 6),
+    // IntrinsicWidth + stretch makes the rule hug the LABEL's width instead of
+    // spanning the whole row (the previous LayoutBuilder reported the incoming
+    // max width — the full screen — so the wave stretched edge to edge).
+    return IntrinsicWidth(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          child,
+          const SizedBox(height: 3),
+          SizedBox(
+            height: 6,
+            child: CustomPaint(
               painter: _WavyUnderlinePainter(
                 // Translucent red: reads as ink, not a warning stripe. Lower
                 // alpha so it sits UNDER the text as a soft flourish.
                 color: const Color(0xFFE05A5A).withValues(alpha: 0.62),
               ),
-            );
-          },
-        ),
-      ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

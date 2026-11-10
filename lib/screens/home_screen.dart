@@ -1032,9 +1032,17 @@ class _HomeScreenState extends State<HomeScreen>
                                         inputFormatters: const [
                                           EmDashInputFormatter(),
                                         ],
-                                        onChanged: (value) => setState(
-                                          () => _searchQuery = value,
-                                        ),
+                                        onChanged: (value) {
+                                          setState(() {
+                                            _searchQuery = value;
+                                            // Forget the entrance memory so the
+                                            // NEW result set eases in (fade +
+                                            // slide) instead of popping — the
+                                            // "записи при поиске сменяются
+                                            // плавно" request.
+                                            _seenEntranceIds.clear();
+                                          });
+                                        },
                                         autocorrect: false,
                                         enableSuggestions: false,
                                         style: TextStyle(

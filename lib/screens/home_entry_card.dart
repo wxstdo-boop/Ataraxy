@@ -68,10 +68,16 @@ class _EntryCardState extends State<_EntryCard>
 
   @override
   Widget build(BuildContext context) {
+    // NOTE: whether the card animates is decided ONCE, in initState — it must
+    // NOT be re-read from `widget.animate` here. The parent computes
+    // `animate` via `seenEntranceIds.add(id)`, which is false on every build
+    // AFTER the first. A rebuild mid-animation (e.g. the feed reload that
+    // lands right after the greeting) used to see `animate == false` and swap
+    // the FadeTransition out for the bare body — the in-flight fade was
+    // dropped and the card POPPED to full opacity. That snap, on top of the
+    // entrance that had just started, is the "дёргает записи по двойному".
     final ctrl = _ctrl;
-    if (ctrl == null || !widget.animate) {
-      // Entrance already played (or card created after it) — render the
-      // card body directly, no transition overhead.
+    if (ctrl == null) {
       return _EntryCardBody(
         entry: widget.entry,
         index: widget.index,
@@ -233,15 +239,30 @@ class _EntryCardBodyState extends State<_EntryCardBody> {
                         ),
                       ],
                       const Spacer(),
-                      if (widget.entry.pinned) ...[
-                        Icon(
-                          Icons.push_pin_rounded,
-                          size: 16,
-                          // Theme-aware pin (was hardcoded orange).
-                          color: scheme.primary,
+                      // Pin badge: fades + scales in/out in place instead of
+                      // popping when the entry is pinned/unpinned. The slot is
+                      // always reserved (fixed-width SizedBox) so the date to
+                      // its right never shifts sideways mid-animation.
+                      SizedBox(
+                        width: 20,
+                        child: AnimatedScale(
+                          scale: widget.entry.pinned ? 1.0 : 0.4,
+                          duration: const Duration(milliseconds: 260),
+                          curve: Curves.easeOutBack,
+                          child: AnimatedOpacity(
+                            opacity: widget.entry.pinned ? 1.0 : 0.0,
+                            duration: const Duration(milliseconds: 200),
+                            curve: Curves.easeOut,
+                            child: Icon(
+                              Icons.push_pin_rounded,
+                              size: 16,
+                              // Theme-aware pin (was hardcoded orange).
+                              color: scheme.primary,
+                            ),
+                          ),
                         ),
-                        const SizedBox(width: 4),
-                      ],
+                      ),
+                      const SizedBox(width: 4),
                       if (widget.entry.category != EntryCategory.none) ...[
                         Container(
                           padding: const EdgeInsets.symmetric(

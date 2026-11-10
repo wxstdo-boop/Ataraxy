@@ -124,10 +124,34 @@ release, so bump `version:` in `pubspec.yaml` before tagging.
   widgets INSIDE the `AnimatedBuilder` builder. Building them outside freezes
   each letter's opacity at the first frame (0), so the wordmark never appears.
   `test/splash_and_press_test.dart` guards this.
+- The splash wordmark uses `AnimatedLetters(erase: true)`: it writes on, holds
+  for `outDelay`, then reverses over `outDuration`. Keep the write-on
+  (`duration` + `delay * glyphs`) SHORTER than the splash's opaque hold
+  (~0.4 s) or the letters are still appearing while the splash is already
+  fading and never read as "appearing".
+- `_EntryCard` decides `animate` ONCE in `initState`; never re-read
+  `widget.animate` in `build`. The parent's `seenEntranceIds.add(id)` makes it
+  false on every build after the first, so a rebuild mid-animation would swap
+  the `FadeTransition` for the bare body and POP the card to full opacity —
+  the "дёргает записи по двойному".
 - The home feed's lazy list DISPOSES off-screen cards, so a card's entrance
   (fade+slide) replayed every time it scrolled back into view. `_ListSection`
   now takes a shared `seenEntranceIds` set so the entrance is one-shot per
   entry — without it the feed "дёргает и мигает".
+- `_WavyUnderlined` uses `IntrinsicWidth` + `CrossAxisAlignment.stretch` so the
+  wave hugs the LABEL's width. A `LayoutBuilder` there reports the incoming max
+  width (the full screen), so the rule stretched edge to edge as a stripe.
+
+## UI pitfalls
+
+- The reminder dialog content is a plain `Column` (NOT a
+  `SingleChildScrollView`): the user wants the inner content to not scroll.
+  Keep the enable toggle as the FIRST row so nothing important is pushed out.
+- Every `TextField` sets `cursorOpacityAnimates: true` (point #7 — a smooth
+  caret, not pseudo-blinking). The base theme also sets `textSelectionTheme`
+  (brand cursor + translucent selection). Don't drop the flag on new fields.
+- `PremiumHeader` no longer draws a white hairline along its bottom curve — on
+  light themes that 1px line read as a stray stripe "снизу вылезает полоса".
 
 ## Performance notes
 

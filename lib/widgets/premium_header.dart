@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 
 /// The app's signature header backdrop: the rounded-bottom gradient panel
-/// shared by every screen's AppBar. Besides the theme gradient it adds the
-/// two "premium" layers that make the header read as lit and volumetric
-/// instead of a flat colour wash:
-///   • a soft light sheen falling from the top edge (a glassy crown),
-///   • a hairline specular highlight along the bottom curve.
-/// Both layers are static (no animation) — a perpetual shimmer would repaint
-/// the whole AppBar on every frame, which hurts low-end devices (Redmi).
+/// shared by every screen's AppBar.
+///
+/// It used to add a "premium" hairline specular highlight along the bottom
+/// curve. On the light themes that 1px white line read as a stray STRIPE
+/// creeping out under the header / the pill bar ("снизу вылезает полоса") on
+/// every screen, so it was removed — the gradient alone carries the header.
 class PremiumHeader extends StatelessWidget {
   final List<Color> colors;
   final double radius;
@@ -44,24 +43,6 @@ class PremiumHeader extends StatelessWidget {
                       Colors.transparent,
                     ],
                     stops: const [0.0, 0.5],
-                  ),
-                ),
-              ),
-            ),
-            // Hairline specular highlight along the bottom curve.
-            Align(
-              alignment: Alignment.bottomCenter,
-              child: IgnorePointer(
-                child: Container(
-                  height: 1,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        Colors.white.withValues(alpha: 0.0),
-                        Colors.white.withValues(alpha: 0.40),
-                        Colors.white.withValues(alpha: 0.0),
-                      ],
-                    ),
                   ),
                 ),
               ),

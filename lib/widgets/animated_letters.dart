@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 /// Renders [text] one glyph at a time, each fading and sliding in on a short
@@ -17,6 +19,20 @@ class AnimatedLetters extends StatefulWidget {
   final Curve curve;
   final WrapAlignment alignment;
 
+  /// When true the glyphs ERASE again after they finish writing on: the
+  /// stagger-in plays, the wordmark holds for [outDelay], then the controller
+  /// reverses over [outDuration] so the letters wipe off. Used by the splash
+  /// wordmark so the brand both writes on and disappears instead of sitting
+  /// there frozen.
+  final bool erase;
+
+  /// How long the wordmark stays fully written before it starts erasing.
+  final Duration outDelay;
+
+  /// Duration of the reverse (erase) pass. Kept separate from [duration] so the
+  /// erase can be tuned to the splash fade independently of the write-on.
+  final Duration outDuration;
+
   const AnimatedLetters(
     this.text, {
     super.key,
@@ -26,6 +42,9 @@ class AnimatedLetters extends StatefulWidget {
     this.slide = 8,
     this.curve = Curves.easeOutCubic,
     this.alignment = WrapAlignment.center,
+    this.erase = false,
+    this.outDelay = const Duration(milliseconds: 300),
+    this.outDuration = const Duration(milliseconds: 420),
   });
 
   @override
@@ -35,6 +54,7 @@ class AnimatedLetters extends StatefulWidget {
 class _AnimatedLettersState extends State<AnimatedLetters>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
+  Timer? _outTimer;
 
   @override
   void initState() {
@@ -49,6 +69,7 @@ class _AnimatedLettersState extends State<AnimatedLetters>
     // Re-run the stagger whenever the visible text changes (e.g. a language
     // switch swaps the string) so the new glyphs write themselves in too.
     if (old.text != widget.text) {
+      _outTimer?.cancel();
       _controller.reset();
       _play();
     }
@@ -57,11 +78,22 @@ class _AnimatedLettersState extends State<AnimatedLetters>
   void _play() {
     final letters = widget.text.replaceAll(' ', '').length;
     _controller.duration = widget.duration + widget.delay * letters;
-    _controller.forward();
+    _controller.forward().then((_) {
+      if (!mounted || !widget.erase) return;
+      _outTimer = Timer(widget.outDelay, () {
+        if (!mounted) return;
+        // Erase over its own, shorter duration so the wordmark wipes off in
+        // step with the splash fade instead of lingering at full opacity while
+        // the rest of the splash is already gone.
+        _controller.duration = widget.outDuration;
+        _controller.reverse();
+      });
+    });
   }
 
   @override
   void dispose() {
+    _outTimer?.cancel();
     _controller.dispose();
     super.dispose();
   }

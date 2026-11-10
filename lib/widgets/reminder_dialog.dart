@@ -73,51 +73,37 @@ class _ReminderDialogState extends State<ReminderDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: Text(L.tr(context, 'reminders')),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text(L.tr(context, 'reminders')),
-              subtitle: _enabled && (_time == null || _text.text.trim().isEmpty)
-                  ? Text(
-                      L.tr(context, 'reminderRequired'),
-                      style: const TextStyle(
-                        color: AppAccents.amber,
-                        fontSize: 12,
-                      ),
-                    )
-                  : null,
-              trailing: VolumetricSwitch(
-                value: _enabled,
-                onChanged: (v) {
-                  if (v && (_time == null || _text.text.trim().isEmpty)) {
-                    AnimatedSnack.show(
-                      context,
-                      L.tr(context, 'reminderRequired'),
-                      type: SnackType.warning,
-                      duration: const Duration(seconds: 2),
-                    );
-                    return;
-                  }
-                  setState(() => _enabled = v);
-                },
-              ),
-              onTap: () {
-                final newV = !_enabled;
-                if (newV && (_time == null || _text.text.trim().isEmpty)) {
-                  AnimatedSnack.show(
-                    context,
+      // Plain Column, NOT a SingleChildScrollView: the dialog content must not
+      // scroll ("пусть внутри содержимое там не листается"). The tile that
+      // enables the reminder is the FIRST row, so nothing important is ever
+      // pushed out of view.
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text(L.tr(context, 'reminders')),
+            subtitle: _enabled && (_time == null || _text.text.trim().isEmpty)
+                ? Text(
                     L.tr(context, 'reminderRequired'),
-                    type: SnackType.warning,
-                    duration: const Duration(seconds: 2),
-                  );
-                  return;
-                }
-                setState(() => _enabled = newV);
-              },
+                    style: const TextStyle(
+                      color: AppAccents.amber,
+                      fontSize: 12,
+                    ),
+                  )
+                : null,
+            trailing: VolumetricSwitch(
+              value: _enabled,
+              // Toggling ALWAYS flips the switch. The old version refused to
+              // move whenever the time/text were not filled yet, so after
+              // typing the text the switch still looked dead — the reminder
+              // was silently blocked by a missing TIME. Validation now happens
+              // on Save (with the inline warning above); the toggle itself is
+              // never a no-op.
+              onChanged: (v) => setState(() => _enabled = v),
             ),
+            onTap: () => setState(() => _enabled = !_enabled),
+          ),
             // Кнопка проверки разрешений — показывается если включено напоминание.
             // AnimatedSize + FadeTransition дают плавное появление блока
             // (раньше он просто "впрыгивал" при включении переключателя).
@@ -304,7 +290,6 @@ class _ReminderDialogState extends State<ReminderDialog> {
             ),
           ],
         ),
-      ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),

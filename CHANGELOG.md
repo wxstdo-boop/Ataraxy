@@ -1,5 +1,28 @@
 # Ataraxy Changelog
 
+## [1.3.15] - 2026-11-10
+### Fixed
+- Splash wordmark: the letters now write themselves in **inside the splash's
+  opaque hold** and then **erase again in reverse** as it melts away, so the
+  brand both appears and disappears smoothly instead of fading out half-written.
+- "POWERED BY LARAF" underline now hugs the label's width again — it was
+  stretching edge-to-edge across the row as a full-width stripe.
+- Feed entries no longer "дёргает по двойному" right after the greeting: a
+  rebuild landing mid-entrance used to drop the in-flight fade and POP each
+  card to full opacity.
+- Removed the stray white stripe that crept out under the header / pill bar on
+  light themes (the 1px "premium" specular hairline).
+
+### Changed
+- Smooth caret on **every** input field: `cursorOpacityAnimates` is set
+  everywhere and the theme now carries a brand-tinted cursor + translucent
+  selection, so the caret breathes instead of hard-blinking.
+- Reminder dialog content no longer scrolls internally, and the enable toggle
+  always flips (validation happens on Save).
+- Search results now change smoothly: each new result set eases in (fade +
+  slide) instead of popping, and the category-of-day filter gets the same
+  treatment.
+
 ## [1.3.11] - 2026-11-10
 ### Fixed
 - No more white "просветы" under the header: the feed background now matches

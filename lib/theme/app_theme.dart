@@ -253,6 +253,16 @@ class AppTheme {
       useMaterial3: true,
       colorScheme: scheme,
       scaffoldBackgroundColor: scaffoldBg ?? scheme.surfaceContainerLowest,
+      // The text caret: a soft rounded brand-tinted bar instead of the default
+      // thin 2px line. Combined with `cursorOpacityAnimates: true` on every
+      // field (point #7 — "любая буква появляется и исчезает плавно, а не
+      // псевдо-мигание"), the caret now breathes in and out smoothly on every
+      // input in the app instead of hard-blinking.
+      textSelectionTheme: TextSelectionThemeData(
+        cursorColor: scheme.primary,
+        selectionColor: scheme.primary.withValues(alpha: 0.28),
+        selectionHandleColor: scheme.primary,
+      ),
       textTheme: baseTextTheme.apply(
         bodyColor: scheme.onSurface,
         displayColor: scheme.onSurface,

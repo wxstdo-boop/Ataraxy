@@ -129,6 +129,16 @@ release, so bump `version:` in `pubspec.yaml` before tagging.
   (`duration` + `delay * glyphs`) SHORTER than the splash's opaque hold
   (~0.4 s) or the letters are still appearing while the splash is already
   fading and never read as "appearing".
+- `AnimatedLetters` supports `startDelay`: the write-on is deferred a beat
+  after mount so the splash's first (expensive) frame is rasterised before the
+  stagger begins. Without it the letters were already fully written by the time
+  the first frame was on screen and read as "буквы пишутся как обычно". The
+  splash holds opaque for the first half of its controller (Interval 0.5→1.0
+  fade) so the whole ~1 s write-on lands inside the hold.
+- Press feedback is asymmetric on purpose: `PressScale`, `PressableIconButton`
+  and `_PressFab` snap the dimple IN quickly (~130 ms) but ease the recoil OUT
+  over ~260 ms, so a release reads as a settling spring instead of a hard pop.
+  `PressScale(symmetric: true)` restores one shared duration for tests.
 - `_EntryCard` decides `animate` ONCE in `initState`; never re-read
   `widget.animate` in `build`. The parent's `seenEntranceIds.add(id)` makes it
   false on every build after the first, so a rebuild mid-animation would swap

@@ -6,6 +6,7 @@ import 'package:hive/hive.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ataraxy/main.dart';
 import 'package:ataraxy/models/settings.dart';
+import 'package:ataraxy/splash_content.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -39,10 +40,11 @@ void main() {
     await tester.pumpWidget(MyApp(
       initialSettings: const AppSettings(showWelcome: false, pin: '1234'),
     ));
-    // Splash animation runs ~1.8s before the lock screen is shown, then a
-    // 600ms fade-in.
-    await tester.pump(const Duration(milliseconds: 2000));
+    // The lock screen now comes FIRST when a PIN is set (the splash plays only
+    // after a successful unlock), so the lock icon is up immediately.
     await tester.pump(const Duration(milliseconds: 700));
     expect(find.byIcon(Icons.lock_rounded), findsOneWidget);
+    // ...and the splash must NOT be covering it.
+    expect(find.byType(SplashContent), findsNothing);
   });
 }

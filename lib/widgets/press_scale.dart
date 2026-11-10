@@ -17,12 +17,18 @@ class PressScale extends StatefulWidget {
   final Duration duration;
   final bool haptic;
 
+  /// When true the press-in and the recoil share [duration] (used by tests that
+  /// assert a single scale transition); otherwise the dimple snaps in at
+  /// [duration] and the recoil settles more slowly for a softer release.
+  final bool symmetric;
+
   const PressScale({
     super.key,
     required this.child,
     this.scale = 0.94,
-    this.duration = const Duration(milliseconds: 180),
+    this.duration = const Duration(milliseconds: 130),
     this.haptic = false,
+    this.symmetric = false,
   });
 
   @override
@@ -48,8 +54,18 @@ class _PressScaleState extends State<PressScale> {
       onPointerCancel: (_) => _set(false),
       child: AnimatedScale(
         scale: _pressed ? widget.scale : 1.0,
-        duration: widget.duration,
-        curve: Curves.easeOut,
+        // Asymmetric timing: the dimple snaps in quickly under the finger, but
+        // the recoil back to full size is slower and eased out, so the release
+        // reads as smooth instead of a hard pop ("отдача уменьшения плавная").
+        // `symmetric` opts out (tests assert one shared duration).
+        duration: widget.symmetric
+            ? widget.duration
+            : (_pressed
+                ? widget.duration
+                : Duration(
+                    milliseconds: widget.duration.inMilliseconds + 120,
+                  )),
+        curve: Curves.easeOutCubic,
         child: widget.child,
       ),
     );

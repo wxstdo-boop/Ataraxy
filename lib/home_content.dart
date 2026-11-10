@@ -34,6 +34,12 @@ class HomeContent extends StatefulWidget {
 class HomeContentState extends State<HomeContent>
     with TickerProviderStateMixin {
   bool _showSplash = true;
+
+  /// The splash is only *played* once it is its turn: if a PIN is set the lock
+  /// screen comes FIRST ("при установленном пин он должен перед сплеш идти"),
+  /// and the splash plays only after a successful unlock. While the lock is up
+  /// the splash overlay stays hidden (opacity 0) instead of covering the lock.
+  bool _splashStarted = false;
   late AnimationController _splashController;
   late Animation<double> _splashOpacity;
   late AppSettings _lastSettings;
@@ -52,27 +58,26 @@ class HomeContentState extends State<HomeContent>
   @override
   void initState() {
     super.initState();
-    splashActive.value = true;
     _lastSettings = widget.settingsNotifier.value;
     widget.settingsNotifier.addListener(_onSettingsChanged);
 
     _splashController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1450),
+      duration: const Duration(milliseconds: 1900),
     );
 
     // The splash is fully opaque from the first frame (so the avatar shows
-    // immediately), holds briefly, then melts away with a SINGLE
-    // easeInOutCubic fade. That curve starts and ends at zero velocity, so
-    // both the hand-off from the hold into the fade AND the end of the fade
-    // have no sudden change of speed — the old constant→easeOutQuint sequence
-    // jumped straight to full speed as the fade began, which read as a
-    // stutter. The content underneath stays fully opaque the whole time — no
-    // cross-fade, so no background flash.
+    // immediately), holds while the wordmark writes itself on, then melts away
+    // with a SINGLE easeInOutCubic fade. That curve starts and ends at zero
+    // velocity, so both the hand-off from the hold into the fade AND the end of
+    // the fade have no sudden change of speed — the old constant→easeOutQuint
+    // sequence jumped straight to full speed as the fade began, which read as a
+    // stutter. The hold is a full half of the timeline so the staggered
+    // write-on (~1 s) is entirely visible before anything starts fading.
     _splashOpacity = Tween<double>(begin: 1.0, end: 0.0).animate(
       CurvedAnimation(
         parent: _splashController,
-        curve: const Interval(0.28, 1.0, curve: Curves.easeInOutCubic),
+        curve: const Interval(0.5, 1.0, curve: Curves.easeInOutCubic),
       ),
     );
 
@@ -84,7 +89,17 @@ class HomeContentState extends State<HomeContent>
         });
       }
     });
-    _splashController.forward();
+
+    // PIN gate: when a lock is configured the lock screen must come FIRST, so
+    // the splash only plays once we are unlocked. Without a PIN the splash is
+    // the first thing on screen, exactly as before. (Matches the `locked`
+    // condition in build: a PIN plus an unauthenticated session.)
+    final locked = _lastSettings.pin != null && !widget.authenticated;
+    _splashStarted = !locked;
+    if (_splashStarted) {
+      splashActive.value = true;
+      _splashController.forward();
+    }
 
     _welcomeMounted = widget.showWelcome;
     _welcomeExit = AnimationController(
@@ -113,6 +128,17 @@ class HomeContentState extends State<HomeContent>
     // layer out over the already-painted home, then unmount it.
     if (oldWidget.showWelcome && !widget.showWelcome && _welcomeMounted) {
       _welcomeExit.forward();
+    }
+
+    // Just unlocked: NOW it is the splash's turn. Kick it off over the lock so
+    // the unlock melts into the brand animation instead of a hard cut.
+    if (!oldWidget.authenticated && widget.authenticated && !_splashStarted) {
+      setState(() {
+        _splashStarted = true;
+        _showSplash = true;
+      });
+      splashActive.value = true;
+      _splashController.forward(from: 0);
     }
   }
 
@@ -209,8 +235,9 @@ class HomeContentState extends State<HomeContent>
               ),
             ),
           ),
-        IgnorePointer(
-          ignoring: !_showSplash,
+        if (_splashStarted)
+          IgnorePointer(
+            ignoring: !_showSplash,
           // RepaintBoundary sits INSIDE the FadeTransition so the splash
           // subtree (big gradients + artwork) is rasterised ONCE into a
           // texture and the fade is then a pure composited opacity over that

@@ -55,7 +55,9 @@ class _PressableIconButtonState extends State<PressableIconButton> {
           hoverColor: Colors.transparent,
           child: AnimatedScale(
             scale: _pressed ? 0.93 : 1.0,
-            duration: const Duration(milliseconds: 220),
+            duration: _pressed
+                ? const Duration(milliseconds: 130)
+                : const Duration(milliseconds: 260),
             curve: Curves.easeOutCubic,
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 280),

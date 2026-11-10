@@ -19,6 +19,13 @@ class AnimatedLetters extends StatefulWidget {
   final Curve curve;
   final WrapAlignment alignment;
 
+  /// How long to wait after mount before the write-on starts. The splash uses
+  /// this so the very first (expensive) frame — font rasterisation, gradient
+  /// shaders — is out of the way before the stagger begins; without it the
+  /// letters were already fully written by the time the first frame was
+  /// rasterised on a real device, which read as "буквы пишутся как обычно".
+  final Duration startDelay;
+
   /// When true the glyphs ERASE again after they finish writing on: the
   /// stagger-in plays, the wordmark holds for [outDelay], then the controller
   /// reverses over [outDuration] so the letters wipe off. Used by the splash
@@ -45,6 +52,7 @@ class AnimatedLetters extends StatefulWidget {
     this.erase = false,
     this.outDelay = const Duration(milliseconds: 300),
     this.outDuration = const Duration(milliseconds: 420),
+    this.startDelay = Duration.zero,
   });
 
   @override
@@ -55,6 +63,7 @@ class _AnimatedLettersState extends State<AnimatedLetters>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   Timer? _outTimer;
+  Timer? _startTimer;
 
   @override
   void initState() {
@@ -70,6 +79,7 @@ class _AnimatedLettersState extends State<AnimatedLetters>
     // switch swaps the string) so the new glyphs write themselves in too.
     if (old.text != widget.text) {
       _outTimer?.cancel();
+      _startTimer?.cancel();
       _controller.reset();
       _play();
     }
@@ -77,23 +87,43 @@ class _AnimatedLettersState extends State<AnimatedLetters>
 
   void _play() {
     final letters = widget.text.replaceAll(' ', '').length;
-    _controller.duration = widget.duration + widget.delay * letters;
-    _controller.forward().then((_) {
-      if (!mounted || !widget.erase) return;
-      _outTimer = Timer(widget.outDelay, () {
-        if (!mounted) return;
-        // Erase over its own, shorter duration so the wordmark wipes off in
-        // step with the splash fade instead of lingering at full opacity while
-        // the rest of the splash is already gone.
-        _controller.duration = widget.outDuration;
-        _controller.reverse();
+    // The controller runs for exactly as long as the LAST glyph needs
+    // ([duration] plus one [delay] per preceding letter), so the stagger and
+    // the controller share one timeline — the old `duration + delay * letters`
+    // left a dead tail where nothing was animating.
+    _controller.duration =
+        widget.duration + widget.delay * (letters > 0 ? letters - 1 : 0);
+    _startTimer?.cancel();
+
+    void start() {
+      if (!mounted) return;
+      _controller.forward().then((_) {
+        if (!mounted || !widget.erase) return;
+        _outTimer = Timer(widget.outDelay, () {
+          if (!mounted) return;
+          // Erase over its own, shorter duration so the wordmark wipes off in
+          // step with the splash fade instead of lingering at full opacity while
+          // the rest of the splash is already gone.
+          _controller.duration = widget.outDuration;
+          _controller.reverse();
+        });
       });
-    });
+    }
+
+    // Defer the start so the splash's first (expensive) frame is rasterised
+    // before the stagger begins — otherwise the write-on had already finished
+    // by the time the first frame was on screen.
+    if (widget.startDelay > Duration.zero) {
+      _startTimer = Timer(widget.startDelay, start);
+    } else {
+      start();
+    }
   }
 
   @override
   void dispose() {
     _outTimer?.cancel();
+    _startTimer?.cancel();
     _controller.dispose();
     super.dispose();
   }

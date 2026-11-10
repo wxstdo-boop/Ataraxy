@@ -122,7 +122,11 @@ class _PressFabState extends State<_PressFab> {
       },
       child: AnimatedScale(
         scale: _pressed ? 0.93 : 1.0,
-        duration: const Duration(milliseconds: 200),
+        // Fast dimple, slower eased-out recoil (see PressScale) — the release
+        // should feel like a spring settling, not a snap.
+        duration: _pressed
+            ? const Duration(milliseconds: 130)
+            : const Duration(milliseconds: 260),
         curve: Curves.easeOutCubic,
         child: Material(
           color: scheme.primary,

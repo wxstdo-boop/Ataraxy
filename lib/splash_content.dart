@@ -159,28 +159,39 @@ class SplashContent extends StatelessWidget {
                     AnimatedLetters(
                       '${L.tr(context, 'launchTitle')}.',
                       erase: true,
-                      // Write-on finishes inside the splash's opaque hold
-                      // (~0.4 s) so the wordmark is FULLY written before the
-                      // fade begins — the old timings kept writing while the
-                      // splash was already fading, so the letters never read
-                      // as "appearing". Then they hold briefly and erase in
-                      // step with the fade.
-                      duration: const Duration(milliseconds: 200),
-                      delay: const Duration(milliseconds: 18),
-                      outDelay: const Duration(milliseconds: 240),
-                      outDuration: const Duration(milliseconds: 520),
+                      // The write-on only begins once the splash's first frame
+                      // is on screen (startDelay) and then proceeds slowly and
+                      // with a clear per-letter stagger, so the wordmark reads
+                      // as being written by hand — this is the recurring
+                      // "буквы пишутся как обычно" complaint. It finishes inside
+                      // the opaque hold, then the letters erase in step with the
+                      // fade.
+                      startDelay: const Duration(milliseconds: 140),
+                      duration: const Duration(milliseconds: 380),
+                      delay: const Duration(milliseconds: 42),
+                      outDelay: const Duration(milliseconds: 120),
+                      outDuration: const Duration(milliseconds: 700),
                       style: TextStyle(
                         fontFamily: AppTheme.displayFont,
                         fontStyle: FontStyle.italic,
-                        fontSize: 34,
-                        fontWeight: FontWeight.bold,
+                        fontSize: 38,
+                        fontWeight: FontWeight.w900,
                         color: Colors.white,
-                        letterSpacing: 0.4,
-                        shadows: [
+                        letterSpacing: 0.6,
+                        // Cormorant ships no weight past Bold, so `w900` falls
+                        // back to Bold. These four zero-blur white shadows in
+                        // the cardinal directions fatten every glyph a hair —
+                        // a cheap faux-bold that gives the wordmark the extra
+                        // "толще" the user asked for without a heavier cut.
+                        shadows: const [
+                          Shadow(color: Colors.white, offset: Offset(-0.7, 0)),
+                          Shadow(color: Colors.white, offset: Offset(0.7, 0)),
+                          Shadow(color: Colors.white, offset: Offset(0, -0.7)),
+                          Shadow(color: Colors.white, offset: Offset(0, 0.7)),
                           Shadow(
-                            color: scheme.shadow.withValues(alpha: 0.3),
+                            color: Color(0x66000000),
                             blurRadius: 14,
-                            offset: const Offset(0, 3),
+                            offset: Offset(0, 3),
                           ),
                         ],
                       ),
@@ -358,9 +369,11 @@ class _WavyUnderlined extends StatelessWidget {
             height: 6,
             child: CustomPaint(
               painter: _WavyUnderlinePainter(
-                // Translucent red: reads as ink, not a warning stripe. Lower
-                // alpha so it sits UNDER the text as a soft flourish.
-                color: const Color(0xFFE05A5A).withValues(alpha: 0.62),
+                // Translucent red: reads as ink, not a warning stripe. Kept
+                // LOW-alpha so it sits UNDER the text as a faint flourish —
+                // the user asked for it to be more transparent, not a bold
+                // stripe ("подчеркивание красное прозрачнее должно быть").
+                color: const Color(0xFFE05A5A).withValues(alpha: 0.34),
               ),
             ),
           ),

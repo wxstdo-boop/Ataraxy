@@ -68,6 +68,46 @@ void main() {
     expect(minOpacity(), 1.0);
   });
 
+  testWidgets('AnimatedLetters startDelay holds the glyphs invisible first', (
+    tester,
+  ) async {
+    // The splash defers the write-on a beat so its first expensive frame is
+    // rasterised before the stagger begins; otherwise the letters were already
+    // written by the first frame and read as "пишутся как обычно".
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: AnimatedLetters(
+              'Ataraxy.',
+              startDelay: Duration(milliseconds: 150),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    double maxOpacity() => tester
+        .widgetList<Opacity>(
+          find.descendant(
+            of: find.byType(AnimatedLetters),
+            matching: find.byType(Opacity),
+          ),
+        )
+        .map((o) => o.opacity)
+        .fold(0.0, (a, b) => a > b ? a : b);
+
+    // Inside the start delay: still fully invisible.
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(maxOpacity(), 0.0);
+    // Cross the delay (the timer fires) and let the ticker advance a frame.
+    await tester.pump(const Duration(milliseconds: 80));
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(maxOpacity(), greaterThan(0.0));
+    await tester.pumpAndSettle();
+    expect(maxOpacity(), 1.0);
+  });
+
   testWidgets('AnimatedLetters erase fades the wordmark back out', (
     tester,
   ) async {

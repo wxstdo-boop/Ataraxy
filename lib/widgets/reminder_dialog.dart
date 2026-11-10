@@ -10,6 +10,7 @@ import 'package:ataraxy/widgets/animated_snack.dart';
 import 'package:ataraxy/services/notification_service.dart';
 import 'package:ataraxy/widgets/volumetric_switch.dart';
 import 'package:ataraxy/widgets/limited_context_menu.dart';
+import 'package:ataraxy/widgets/press_scale.dart';
 import 'package:ataraxy/widgets/themed_time_picker.dart';
 
 class ReminderDialog extends StatefulWidget {
@@ -73,37 +74,63 @@ class _ReminderDialogState extends State<ReminderDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: Text(L.tr(context, 'reminders')),
+      // Fixed-width content (maxFinite) so the dialog never widens/narrows as
+      // the enabled block slides in — that width change was the "окно
+      // расширяется по бокам и обратно дёргано". Only the HEIGHT animates.
       // Plain Column, NOT a SingleChildScrollView: the dialog content must not
-      // scroll ("пусть внутри содержимое там не листается"). The tile that
-      // enables the reminder is the FIRST row, so nothing important is ever
-      // pushed out of view.
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            title: Text(L.tr(context, 'reminders')),
-            subtitle: _enabled && (_time == null || _text.text.trim().isEmpty)
-                ? Text(
-                    L.tr(context, 'reminderRequired'),
-                    style: const TextStyle(
-                      color: AppAccents.amber,
-                      fontSize: 12,
-                    ),
-                  )
-                : null,
-            trailing: VolumetricSwitch(
-              value: _enabled,
-              // Toggling ALWAYS flips the switch. The old version refused to
-              // move whenever the time/text were not filled yet, so after
-              // typing the text the switch still looked dead — the reminder
-              // was silently blocked by a missing TIME. Validation now happens
-              // on Save (with the inline warning above); the toggle itself is
-              // never a no-op.
-              onChanged: (v) => setState(() => _enabled = v),
+      // scroll ("пусть внутри содержимое там не листается").
+      content: SizedBox(
+        width: double.maxFinite,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(L.tr(context, 'reminders')),
+              trailing: VolumetricSwitch(
+                value: _enabled,
+                // Toggling ALWAYS flips the switch. The old version refused to
+                // move whenever the time/text were not filled yet, so after
+                // typing the text the switch still looked dead — the reminder
+                // was silently blocked by a missing TIME. Validation now happens
+                // on Save (with the inline warning below); the toggle itself is
+                // never a no-op.
+                onChanged: (v) => setState(() => _enabled = v),
+              ),
+              onTap: () => setState(() => _enabled = !_enabled),
             ),
-            onTap: () => setState(() => _enabled = !_enabled),
-          ),
+            // Validation hint: fades + slides in/out instead of popping
+            // ("текст уведомления должен появляться и исчезать плавно").
+            AnimatedSize(
+              duration: const Duration(milliseconds: 240),
+              curve: Curves.easeOutCubic,
+              alignment: Alignment.topCenter,
+              child: _enabled && (_time == null || _text.text.trim().isEmpty)
+                  ? Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(
+                            Icons.error_outline_rounded,
+                            size: 15,
+                            color: AppAccents.amber,
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              L.tr(context, 'reminderRequired'),
+                              style: const TextStyle(
+                                color: AppAccents.amber,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : const SizedBox(width: double.infinity),
+            ),
             // Кнопка проверки разрешений — показывается если включено напоминание.
             // AnimatedSize + FadeTransition дают плавное появление блока
             // (раньше он просто "впрыгивал" при включении переключателя).
@@ -290,26 +317,33 @@ class _ReminderDialogState extends State<ReminderDialog> {
             ),
           ],
         ),
+      ),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: Text(L.tr(context, 'cancel')),
+        PressScale(
+          scale: 0.92,
+          child: TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(L.tr(context, 'cancel')),
+          ),
         ),
-        TextButton(
-          onPressed: () {
-            if (_enabled && (_time == null || _text.text.trim().isEmpty)) {
-              setState(() => _error = true);
-              return;
-            }
-            final next = widget.settings.copyWith(
-              reminderEnabled: _enabled,
-              reminderTime: _time == null ? null : _fmt(_time!),
-              reminderText:
-                  _text.text.trim().isEmpty ? null : _text.text.trim(),
-            );
-            Navigator.pop(context, next);
-          },
-          child: Text(L.tr(context, 'save')),
+        PressScale(
+          scale: 0.92,
+          child: TextButton(
+            onPressed: () {
+              if (_enabled && (_time == null || _text.text.trim().isEmpty)) {
+                setState(() => _error = true);
+                return;
+              }
+              final next = widget.settings.copyWith(
+                reminderEnabled: _enabled,
+                reminderTime: _time == null ? null : _fmt(_time!),
+                reminderText:
+                    _text.text.trim().isEmpty ? null : _text.text.trim(),
+              );
+              Navigator.pop(context, next);
+            },
+            child: Text(L.tr(context, 'save')),
+          ),
         ),
       ],
     );

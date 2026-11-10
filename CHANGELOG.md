@@ -1,5 +1,24 @@
 # Ataraxy Changelog
 
+## [1.3.11] - 2026-11-10
+### Fixed
+- No more white "просветы" under the header: the feed background now matches
+  the scaffold colour, so the AppBar's rounded bottom corners no longer show a
+  white seam against the lavender surface behind them.
+- Reopening search no longer restores the previous query — the field is
+  cleared on open, on close and when it loses focus.
+
+### Changed
+- Splash exit is smoother: the full-screen scale-up is gone (it forced the GPU
+  to re-sample every pixel each frame on mid-range phones); the panel now
+  dissolves with a plain, cheap fade.
+- The home screen is built behind the welcome card during onboarding, so
+  "Начать пользоваться" reveals an already-rendered feed without a hitch.
+- Search placeholder now cross-fades in (220 ms) instead of snapping.
+- Snackbars are semi-transparent frosted glass instead of opaque bars.
+- AppBar titles trimmed from 21 to 18; the splash wordmark gains a hand-drawn
+  dashed underline.
+
 ## [1.3.10] - 2026-11-10
 ### Fixed
 - The launcher icon is now regenerated from the new artwork on **every**

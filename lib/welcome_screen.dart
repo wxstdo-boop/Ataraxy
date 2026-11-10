@@ -4,6 +4,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'models/settings.dart';
 import 'services/notification_service.dart';
 import 'theme/app_theme.dart';
+import 'widgets/animated_letters.dart';
 import 'widgets/press_scale.dart';
 
 class WelcomeScreen extends StatefulWidget {
@@ -258,13 +259,16 @@ class _WelcomeTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      'Добро пожаловать в Ataraxy',
-      style: style.headlineSmall?.copyWith(
-        fontWeight: FontWeight.bold,
-        color: Theme.of(context).colorScheme.onSurface,
-      ),
-      textAlign: TextAlign.center,
+    final base = style.headlineSmall?.copyWith(
+      fontWeight: FontWeight.bold,
+      color: Theme.of(context).colorScheme.onSurface,
+    );
+    // The brand wordmark writes itself in letter by letter (and the whole
+    // card fades out smoothly on exit), so the greeting never just pops.
+    return AnimatedLetters(
+      'Добро пожаловать в Ataraxy.',
+      style: base,
+      alignment: WrapAlignment.center,
     );
   }
 }

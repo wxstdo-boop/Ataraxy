@@ -188,7 +188,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const AppAvatar(radius: 44),
                 const SizedBox(height: 12),
                 const Text(
-                  'Ataraxy',
+                  'Ataraxy.',
                   style: TextStyle(
                     fontSize: 26,
                     fontWeight: FontWeight.bold,

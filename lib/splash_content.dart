@@ -2,6 +2,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'l10n/strings.dart';
+import 'theme/app_theme.dart';
+import 'widgets/animated_letters.dart';
 
 class SplashContent extends StatelessWidget {
   final Animation<double> opacity;
@@ -150,13 +152,17 @@ class SplashContent extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 22),
-                    Text(
-                      L.tr(context, 'launchTitle'),
+                    // Brand wordmark: italic display cut with a trailing
+                    // period, and each glyph writes itself in on a stagger.
+                    AnimatedLetters(
+                      '${L.tr(context, 'launchTitle')}.',
                       style: TextStyle(
-                        fontSize: 28,
+                        fontFamily: AppTheme.displayFont,
+                        fontStyle: FontStyle.italic,
+                        fontSize: 34,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
-                        letterSpacing: 0.6,
+                        letterSpacing: 0.4,
                         shadows: [
                           Shadow(
                             color: scheme.shadow.withValues(alpha: 0.3),
@@ -167,13 +173,17 @@ class SplashContent extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Text(
-                      L.tr(context, 'byWetidom'),
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.white.withValues(alpha: 0.9),
-                        letterSpacing: 3,
-                        fontWeight: FontWeight.w500,
+                    // The "POWERED BY LARAF" line, underlined by a soft
+                    // translucent red wavy stroke with rounded ends.
+                    _WavyUnderlined(
+                      child: Text(
+                        L.tr(context, 'byWetidom'),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.white.withValues(alpha: 0.9),
+                          letterSpacing: 3,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 28),
@@ -310,4 +320,66 @@ class _CometPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _CometPainter old) =>
       old.color != color || old.strokeWidth != strokeWidth;
+}
+
+/// Wraps [child] and paints a soft translucent red wavy rule beneath it, with
+/// rounded caps — the "hand-drawn" underline under the POWERED BY LARAF line.
+class _WavyUnderlined extends StatelessWidget {
+  final Widget child;
+
+  const _WavyUnderlined({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        child,
+        const SizedBox(height: 4),
+        CustomPaint(
+          size: const Size(150, 7),
+          painter: _WavyUnderlinePainter(
+            // Translucent red: reads as ink, not a warning stripe.
+            color: const Color(0xFFE05A5A).withValues(alpha: 0.75),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// A rounded-cap sine wave, drawn as a single stroked path so both ends get
+/// the rounded terminal the request asked for.
+class _WavyUnderlinePainter extends CustomPainter {
+  final Color color;
+
+  const _WavyUnderlinePainter({required this.color});
+
+  static const double _strokeWidth = 2.4;
+  static const double _amplitude = 2.6;
+  static const double _wavelength = 14;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = _strokeWidth
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    final midY = size.height / 2;
+    final path = Path()..moveTo(0, midY);
+    // Step finely so the polyline reads as a smooth curve.
+    const step = 1.0;
+    for (double x = step; x <= size.width; x += step) {
+      final y = midY + _amplitude * math.sin(2 * math.pi * x / _wavelength);
+      path.lineTo(x, y);
+    }
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _WavyUnderlinePainter old) =>
+      old.color != color;
 }

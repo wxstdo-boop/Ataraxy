@@ -86,9 +86,11 @@ class AppTheme {
   // ---------------------------------------------------------------------
 
   /// Hue offsets from the primary that keep secondary/tertiary visibly
-  /// related: warm-leaning tertiary, cool-leaning secondary.
-  static const double _secondaryHueOffset = -10;
-  static const double _tertiaryHueOffset = 16;
+  /// related but clearly distinct — a wide enough split that every
+  /// [primary, secondary, tertiary] gradient ramps across two recognisably
+  /// different hues instead of collapsing into one monotonous wash.
+  static const double _secondaryHueOffset = -16;
+  static const double _tertiaryHueOffset = 28;
 
   /// Clamps chroma in HSL space, leaving hue and lightness untouched.
   static Color _cap(Color c, double maxSaturation) {
@@ -101,23 +103,34 @@ class AppTheme {
   static Color _atHue(Color c, double hue) =>
       HSLColor.fromColor(c).withHue(hue % 360).toColor();
 
-  static ColorScheme _harmonise(ColorScheme s) {
+  static ColorScheme _harmonise(ColorScheme s, {bool preserveHues = false}) {
     final dark = s.brightness == Brightness.dark;
     final hue = HSLColor.fromColor(s.primary).hue;
+    // When [preserveHues] is set the scheme author has chosen secondary/
+    // tertiary deliberately (e.g. Grok's graphite + taupe) — keep those hues
+    // and only cap their chroma, so the theme does not collapse into one
+    // monotonous family.
+    Color family(Color c, double offset, double maxSat) => _cap(
+          preserveHues ? c : _atHue(c, hue + offset),
+          maxSat,
+        );
     return s.copyWith(
-      // Accents: a touch less chroma than Material's default.
-      primary: _cap(s.primary, dark ? 0.58 : 0.48),
-      secondary: _cap(_atHue(s.secondary, hue + _secondaryHueOffset),
-          dark ? 0.34 : 0.30),
-      tertiary: _cap(
-          _atHue(s.tertiary, hue + _tertiaryHueOffset), dark ? 0.45 : 0.34),
+      // Accents carry the theme's identity: a touch less chroma than
+      // Material's default, but high enough that each theme reads as its own
+      // colour instead of a greyed-out twin of the others.
+      primary: _cap(s.primary, dark ? 0.66 : 0.60),
+      secondary: family(s.secondary, _secondaryHueOffset, dark ? 0.44 : 0.42),
+      tertiary: family(s.tertiary, _tertiaryHueOffset, dark ? 0.52 : 0.46),
       // Containers are the loudest surfaces in the app (tab pills, cards,
-      // chips, the home header glass) — cap them hardest.
-      primaryContainer: _cap(_atHue(s.primaryContainer, hue), 0.45),
+      // chips, the home header) — capped harder than the accents, but no
+      // longer washed out to near-grey.
+      primaryContainer: _cap(
+          preserveHues ? s.primaryContainer : _atHue(s.primaryContainer, hue),
+          0.52),
       secondaryContainer:
-          _cap(_atHue(s.secondaryContainer, hue + _secondaryHueOffset), 0.38),
+          family(s.secondaryContainer, _secondaryHueOffset, 0.46),
       tertiaryContainer:
-          _cap(_atHue(s.tertiaryContainer, hue + _tertiaryHueOffset), 0.38),
+          family(s.tertiaryContainer, _tertiaryHueOffset, 0.46),
       // Semantic red stays recognisable, just no longer fluorescent.
       error: _cap(s.error, dark ? 0.75 : 0.62),
       // Backgrounds keep a hint of the theme's tint and lose the wash.
@@ -186,8 +199,11 @@ class AppTheme {
     // Цвет снекбара и текста на нём — берётся из темы чтобы отличаться
     Color? snackBg,
     Color? snackFg,
+    // When true the scheme's own secondary/tertiary hues are kept instead of
+    // being pulled into the primary's family (see [_harmonise]).
+    bool preserveHues = false,
   }) {
-    final scheme = _harmonise(rawScheme);
+    final scheme = _harmonise(rawScheme, preserveHues: preserveHues);
     final dark = scheme.brightness == Brightness.dark;
     final effectiveHeaderBg =
         headerBg ?? (dark ? scheme.primaryContainer : scheme.primary);
@@ -276,11 +292,21 @@ class AppTheme {
       ),
       cardTheme: CardThemeData(
         elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+          // A hairline rim lifts every card off the background — the flat
+          // same-tone fill read as "cheap".
+          side: BorderSide(
+            color: scheme.outlineVariant.withValues(alpha: 0.40),
+            width: 1,
+          ),
+        ),
         color: scheme.surfaceContainerLow,
         surfaceTintColor: Colors.transparent,
         margin: EdgeInsets.zero,
-        shadowColor: scheme.shadow.withValues(alpha: 0.10),
+        // Soft drop shadow instead of Material's grey smear: gives the feed
+        // real depth without a hard edge.
+        shadowColor: scheme.shadow.withValues(alpha: dark ? 0.45 : 0.14),
       ),
       floatingActionButtonTheme: FloatingActionButtonThemeData(
         backgroundColor: scheme.primary,
@@ -526,12 +552,18 @@ class AppTheme {
   /// night. Warm off-white paper + lifted charcoal keep the same stark Grok
   /// identity without the glare, and `onSurface` stays dark enough that labels
   /// on cards and chips remain fully legible.
+  ///
+  /// Reworked so it no longer reads as "one flat grey": a cool graphite
+  /// secondary and a warm taupe tertiary give the header ramp, chips and
+  /// containers real tonal separation, and the surfaces step through subtle
+  /// warm/cool tints instead of a single neutral.
   static ThemeData darkGrok({ColorScheme? scheme}) {
     const Color charcoal = Color(0xFF1C1F26);
     const Color paper = Color(0xFFFAF9F7);
     const Color ink = Color(0xFF1F2328);
     const Color textSecondary = Color(0xFF555B66);
-    const Color neutralGrey = Color(0xFFE7E4DF);
+    const Color graphite = Color(0xFF39414F);
+    const Color taupe = Color(0xFF8A7A63);
 
     final gs = ColorScheme.fromSeed(
       seedColor: charcoal,
@@ -540,25 +572,38 @@ class AppTheme {
     ).copyWith(
       primary: charcoal,
       onPrimary: Colors.white,
-      secondary: charcoal,
+      secondary: graphite,
       onSecondary: Colors.white,
-      secondaryContainer: neutralGrey,
-      onSecondaryContainer: charcoal,
-      primaryContainer: neutralGrey,
+      tertiary: taupe,
+      onTertiary: Colors.white,
+      primaryContainer: const Color(0xFFE9E7E2),
       onPrimaryContainer: charcoal,
+      secondaryContainer: const Color(0xFFE2E7EE),
+      onSecondaryContainer: const Color(0xFF232A34),
+      tertiaryContainer: const Color(0xFFEDE6DA),
+      onTertiaryContainer: const Color(0xFF3A3020),
       surface: paper,
-      surfaceContainerHighest: neutralGrey,
+      surfaceContainerLowest: const Color(0xFFFFFFFF),
+      surfaceContainerLow: const Color(0xFFF6F5F2),
+      surfaceContainer: const Color(0xFFF0EEEA),
+      surfaceContainerHigh: const Color(0xFFEAE8E3),
+      surfaceContainerHighest: const Color(0xFFE4E1DB),
       onSurface: ink,
       onSurfaceVariant: textSecondary,
       outline: const Color(0xFF98938C),
+      outlineVariant: const Color(0xFFD9D5CE),
     );
 
     final themed = _base(
       gs,
       scaffoldBg: paper,
-      // Header derives from the scheme — Grok's primary IS the charcoal, so
-      // the bar stays black-on-white's calm counterpart.
+      // A deep charcoal → graphite bar with warm off-white type: the header
+      // is the theme's strongest surface and now has real depth instead of
+      // sitting flat against the paper.
+      headerBg: charcoal,
+      headerFg: const Color(0xFFF4F2EF),
       boostLightText: true,
+      preserveHues: true,
       // Grok (светлая) → бумажный снекбар с графитовым текстом
       snackBg: const Color(0xFFF4F2EF),
       snackFg: ink,
@@ -601,6 +646,11 @@ class AppTheme {
   /// the animated blood-flow layer behind the app shows through softly;
   /// accents are a desaturated brick rose with maroon depth (the old vivid
   /// crimson #A62B2B / #C1121F was the single loudest colour in the app).
+  ///
+  /// Reworked so the palette is not one red note: a dusty plum secondary and
+  /// an aged-gold tertiary give chips, the header ramp and banners two other
+  /// hues to work with, so the theme reads as a considered "mutilated
+  /// manuscript" instead of a monochrome red wash.
   static ThemeData lightMutilated() {
     const Color blood = Color(0xFF9E524C);
     const Color deepBlood = Color(0xFF412729);
@@ -616,12 +666,14 @@ class AppTheme {
       onPrimary: Colors.white,
       primaryContainer: paleBlood,
       onPrimaryContainer: const Color(0xFF35201F),
-      secondary: const Color(0xFF7A4A46),
+      secondary: const Color(0xFF6E5A72),
       onSecondary: Colors.white,
-      secondaryContainer: const Color(0xFFEFDDDA),
-      onSecondaryContainer: const Color(0xFF35201F),
-      tertiary: const Color(0xFF5E4243),
+      secondaryContainer: const Color(0xFFE7DEE9),
+      onSecondaryContainer: const Color(0xFF2C2330),
+      tertiary: const Color(0xFF9A7A3E),
       onTertiary: Colors.white,
+      tertiaryContainer: const Color(0xFFEFE3C8),
+      onTertiaryContainer: const Color(0xFF3A2E12),
       error: const Color(0xFFA65C56),
       surface: cream,
       onSurface: const Color(0xFF231A19),
@@ -643,7 +695,7 @@ class AppTheme {
     // Harmonised once here so the card/nav-bar overrides below use the same
     // calmed tones [_base] ends up with (the pass is idempotent, so `_base`
     // harmonising again changes nothing).
-    final hs = _harmonise(s);
+    final hs = _harmonise(s, preserveHues: true);
 
     return _base(
       s,
@@ -653,17 +705,24 @@ class AppTheme {
       headerBg: deepBlood,
       headerFg: const Color(0xFFF7E9E5),
       boostLightText: true,
+      preserveHues: true,
       // Кровавый снекбар: тёмно-розовый с бледным текстом.
       snackBg: const Color(0xFF4A2F30),
       snackFg: const Color(0xFFF6E7E3),
     ).copyWith(
       cardTheme: CardThemeData(
         elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+          side: BorderSide(
+            color: hs.outlineVariant.withValues(alpha: 0.40),
+            width: 1,
+          ),
+        ),
         color: hs.surfaceContainerLow,
         surfaceTintColor: Colors.transparent,
         margin: EdgeInsets.zero,
-        shadowColor: s.shadow.withValues(alpha: 0.10),
+        shadowColor: s.shadow.withValues(alpha: 0.14),
       ),
       navigationBarTheme: NavigationBarThemeData(
         height: 76,

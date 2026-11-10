@@ -60,51 +60,21 @@ class _SmoothTabPills extends StatelessWidget implements PreferredSizeWidget {
               margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(30),
-                // Blur FIRST inside the rounded scissor, RepaintBoundary
-                // INSIDE the blur: the isolated layer inherits the rounded
-                // clip, so no square corners of the blur shader leak past
-                // the capsule's bottom edge.
-                child: BackdropFilter(
-                  filter: _kBarBlur,
-                  child: RepaintBoundary(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(30),
-                        // Frosted glass: a white sheen melting into a
-                        // translucent tinted body, a bright hairline rim and
-                        // soft shadows. The flat single-fill bar from the
-                        // previous pass read as a plain grey rectangle and
-                        // swallowed the accent pill; the layered body lifts
-                        // the capsule back off the header so the pill pops.
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          stops: const [0.0, 0.35, 1.0],
-                          colors: [
-                            Colors.white.withValues(alpha: 0.34),
-                            glass.withValues(alpha: 0.55),
-                            glass.withValues(alpha: 0.42),
-                          ],
-                        ),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.38),
-                          width: 1.2,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: scheme.shadow.withValues(alpha: 0.18),
-                            blurRadius: 16,
-                            offset: const Offset(0, 4),
-                          ),
-                          // Faint ambient glow in the accent colour below.
-                          BoxShadow(
-                            color: scheme.primary.withValues(alpha: 0.10),
-                            blurRadius: 22,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
+                // No glass. The frosted blur + sheen gradient were removed:
+                // contrast now comes purely from the opaque bar and the accent
+                // pill riding on it, which stays crisp over the coloured header
+                // and costs nothing to composite (no BackdropFilter per frame).
+                child: RepaintBoundary(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(30),
+                      color: glass,
+                      border: Border.all(
+                        color:
+                            scheme.outlineVariant.withValues(alpha: 0.35),
                       ),
-                      child: AnimatedBuilder(
+                    ),
+                    child: AnimatedBuilder(
                         animation:
                             controller.animation ??
                             const AlwaysStoppedAnimation(0.0),
@@ -138,14 +108,30 @@ class _SmoothTabPills extends StatelessWidget implements PreferredSizeWidget {
                                         borderRadius: BorderRadius.circular(
                                           26,
                                         ),
-                                        color: scheme.primary,
+                                        // A subtle top-lit gradient + rim
+                                        // give the accent pill volume so it
+                                        // reads as a raised key, not a flat
+                                        // block of colour.
+                                        gradient: LinearGradient(
+                                          begin: Alignment.topCenter,
+                                          end: Alignment.bottomCenter,
+                                          colors: [
+                                            Color.lerp(scheme.primary,
+                                                Colors.white, 0.16)!,
+                                            scheme.primary,
+                                          ],
+                                        ),
+                                        border: Border.all(
+                                          color: scheme.onPrimary
+                                              .withValues(alpha: 0.14),
+                                        ),
                                         boxShadow: [
                                           BoxShadow(
                                             color: scheme.primary.withValues(
-                                              alpha: 0.20,
+                                              alpha: 0.28,
                                             ),
-                                            blurRadius: 10,
-                                            offset: const Offset(0, 2),
+                                            blurRadius: 12,
+                                            offset: const Offset(0, 3),
                                           ),
                                         ],
                                       ),
@@ -190,7 +176,6 @@ class _SmoothTabPills extends StatelessWidget implements PreferredSizeWidget {
             ),
           ),
         ),
-      ),
     );
   }
 }
@@ -296,30 +281,17 @@ class _CategoryChips extends StatelessWidget {
     // segments instead of per-segment fades — denser and more fluid.
     return ClipRRect(
       borderRadius: BorderRadius.circular(15),
-      // Blur first (inside the rounded clip), layer isolation second — the
-      // blur never leaks square corners past the capsule's rounded edge.
-      child: BackdropFilter(
-        filter: _kBarBlur,
-        child: RepaintBoundary(
+      // No glass here either: a flat opaque capsule + the sliding highlight
+      // carry the contrast. The blur was pure per-frame compositing cost.
+      child: RepaintBoundary(
         child: Container(
           height: 30,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(15),
             border: Border.all(
-              color: Colors.white.withValues(alpha: 0.28),
+              color: scheme.outlineVariant.withValues(alpha: 0.35),
             ),
-            // Layered glass: white sheen up top, tinted body below — the
-            // same premium capsule treatment as the section bar above.
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              stops: const [0.0, 0.3, 1.0],
-              colors: [
-                Colors.white.withValues(alpha: 0.20),
-                scheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                scheme.surfaceContainerHighest.withValues(alpha: 0.36),
-              ],
-            ),
+            color: scheme.surfaceContainerHighest,
           ),
           child: Row(
         children: [
@@ -462,7 +434,6 @@ class _CategoryChips extends StatelessWidget {
         ],
       ),
     ),
-  ),
   ),
     );
   }

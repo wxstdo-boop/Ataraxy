@@ -51,12 +51,24 @@ class SlidingSelector<T> extends StatelessWidget {
               duration: const Duration(milliseconds: 350),
               curve: Curves.easeOutCubic,
               decoration: BoxDecoration(
-                color: scheme.primary,
+                // Top-lit gradient + rim so the highlight reads as a raised
+                // pill, not a flat slab of colour.
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Color.lerp(scheme.primary, Colors.white, 0.16)!,
+                    scheme.primary,
+                  ],
+                ),
                 borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: scheme.onPrimary.withValues(alpha: 0.14),
+                ),
                 boxShadow: [
                   BoxShadow(
-                    color: scheme.primary.withValues(alpha: 0.25),
-                    blurRadius: 10,
+                    color: scheme.primary.withValues(alpha: 0.30),
+                    blurRadius: 12,
                     offset: const Offset(0, 4),
                   ),
                 ],

@@ -40,11 +40,9 @@ part 'home_banners.dart';
 part 'home_notes.dart';
 part 'home_entry_card.dart';
 
-/// Cached blur filters: BackdropFilter re-creating its engine-level shader on
-/// every rebuild is wasteful on low-end devices. One shared instance per look,
-/// zero visual difference. Sigma kept modest (7) — soft enough for the frosted
-/// glass, cheap enough to keep 60fps on a Redmi Note 12 while the feed scrolls.
-final ImageFilter _kBarBlur = ImageFilter.blur(sigmaX: 7, sigmaY: 7);
+/// Cached blur filter for the search field's frosted panel: BackdropFilter
+/// re-creating its engine-level shader on every rebuild is wasteful on low-end
+/// devices. One shared instance, zero visual difference.
 final ImageFilter _kSearchBlur = ImageFilter.blur(sigmaX: 8, sigmaY: 8);
 
 /// Every card animates in when it first appears (new entry id = new
@@ -577,7 +575,7 @@ class _HomeScreenState extends State<HomeScreen>
                     // on the streak badge (it belongs to the celebration,
                     // not to the static logo).
                     const Text(
-                      'Ataraxy',
+                      'Ataraxy.',
                       style: TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,

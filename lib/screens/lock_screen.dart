@@ -50,7 +50,7 @@ class _LockScreenState extends State<LockScreen> {
               ),
               const SizedBox(height: 24),
               Text(
-                'Ataraxy',
+                'Ataraxy.',
                 // Explicit style: the brand wordmark stays in the system
                 // sans (as originally) — the italic display font is only
                 // for generic headings, not the brand name.

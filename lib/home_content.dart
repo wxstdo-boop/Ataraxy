@@ -32,11 +32,22 @@ class HomeContent extends StatefulWidget {
 }
 
 class HomeContentState extends State<HomeContent>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   bool _showSplash = true;
   late AnimationController _splashController;
   late Animation<double> _splashOpacity;
   late AppSettings _lastSettings;
+
+  // Welcome -> home handoff. The home is mounted and PAINTED behind the
+  // (opaque) welcome card from the first onboarding frame — exactly the trick
+  // the splash uses — so revealing it is a pure opacity fade of the welcome
+  // layer over an already-warm screen. The old AnimatedSwitcher built a BRAND
+  // NEW HomeScreen at the moment of the switch, so the first frame of the fade
+  // had to build + lay out + paint the whole feed in one go: that is the
+  // jerky, stuttering transition the user kept reporting.
+  late AnimationController _welcomeExit;
+  late Animation<double> _welcomeOpacity;
+  late bool _welcomeMounted;
 
   @override
   void initState() {
@@ -74,6 +85,21 @@ class HomeContentState extends State<HomeContent>
       }
     });
     _splashController.forward();
+
+    _welcomeMounted = widget.showWelcome;
+    _welcomeExit = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 420),
+      value: widget.showWelcome ? 0.0 : 1.0,
+    );
+    _welcomeOpacity = Tween<double>(begin: 1.0, end: 0.0).animate(
+      CurvedAnimation(parent: _welcomeExit, curve: Curves.easeInOutCubic),
+    );
+    _welcomeExit.addStatusListener((status) {
+      if (status == AnimationStatus.completed && mounted && _welcomeMounted) {
+        setState(() => _welcomeMounted = false);
+      }
+    });
   }
 
   @override
@@ -82,6 +108,12 @@ class HomeContentState extends State<HomeContent>
     // The child is rebuilt implicitly in build(); just refresh the cached
     // settings snapshot so the structural-change guard below stays accurate.
     _lastSettings = widget.settingsNotifier.value;
+
+    // Onboarding finished (Start button or the close X): fade the welcome
+    // layer out over the already-painted home, then unmount it.
+    if (oldWidget.showWelcome && !widget.showWelcome && _welcomeMounted) {
+      _welcomeExit.forward();
+    }
   }
 
   @override
@@ -89,6 +121,7 @@ class HomeContentState extends State<HomeContent>
     splashActive.value = false;
     widget.settingsNotifier.removeListener(_onSettingsChanged);
     _splashController.dispose();
+    _welcomeExit.dispose();
     super.dispose();
   }
 
@@ -107,51 +140,9 @@ class HomeContentState extends State<HomeContent>
     if (structural) setState(() {});
   }
 
-  /// The visible content for the current shell flags. During onboarding the
-  /// home screen is kept in the tree BEHIND the welcome card (see build) so
-  /// it is already laid out and rasterised before "Начать пользоваться" is
-  /// tapped — the cross-fade then just reveals an already-painted screen
-  /// instead of building the whole feed in one frame (the lag after the tap).
-  Widget _content() {
-    final settings = widget.settingsNotifier.value;
-    final Widget gated;
-    if (widget.showWelcome) {
-      gated = WelcomeScreen(
-        key: const ValueKey('welcome'),
-        settings: settings,
-        onComplete: widget.onWelcomeComplete,
-        onDismiss: widget.onDismissWelcome,
-      );
-    } else if (settings.pin != null && !widget.authenticated) {
-      gated = SettingsProviderPin(
-        key: const ValueKey('lock'),
-        pin: settings.pin!,
-        child: LockScreen(onUnlocked: widget.onUnlocked),
-      );
-    } else {
-      gated = HomeScreen(
-        key: const ValueKey('home'),
-        tulpaEnabled: settings.tulpaEnabled,
-        onRequestLock: widget.onRequestLock,
-      );
-    }
-
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 300),
-      switchInCurve: Curves.easeOutCubic,
-      switchOutCurve: Curves.easeInCubic,
-      transitionBuilder: (child, animation) {
-        // Pure cross-fade — no slide. Sliding the welcome screen out while
-        // the home screen slides in made the two overlap and look like a
-        // duplicated "double animation" right after onboarding.
-        return FadeTransition(opacity: animation, child: child);
-      },
-      child: gated,
-    );
-  }
-
-  /// The home screen pre-built behind the welcome card during onboarding.
-  Widget _prebuiltHome() => HomeScreen(
+  /// The home screen, pre-built behind the welcome card during onboarding so
+  /// it is already laid out and rasterised before the user finishes.
+  Widget _home() => HomeScreen(
         key: const ValueKey('home'),
         tulpaEnabled: widget.settingsNotifier.value.tulpaEnabled,
         onRequestLock: widget.onRequestLock,
@@ -160,28 +151,24 @@ class HomeContentState extends State<HomeContent>
   @override
   Widget build(BuildContext context) {
     final bg = Container(color: Theme.of(context).scaffoldBackgroundColor);
+    final settings = widget.settingsNotifier.value;
+    final locked = settings.pin != null && !widget.authenticated;
 
-    // Onboarding: keep the welcome card on top of the home screen, which is
-    // mounted but hidden so it warms up (data loaded, first layout + paint
-    // done) before the user finishes. Offstage+Opacity(0) keeps it laid out
-    // and painted while invisible, so "Начать пользоваться" reveals an
-    // already-ready screen. IgnorePointer + the covering welcome card keep
-    // the hidden home from receiving input.
-    final Widget content = widget.showWelcome
-        ? Stack(
-            fit: StackFit.expand,
-            children: [
-              Opacity(
-                opacity: 0,
-                child: IgnorePointer(child: _prebuiltHome()),
-              ),
-              _content(),
-            ],
+    // The BASE layer is stable across the whole onboarding hand-off: while the
+    // welcome is up it is the (hidden) home, and once the welcome fades away it
+    // is the very same home widget — same key, same position in the tree — so
+    // nothing remounts at switch time. That is what makes the reveal a plain
+    // opacity fade over an already-painted screen instead of a rebuild.
+    final Widget base = (locked && !_welcomeMounted)
+        ? SettingsProviderPin(
+            key: const ValueKey('lock'),
+            pin: settings.pin!,
+            child: LockScreen(onUnlocked: widget.onUnlocked),
           )
-        : _content();
+        : _home();
 
-    // Always keep the same tree shape (content under the splash overlay). If
-    // we swapped the Stack for the bare content when the splash finished, the
+    // Always keep the same tree shape (base under the splash overlay). If we
+    // swapped the Stack for the bare content when the splash finished, the
     // whole subtree would REMOUNT — re-running the welcome intro and the
     // entry-card stagger animations, which looked like a flash + a duplicated
     // "double animation" right after the transition.
@@ -189,7 +176,29 @@ class HomeContentState extends State<HomeContent>
       fit: StackFit.expand,
       children: [
         bg,
-        content,
+        // While onboarding the home is laid out and painted but invisible and
+        // inert, warming up behind the welcome card.
+        _welcomeMounted
+            ? Opacity(opacity: 0, child: IgnorePointer(child: base))
+            : base,
+        // The welcome card, fading out over the already-painted home when
+        // onboarding ends. The RepaintBoundary caches its raster so the fade
+        // is a pure composited opacity, not a live re-composite every frame.
+        if (_welcomeMounted)
+          IgnorePointer(
+            ignoring: _welcomeExit.value > 0,
+            child: FadeTransition(
+              opacity: _welcomeOpacity,
+              child: RepaintBoundary(
+                child: WelcomeScreen(
+                  key: const ValueKey('welcome'),
+                  settings: settings,
+                  onComplete: widget.onWelcomeComplete,
+                  onDismiss: widget.onDismissWelcome,
+                ),
+              ),
+            ),
+          ),
         IgnorePointer(
           ignoring: !_showSplash,
           // RepaintBoundary sits INSIDE the FadeTransition so the splash

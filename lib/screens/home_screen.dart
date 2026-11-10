@@ -82,6 +82,7 @@ class _HomeScreenState extends State<HomeScreen>
   // taps are debounced so the snackbar doesn't stack.
   DateTime _lastRefreshSnackAt = DateTime.fromMillisecondsSinceEpoch(0);
   final FocusNode _searchFocus = FocusNode();
+  final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   // When the user scrolls a list DOWN the FAB + reminders button glide out
   // of the way; scrolling up brings them back. Works for every tab (dreams,
@@ -160,10 +161,35 @@ class _HomeScreenState extends State<HomeScreen>
   void dispose() {
     _searchFocus.removeListener(_onSearchFocusChanged);
     _searchFocus.dispose();
+    _searchController.dispose();
     _fabVisible.dispose();
     _barsCtrl.removeListener(_onBarsTick);
     _barsCtrl.dispose();
     super.dispose();
+  }
+
+  /// Opens the search field: show it, clear any stale text, then focus so the
+  /// keyboard slides in on an already-visible field (no jump).
+  void _openSearch() {
+    setState(() {
+      _searching = true;
+      _searchQuery = '';
+    });
+    _searchController.clear();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _searchFocus.requestFocus();
+    });
+  }
+
+  /// Closes the search field: clears the query AND the text field, so
+  /// reopening search starts empty instead of restoring the old query.
+  void _closeSearch() {
+    _searchFocus.unfocus();
+    setState(() {
+      _searching = false;
+      _searchQuery = '';
+    });
+    _searchController.clear();
   }
 
   /// Hides/shows the FAB + reminders while the user drags a list: scroll
@@ -202,6 +228,9 @@ class _HomeScreenState extends State<HomeScreen>
 
   void _onSearchFocusChanged() {
     if (!_searchFocus.hasFocus && _searchQuery.isEmpty) {
+      // Losing focus with nothing typed closes the field; clear the text
+      // controller too so a later reopen never restores old text.
+      _searchController.clear();
       setState(() => _searching = false);
     }
   }
@@ -570,19 +599,9 @@ class _HomeScreenState extends State<HomeScreen>
               isSearching: _searching,
               onTap: () {
                 if (_searching) {
-                  _searchFocus.unfocus();
-                  setState(() {
-                    _searching = false;
-                    _searchQuery = '';
-                  });
+                  _closeSearch();
                 } else {
-                  setState(() {
-                    _searching = true;
-                    _searchQuery = '';
-                  });
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    _searchFocus.requestFocus();
-                  });
+                  _openSearch();
                 }
               },
             ),
@@ -620,14 +639,16 @@ class _HomeScreenState extends State<HomeScreen>
                 onNotification: _onScrollNotification,
                 child: Stack(
                   children: [
-                    // Ambient wash behind the feed: a soft theme tint so the
-                    // translucent glass cards have something to blend over.
-                    // Solid color (not a gradient) — cheaper to composite on
-                    // low-end GPUs during scroll.
+                    // Ambient wash behind the feed. Uses the SCAFFOLD colour
+                    // (not surfaceContainerLowest, which is pure white) so the
+                    // feed background matches the surface that peeks through
+                    // the header's rounded bottom corners — otherwise the white
+                    // feed met a lavender scaffold at those corners and read as
+                    // "белые просветы" right under the header.
                     Positioned.fill(
                       child: DecoratedBox(
                         decoration: BoxDecoration(
-                          color: scheme.surfaceContainerLowest,
+                          color: Theme.of(context).scaffoldBackgroundColor,
                         ),
                       ),
                     ),
@@ -990,6 +1011,7 @@ class _HomeScreenState extends State<HomeScreen>
                                         contextMenuBuilder: (ctx, state) =>
                                             buildLimitedContextMenu(ctx, state),
                                         focusNode: _searchFocus,
+                                        controller: _searchController,
                                         // Убран autofocus: поле фокусируется только при явном открытии поиска
                                         maxLength: 50,
                                         buildCounter: animatedFieldCounter,

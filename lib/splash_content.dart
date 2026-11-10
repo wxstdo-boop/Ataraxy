@@ -144,23 +144,41 @@ class SplashContent extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 22),
-                    Text(
-                      L.tr(context, 'launchTitle'),
-                      style: TextStyle(
-                        fontSize: 36,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                        letterSpacing: 0.6,
-                        shadows: [
-                          Shadow(
-                            color: scheme.shadow.withValues(alpha: 0.3),
-                            blurRadius: 14,
-                            offset: const Offset(0, 3),
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          L.tr(context, 'launchTitle'),
+                          style: TextStyle(
+                            fontSize: 36,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                            letterSpacing: 0.6,
+                            shadows: [
+                              Shadow(
+                                color: scheme.shadow.withValues(alpha: 0.3),
+                                blurRadius: 14,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(height: 6),
+                        // Hand-drawn underline: a rounded dashed rule under
+                        // the wordmark. CustomPaint (not a decoration) so the
+                        // dashes get round caps and a slight arc.
+                        SizedBox(
+                          width: 168,
+                          height: 12,
+                          child: CustomPaint(
+                            painter: _DashedUnderlinePainter(
+                              color: Colors.white.withValues(alpha: 0.85),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 4),
                     Text(
                       L.tr(context, 'byWetidom'),
                       style: TextStyle(
@@ -289,4 +307,48 @@ class _CometPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _CometPainter old) =>
       old.color != color || old.strokeWidth != strokeWidth;
+}
+
+/// A gentle dashed underline with rounded caps, drawn along a shallow arc so
+/// it reads as a hand-drawn stroke rather than a machine-straight rule.
+class _DashedUnderlinePainter extends CustomPainter {
+  final Color color;
+
+  static const double _dash = 7;
+  static const double _gap = 6;
+  static const double _strokeWidth = 3;
+
+  _DashedUnderlinePainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = _strokeWidth
+      ..strokeCap = StrokeCap.round;
+
+    // Shallow downward bow: ends sit slightly higher than the middle.
+    final path = Path()
+      ..moveTo(_strokeWidth, size.height * 0.35)
+      ..quadraticBezierTo(
+        size.width / 2,
+        size.height,
+        size.width - _strokeWidth,
+        size.height * 0.35,
+      );
+
+    for (final metric in path.computeMetrics()) {
+      var distance = 0.0;
+      while (distance < metric.length) {
+        final next = (distance + _dash).clamp(0.0, metric.length);
+        canvas.drawPath(metric.extractPath(distance, next), paint);
+        distance = next + _gap;
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DashedUnderlinePainter old) =>
+      old.color != color;
 }

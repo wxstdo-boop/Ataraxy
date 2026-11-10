@@ -33,7 +33,6 @@ class HomeContent extends StatefulWidget {
 
 class HomeContentState extends State<HomeContent>
     with SingleTickerProviderStateMixin {
-  Widget _child = const SizedBox.shrink();
   bool _showSplash = true;
   late AnimationController _splashController;
   late Animation<double> _splashOpacity;
@@ -44,7 +43,6 @@ class HomeContentState extends State<HomeContent>
     super.initState();
     splashActive.value = true;
     _lastSettings = widget.settingsNotifier.value;
-    _child = _buildChild(_lastSettings);
     widget.settingsNotifier.addListener(_onSettingsChanged);
 
     _splashController = AnimationController(
@@ -63,7 +61,7 @@ class HomeContentState extends State<HomeContent>
     _splashOpacity = Tween<double>(begin: 1.0, end: 0.0).animate(
       CurvedAnimation(
         parent: _splashController,
-        curve: const Interval(0.32, 1.0, curve: Curves.easeInOutCubic),
+        curve: const Interval(0.28, 1.0, curve: Curves.easeInOutCubic),
       ),
     );
 
@@ -81,14 +79,9 @@ class HomeContentState extends State<HomeContent>
   @override
   void didUpdateWidget(covariant HomeContent oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Rebuild the child whenever the shell tells us the active screen
-    // changed. Without this the welcome/lock screens get stuck: the child is
-    // only refreshed on settings-notifier events, so the dismiss (×) button
-    // never worked and "Начать пользоваться" needed a second tap.
-    if (oldWidget.showWelcome != widget.showWelcome ||
-        oldWidget.authenticated != widget.authenticated) {
-      _child = _buildChild(widget.settingsNotifier.value);
-    }
+    // The child is rebuilt implicitly in build(); just refresh the cached
+    // settings snapshot so the structural-change guard below stays accurate.
+    _lastSettings = widget.settingsNotifier.value;
   }
 
   @override
@@ -102,59 +95,90 @@ class HomeContentState extends State<HomeContent>
   void _onSettingsChanged() {
     if (!mounted) return;
     final settings = widget.settingsNotifier.value;
-    // Only rebuild the child when something STRUCTURAL changed: the Tulpa
-    // tab set or the PIN lock. Everything else (theme, language, water,
-    // fasting, …) already propagates through InheritedWidgets, so rebuilding
-    // the entire home tree on every toggle was pure waste — it re-ran the
-    // whole list build (markdown parse + layout of every entry card).
-    if (settings.tulpaEnabled == _lastSettings.tulpaEnabled &&
-        settings.pin == _lastSettings.pin) {
-      return;
-    }
+    // Only rebuild when something STRUCTURAL changed: the Tulpa tab set or
+    // the PIN lock. Everything else (theme, language, water, fasting, …)
+    // already propagates through InheritedWidgets, so rebuilding the entire
+    // home tree on every toggle was pure waste — it re-ran the whole list
+    // build (markdown parse + layout of every entry card).
+    final structural =
+        settings.tulpaEnabled != _lastSettings.tulpaEnabled ||
+        settings.pin != _lastSettings.pin;
     _lastSettings = settings;
-    setState(() => _child = _buildChild(settings));
+    if (structural) setState(() {});
   }
 
-  Widget _buildChild(AppSettings settings) {
+  /// The visible content for the current shell flags. During onboarding the
+  /// home screen is kept in the tree BEHIND the welcome card (see build) so
+  /// it is already laid out and rasterised before "Начать пользоваться" is
+  /// tapped — the cross-fade then just reveals an already-painted screen
+  /// instead of building the whole feed in one frame (the lag after the tap).
+  Widget _content() {
+    final settings = widget.settingsNotifier.value;
+    final Widget gated;
     if (widget.showWelcome) {
-      return WelcomeScreen(
+      gated = WelcomeScreen(
         key: const ValueKey('welcome'),
         settings: settings,
         onComplete: widget.onWelcomeComplete,
         onDismiss: widget.onDismissWelcome,
       );
-    }
-    if (settings.pin != null && !widget.authenticated) {
-      return SettingsProviderPin(
+    } else if (settings.pin != null && !widget.authenticated) {
+      gated = SettingsProviderPin(
         key: const ValueKey('lock'),
         pin: settings.pin!,
         child: LockScreen(onUnlocked: widget.onUnlocked),
       );
+    } else {
+      gated = HomeScreen(
+        key: const ValueKey('home'),
+        tulpaEnabled: settings.tulpaEnabled,
+        onRequestLock: widget.onRequestLock,
+      );
     }
-    return HomeScreen(
-      key: const ValueKey('home'),
-      tulpaEnabled: settings.tulpaEnabled,
-      onRequestLock: widget.onRequestLock,
+
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 300),
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      transitionBuilder: (child, animation) {
+        // Pure cross-fade — no slide. Sliding the welcome screen out while
+        // the home screen slides in made the two overlap and look like a
+        // duplicated "double animation" right after onboarding.
+        return FadeTransition(opacity: animation, child: child);
+      },
+      child: gated,
     );
   }
 
+  /// The home screen pre-built behind the welcome card during onboarding.
+  Widget _prebuiltHome() => HomeScreen(
+        key: const ValueKey('home'),
+        tulpaEnabled: widget.settingsNotifier.value.tulpaEnabled,
+        onRequestLock: widget.onRequestLock,
+      );
+
   @override
   Widget build(BuildContext context) {
-    final content = Container(
-      color: Theme.of(context).scaffoldBackgroundColor,
-      child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 300),
-        switchInCurve: Curves.easeOutCubic,
-        switchOutCurve: Curves.easeInCubic,
-        transitionBuilder: (child, animation) {
-          // Pure cross-fade — no slide. Sliding the welcome screen out while
-          // the home screen slides in made the two overlap and look like a
-          // duplicated "double animation" right after onboarding.
-          return FadeTransition(opacity: animation, child: child);
-        },
-        child: _child,
-      ),
-    );
+    final bg = Container(color: Theme.of(context).scaffoldBackgroundColor);
+
+    // Onboarding: keep the welcome card on top of the home screen, which is
+    // mounted but hidden so it warms up (data loaded, first layout + paint
+    // done) before the user finishes. Offstage+Opacity(0) keeps it laid out
+    // and painted while invisible, so "Начать пользоваться" reveals an
+    // already-ready screen. IgnorePointer + the covering welcome card keep
+    // the hidden home from receiving input.
+    final Widget content = widget.showWelcome
+        ? Stack(
+            fit: StackFit.expand,
+            children: [
+              Opacity(
+                opacity: 0,
+                child: IgnorePointer(child: _prebuiltHome()),
+              ),
+              _content(),
+            ],
+          )
+        : _content();
 
     // Always keep the same tree shape (content under the splash overlay). If
     // we swapped the Stack for the bare content when the splash finished, the
@@ -164,37 +188,29 @@ class HomeContentState extends State<HomeContent>
     return Stack(
       fit: StackFit.expand,
       children: [
+        bg,
         content,
         IgnorePointer(
           ignoring: !_showSplash,
-          child: FadeTransition(
-            opacity: _splashOpacity,
-            // A gentle scale-up as the splash fades: the whole panel breathes
-            // outward and dissolves, so the exit reads as a melt rather than
-            // a hard cut.
-            child: ScaleTransition(
-              // A gentle scale-up that runs over the SAME window as the fade
-              // and eases in/out, so the panel breathes outward and dissolves
-              // as one motion (no separate mid-flight start).
-              scale: Tween<double>(begin: 1.0, end: 1.04).animate(
-                CurvedAnimation(
-                  parent: _splashController,
-                  curve: const Interval(0.30, 1.0, curve: Curves.easeInOutCubic),
-                ),
-              ),
-              // RepaintBoundary: the splash subtree (big gradients + artwork)
-              // is rasterised ONCE into a texture, and the fade/scale below
-              // are then pure composited transforms of that cached texture.
-              // Without this the full-screen gradients were re-rasterised on
-              // every frame of the exit — the laggy fade-out.
-              child: RepaintBoundary(
-                child: SplashContent(
-                  opacity: AlwaysStoppedAnimation(1.0),
-                  contentOpacity: AlwaysStoppedAnimation(1.0),
-                  // MUTILATED: the splash background is fully opaque; other
-                  // themes keep the soft translucent theme gradient.
-                  opaque: _lastSettings.themeMode == AppThemeMode.mutilated,
-                ),
+          // RepaintBoundary: the splash subtree (big gradients + artwork) is
+          // rasterised ONCE into a texture and the fade is then a pure
+          // composited opacity — no re-rasterisation per frame.
+          //
+          // NO ScaleTransition here on purpose. Scaling a full-screen texture
+          // makes the GPU re-sample every pixel of the whole screen every
+          // frame (bilinear filtering over ~1080p), which is exactly the
+          // "подтормаживает выход со сплеша" the user kept feeling on
+          // mid-range phones. A plain opacity fade is a single cheap blend
+          // with zero resampling, so it stays smooth even on weak GPUs.
+          child: RepaintBoundary(
+            child: FadeTransition(
+              opacity: _splashOpacity,
+              child: SplashContent(
+                opacity: AlwaysStoppedAnimation(1.0),
+                contentOpacity: AlwaysStoppedAnimation(1.0),
+                // MUTILATED: the splash background is fully opaque; other
+                // themes keep the soft translucent theme gradient.
+                opaque: _lastSettings.themeMode == AppThemeMode.mutilated,
               ),
             ),
           ),

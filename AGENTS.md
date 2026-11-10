@@ -101,3 +101,23 @@ Pushing a `v*` tag whose version matches `pubspec.yaml` triggers
 `.github/workflows/release.yml`, which builds a signed arm64 APK and publishes
 it as a GitHub release. The in-app updater (`GithubUpdateService`) reads that
 release, so bump `version:` in `pubspec.yaml` before tagging.
+
+## Theming pitfalls
+
+- The home body paints an ambient wash behind the feed. It must use
+  `Theme.of(context).scaffoldBackgroundColor` (NOT `surfaceContainerLowest`,
+  which is near-white). The AppBar's `PremiumHeader` has rounded bottom
+  corners, and the scaffold colour peeks through them; if the feed wash
+  differs from the scaffold, those corners show up as white "просветы".
+- `PremiumHeader` is `ClipRRect`-ed to the same radius as the AppBar `shape`.
+  Keep the two radii in sync or the gradient bleeds past the rounded corner.
+
+## Performance notes
+
+- Never wrap a full-screen splash in a `ScaleTransition`: scaling a screen
+  texture makes the GPU bilinear-resample every pixel per frame (the laggy
+  splash exit). A plain `FadeTransition` inside a `RepaintBoundary` is one
+  cheap blend with zero resampling.
+- During onboarding, `HomeContent` keeps `HomeScreen` mounted behind the
+  welcome card (`Opacity(0)` + `IgnorePointer`) so the feed is laid out and
+  rasterised before "Начать пользоваться" is tapped — avoids the build spike.

@@ -263,12 +263,13 @@ class AppTheme {
         foregroundColor: effectiveHeaderFg,
         elevation: 0,
         scrolledUnderElevation: 0,
-        // Slightly bigger AppBar titles («Настройки», «Сон», «Редактировать»)
-        // — and explicitly the system sans, so headers never inherit the
+        // AppBar titles («Настройки», «Сон», «Редактировать») — trimmed down
+        // from 21 to 18 so the header reads calmer and stops "режет глаза";
+        // still explicitly the system sans, so headers never inherit the
         // display font's italic cut.
         titleTextStyle: TextStyle(
           color: effectiveHeaderFg,
-          fontSize: 21,
+          fontSize: 18,
           fontWeight: FontWeight.w700,
           letterSpacing: 0.2,
         ),
@@ -291,6 +292,10 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: scheme.surfaceContainerHigh,
+        // Hint text cross-fades (instead of the stock 20 ms snap) so the
+        // placeholder <-> typed-text swap — including the search field's
+        // "Поиск по записям..." — reads as a smooth dissolve, not a flicker.
+        hintFadeDuration: const Duration(milliseconds: 220),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide.none,

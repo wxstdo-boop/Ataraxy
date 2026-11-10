@@ -1,8 +1,13 @@
 import 'dart:async';
+import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
 
 import 'package:ataraxy/theme/app_theme.dart';
+
+/// Cached blur for the frosted snackbar surface (re-creating the engine
+/// shader on every rebuild is wasteful on low-end devices).
+final ImageFilter _kSnackBlur = ImageFilter.blur(sigmaX: 16, sigmaY: 16);
 
 /// Типы снекбаров — влияют на иконку и акцент.
 /// Цвет фона/текста всегда берётся из snackBarTheme текущей темы.
@@ -209,81 +214,92 @@ class _AnimatedSnackHostState extends State<_AnimatedSnackHost>
           position: _slide,
           child: FadeTransition(
             opacity: _opacity,
-            child: Material(
-              elevation: 8,
-              color: bg,
-              shadowColor: scheme.shadow.withValues(alpha: 0.14),
+            child: ClipRRect(
               borderRadius: BorderRadius.circular(20),
-              clipBehavior: Clip.antiAlias,
-              child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: scheme.outlineVariant.withValues(alpha: 0.6),
-                    ),
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 12,
-                  ),
-                  child: Row(
-                    children: [
-                      // Icon tile: tinted rounded square in the accent
-                      // colour, same for every snack type.
-                      Container(
-                        width: 34,
-                        height: 34,
-                        decoration: BoxDecoration(
-                          color: accent.withValues(alpha: 0.16),
-                          borderRadius: BorderRadius.circular(11),
+              // Semi-transparent frosted surface: the app behind glows
+              // through a blur instead of being fully covered by an opaque
+              // bar — the snackbar reads as a floating glass pill.
+              child: BackdropFilter(
+                filter: _kSnackBlur,
+                child: Material(
+                  // ~82% opacity so the blur shows through; the theme's snack
+                  // colour still sets the tone (light on light themes, dark on
+                  // dark ones).
+                  color: bg.withValues(alpha: 0.82),
+                  shadowColor: scheme.shadow.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(20),
+                  clipBehavior: Clip.antiAlias,
+                  child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: scheme.outlineVariant.withValues(alpha: 0.6),
                         ),
-                        child: Icon(icon, color: accent, size: 20),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          widget.message,
-                          style: (snackTheme.contentTextStyle ??
-                                  const TextStyle())
-                              .copyWith(
-                            color: fg,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14,
-                            height: 1.25,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
+                      child: Row(
+                        children: [
+                          // Icon tile: tinted rounded square in the accent
+                          // colour, same for every snack type.
+                          Container(
+                            width: 34,
+                            height: 34,
+                            decoration: BoxDecoration(
+                              color: accent.withValues(alpha: 0.16),
+                              borderRadius: BorderRadius.circular(11),
+                            ),
+                            child: Icon(icon, color: accent, size: 20),
                           ),
-                        ),
-                      ),
-                      if (widget.action != null) ...[
-                        const SizedBox(width: 10),
-                        // Rounded pill action button, tinted with the
-                        // snack accent so it reads as a call-to-action.
-                        Material(
-                          color: accent.withValues(alpha: 0.16),
-                          borderRadius: BorderRadius.circular(14),
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(14),
-                            onTap: () {
-                              widget.action!.onPressed();
-                              _close();
-                            },
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 8,
-                              ),
-                              child: Text(
-                                widget.action!.label,
-                                style: TextStyle(
-                                  color: accent,
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 13,
-                                ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              widget.message,
+                              style: (snackTheme.contentTextStyle ??
+                                      const TextStyle())
+                                  .copyWith(
+                                color: fg,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
+                                height: 1.25,
                               ),
                             ),
                           ),
-                        ),
-                      ],
-                    ],
+                          if (widget.action != null) ...[
+                            const SizedBox(width: 10),
+                            // Rounded pill action button, tinted with the
+                            // snack accent so it reads as a call-to-action.
+                            Material(
+                              color: accent.withValues(alpha: 0.16),
+                              borderRadius: BorderRadius.circular(14),
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(14),
+                                onTap: () {
+                                  widget.action!.onPressed();
+                                  _close();
+                                },
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 8,
+                                  ),
+                                  child: Text(
+                                    widget.action!.label,
+                                    style: TextStyle(
+                                      color: accent,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),

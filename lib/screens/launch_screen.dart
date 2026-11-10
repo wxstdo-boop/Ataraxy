@@ -109,8 +109,10 @@ class _LaunchScreenState extends State<LaunchScreen>
                             width: 96,
                             height: 96,
                             fit: BoxFit.cover,
-                            cacheWidth: 96,
-                            cacheHeight: 96,
+                            cacheWidth:
+                                (96 * MediaQuery.devicePixelRatioOf(context))
+                                    .ceil(),
+                            filterQuality: FilterQuality.high,
                           ),
                         ),
                       ),

@@ -160,19 +160,23 @@ class _ReminderDialogState extends State<ReminderDialog> {
                               color: AppAccents.sage,
                             ),
                             title: Text(L.tr(context, 'permissions')),
-                            subtitle: const Text('Проверить разрешения'),
+                            subtitle: Text(L.tr(context, 'checkPermissionsAction')),
                             trailing: const Icon(Icons.chevron_right_rounded),
                             onTap: () async {
                               final result =
                                   await NotificationService
                                       .requestAllPermissions();
                               if (context.mounted) {
+                                final denied = result.contains('ОТКЛОНЕНО');
                                 AnimatedSnack.show(
                                   context,
-                                  result.contains('ОТКЛОНЕНО')
-                                      ? 'Проверьте разрешения'
-                                      : 'Разрешения OK',
-                                  type: result.contains('ОТКЛОНЕНО')
+                                  L.tr(
+                                    context,
+                                    denied
+                                        ? 'permissionsCheckFailed'
+                                        : 'permissionsOk',
+                                  ),
+                                  type: denied
                                       ? SnackType.warning
                                       : SnackType.success,
                                 );

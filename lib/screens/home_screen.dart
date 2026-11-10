@@ -490,7 +490,7 @@ class _HomeScreenState extends State<HomeScreen>
           foregroundColor: Colors.white,
           elevation: 0,
           scrolledUnderElevation: 0,
-          toolbarHeight: 72,
+          toolbarHeight: 64,
           shape: const RoundedRectangleBorder(
             borderRadius: BorderRadius.only(
               bottomLeft: Radius.circular(28),
@@ -583,7 +583,7 @@ class _HomeScreenState extends State<HomeScreen>
                       style: TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
-                        fontSize: 20,
+                        fontSize: 18,
                         // Explicitly opt OUT of the theme's italic
                         // display font (Cormorant) — the brand wordmark
                         // keeps its original system-sans look.
@@ -937,8 +937,14 @@ class _HomeScreenState extends State<HomeScreen>
                                                     width: 80,
                                                     height: 80,
                                                     fit: BoxFit.cover,
-                                                    cacheWidth: 80,
-                                                    cacheHeight: 80,
+                                                    cacheWidth:
+                                                        (80 *
+                                                                MediaQuery.devicePixelRatioOf(
+                                                                  context,
+                                                                ))
+                                                            .ceil(),
+                                                    filterQuality:
+                                                        FilterQuality.high,
                                                   ),
                                                 ),
                                               ),

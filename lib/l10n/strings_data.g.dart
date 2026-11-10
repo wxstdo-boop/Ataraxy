@@ -352,6 +352,9 @@ const Map<String, Map<String, String>> kStrings = {
   'favoriteActivityAdded': {'ru': 'Дело добавлено', 'en': 'Activity added', 'fr': 'Activité ajoutée'},
   'favoriteActivityDeleted': {'ru': 'Дело удалено', 'en': 'Activity deleted', 'fr': 'Activité supprimée'},
   'permissions': {'ru': 'Разрешения', 'en': 'Permissions', 'fr': 'Permissions'},
+  'checkPermissionsAction': {'ru': 'Проверить разрешения', 'en': 'Check permissions', 'fr': 'Vérifier les permissions'},
+  'permissionsOk': {'ru': 'Разрешения OK', 'en': 'Permissions OK', 'fr': 'Permissions OK'},
+  'permissionsCheckFailed': {'ru': 'Проверьте разрешения', 'en': 'Check the permissions', 'fr': 'Vérifiez les permissions'},
   'miuiHint': {'ru': 'MIUI: включите Автозапуск и «Без ограничений» в Батарее — иначе система остановит фоновые уведомления.', 'en': 'MIUI: enable Autostart and "No restrictions" in Battery — otherwise background notifications get killed.', 'fr': 'MIUI : activez le Démarrage auto et « Sans restrictions » dans Batterie — sinon les notifications en arrière-plan sont bloquées.'},
   'webHint': {'ru': 'Уведомление сработает, пока вкладка открыта.', 'en': 'Reminder fires while the tab is open.', 'fr': 'Le rappel s\'active tant que l\'onglet est ouvert.'},
 };

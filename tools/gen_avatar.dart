@@ -137,9 +137,12 @@ void main() {
     interpolation: Interpolation.average,
   );
 
-  // In-app artwork (splash + avatar).
+  // In-app artwork (splash + avatar). Written at the FULL master resolution
+  // (1024) so the splash avatar and the AppAvatar medallion decode at physical
+  // pixel density (cacheWidth = logical size x DPR) instead of being upscaled
+  // from a 512px source — that upscale was the last source of softness.
   File('assets/ataraxy.png')
-      .writeAsBytesSync(encodePng(copyResize(down, width: 512, height: 512)));
+      .writeAsBytesSync(encodePng(copyResize(down, width: 1024, height: 1024)));
 
   // Windows icon.
   File('windows/runner/resources/app_icon.ico')

@@ -148,6 +148,14 @@ class SplashContent extends StatelessWidget {
                           width: 96,
                           height: 96,
                           fit: BoxFit.cover,
+                          // Decode at PHYSICAL resolution (96dp x DPR) with a
+                          // high-quality filter, so the crescent edge stays
+                          // razor sharp instead of being resampled from the
+                          // full-size bitmap every frame.
+                          cacheWidth:
+                              (96 * MediaQuery.devicePixelRatioOf(context))
+                                  .ceil(),
+                          filterQuality: FilterQuality.high,
                         ),
                       ),
                     ),

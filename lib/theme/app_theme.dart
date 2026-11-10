@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 enum AppThemeMode {
   system,
@@ -273,6 +274,22 @@ class AppTheme {
         foregroundColor: effectiveHeaderFg,
         elevation: 0,
         scrolledUnderElevation: 0,
+        // The header gradient runs edge-to-edge UNDER the status bar, so the
+        // window there must be transparent and its icons tinted for the header
+        // (not the body). Without this a light theme paints a near-white
+        // status-bar strip above the coloured header — the "белая полоса"
+        // that showed up as a stripe over/around the plate on the main screen.
+        systemOverlayStyle: SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness:
+              effectiveHeaderBg.computeLuminance() > 0.5
+                  ? Brightness.dark
+                  : Brightness.light,
+          statusBarBrightness:
+              effectiveHeaderBg.computeLuminance() > 0.5
+                  ? Brightness.light
+                  : Brightness.dark,
+        ),
         // AppBar titles («Настройки», «Сон», «Редактировать») — trimmed down
         // from 21 to 18 so the header reads calmer and stops "режет глаза";
         // still explicitly the system sans, so headers never inherit the

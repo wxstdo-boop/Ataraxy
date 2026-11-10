@@ -80,6 +80,7 @@ class AppAvatar extends StatelessWidget {
             fit: BoxFit.cover,
             cacheWidth: facePx,
             cacheHeight: facePx,
+            filterQuality: FilterQuality.high,
           ),
         ),
       ),

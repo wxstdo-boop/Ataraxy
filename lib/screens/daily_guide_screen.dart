@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ataraxy/l10n/strings.dart';
+import 'package:ataraxy/widgets/app_back_button.dart';
 import 'package:ataraxy/widgets/premium_header.dart';
 
 enum DailyGuideTopic { lucidDreams, tulpa }
@@ -191,6 +192,7 @@ class _DailyGuideScreenState extends State<DailyGuideScreen> {
         : [shiftHue(scheme.secondary), shiftHue(scheme.tertiary)];
     return Scaffold(
       appBar: AppBar(
+        leading: const AppBackButton(),
         title: Text(title),
         backgroundColor: Colors.transparent,
         foregroundColor: Colors.white,

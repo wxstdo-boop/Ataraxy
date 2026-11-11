@@ -274,6 +274,7 @@ class _AnimatedSnackHostState extends State<_AnimatedSnackHost>
                             Material(
                               color: accent.withValues(alpha: 0.16),
                               borderRadius: BorderRadius.circular(14),
+                              clipBehavior: Clip.antiAlias,
                               child: InkWell(
                                 borderRadius: BorderRadius.circular(14),
                                 onTap: () {

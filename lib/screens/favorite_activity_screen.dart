@@ -610,6 +610,7 @@ class _ActivityCardState extends State<_ActivityCard> {
     return Material(
       color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
       borderRadius: BorderRadius.circular(20),
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: widget.onEdit,
         borderRadius: BorderRadius.circular(20),

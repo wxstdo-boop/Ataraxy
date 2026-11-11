@@ -31,7 +31,7 @@ class _EmptyState extends StatelessWidget {
                 ],
               ),
               child: const Icon(
-                Icons.image_outlined,
+                Icons.image_rounded,
                 color: Colors.white,
                 size: 40,
               ),

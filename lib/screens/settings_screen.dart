@@ -11,6 +11,7 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:ataraxy/l10n/strings.dart';
+import 'package:ataraxy/widgets/app_back_button.dart';
 import 'package:ataraxy/widgets/animated_field_counter.dart';
 import 'package:ataraxy/widgets/app_route.dart';
 import 'package:ataraxy/widgets/press_scale.dart';
@@ -159,17 +160,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        leading: PressScale(
-          // Explicit leading so the back arrow gets the same soft press
-          // dimple + recoil as every other control (the stock BackButton
-          // only had the flat Material ripple).
-          scale: 0.88,
-          haptic: true,
-          child: IconButton(
-            icon: const Icon(Icons.arrow_back_rounded),
-            onPressed: () => Navigator.of(context).maybePop(),
-          ),
-        ),
+        // Shared back button: no "Назад" tooltip, same press recoil as every
+        // other icon control (the stock BackButton only had a flat ripple).
+        leading: const AppBackButton(),
         title: Text(
           L.tr(context, 'settings'),
           style: Theme.of(context)
@@ -259,7 +252,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: PressScale(
               scale: 0.98,
               child: ListTile(
-                leading: const Icon(Icons.pin_rounded),
+                leading: const Icon(Icons.push_pin_rounded),
                 title: Text(L.tr(context, 'pin')),
                 subtitle: settings.pin != null
                     ? Text('••••')
@@ -589,33 +582,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ),
                 // Auto-export switch lives right under the import-protection
-                // toggle (same data section) — not its own category.
+                // toggle (same data section) — not its own category. Uses the
+                // same VolumetricSwitchListTile variant as every other switch
+                // row instead of a hand-rolled ListTile + trailing switch.
                 const Divider(height: 1),
-                ListTile(
+                VolumetricSwitchListTile(
                   leading: const Icon(Icons.cloud_upload_rounded),
-                  title: Text(L.tr(context, 'autoExportTitle')),
-                  subtitle: Text(L.tr(context, 'autoExportHint')),
-                  trailing: VolumetricSwitch(
-                    value: _autoExportEnabled,
-                    onChanged: (v) async {
-                      final service = AutoExportService();
-                      if (v) {
-                        await service.enable();
-                      } else {
-                        await service.disable();
-                      }
-                      setState(() => _autoExportEnabled = v);
-                      if (context.mounted) {
-                        AnimatedSnack.show(
-                          context,
-                          v
-                              ? L.tr(context, 'autoExportEnabled')
-                              : L.tr(context, 'autoExportDisabled'),
-                          type: v ? SnackType.success : SnackType.info,
-                        );
-                      }
-                    },
-                  ),
+                  title: L.tr(context, 'autoExportTitle'),
+                  subtitle: L.tr(context, 'autoExportHint'),
+                  value: _autoExportEnabled,
+                  onChanged: (v) async {
+                    final service = AutoExportService();
+                    if (v) {
+                      await service.enable();
+                    } else {
+                      await service.disable();
+                    }
+                    setState(() => _autoExportEnabled = v);
+                    if (context.mounted) {
+                      AnimatedSnack.show(
+                        context,
+                        v
+                            ? L.tr(context, 'autoExportEnabled')
+                            : L.tr(context, 'autoExportDisabled'),
+                        type: v ? SnackType.success : SnackType.info,
+                      );
+                    }
+                  },
                 ),
               ],
             ),

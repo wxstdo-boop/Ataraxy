@@ -229,9 +229,13 @@ class _TimeWheelSheetState extends State<_TimeWheelSheet> {
             children: [
               // Cancel/OK get the same soft press dimple as the rest of the
               // app's controls (the sheet's own buttons were the only flat,
-              // ripple-only taps left).
+              // ripple-only taps left). The dimple is deliberately shallow
+              // (0.97) and symmetric — a full-depth, asymmetric recoil on a
+              // short dialog button read as a jolt, not a touch.
               PressScale(
-                scale: 0.94,
+                scale: 0.97,
+                duration: const Duration(milliseconds: 150),
+                symmetric: true,
                 child: TextButton(
                   onPressed: () => Navigator.of(context).pop(),
                   child: Text(L.tr(context, 'cancel')),
@@ -239,7 +243,9 @@ class _TimeWheelSheetState extends State<_TimeWheelSheet> {
               ),
               const SizedBox(width: 8),
               PressScale(
-                scale: 0.94,
+                scale: 0.97,
+                duration: const Duration(milliseconds: 150),
+                symmetric: true,
                 child: FilledButton(
                   onPressed: () => Navigator.of(context).pop(
                     TimeOfDay(hour: _hour, minute: _minute),

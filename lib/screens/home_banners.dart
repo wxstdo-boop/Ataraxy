@@ -201,6 +201,10 @@ class _FavoritesBanner extends StatelessWidget {
         haptic: true,
         child: Material(
         borderRadius: BorderRadius.circular(16),
+        // Clip.antiAlias: without it a Material with a solid colour draws its
+        // own background rounded but leaves the child's square corners (and
+        // the ink splash) un-clipped — the "острые углы фона" on the plate.
+        clipBehavior: Clip.antiAlias,
         color: scheme.primaryContainer.withValues(alpha: 0.5),
         child: InkWell(
           borderRadius: BorderRadius.circular(16),

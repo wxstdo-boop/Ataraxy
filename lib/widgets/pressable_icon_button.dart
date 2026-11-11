@@ -12,12 +12,18 @@ class PressableIconButton extends StatefulWidget {
   final VoidCallback? onLongPress;
   final double size;
 
+  /// Screen-reader label. Deliberately NOT a [Tooltip]: the visual tooltip
+  /// that popped on long-press was unwanted ("тултип назад убери"), but the
+  /// button still needs an accessible name.
+  final String? semanticLabel;
+
   const PressableIconButton({
     super.key,
     required this.icon,
     this.onPressed,
     this.onLongPress,
     this.size = 40,
+    this.semanticLabel,
   });
 
   @override
@@ -79,6 +85,7 @@ class _PressableIconButtonState extends State<PressableIconButton> {
     return Semantics(
       button: true,
       enabled: widget.onPressed != null,
+      label: widget.semanticLabel,
       child: inner,
     );
   }

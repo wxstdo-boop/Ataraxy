@@ -7,6 +7,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 import 'package:speech_to_text/speech_recognition_result.dart';
 import 'package:ataraxy/l10n/strings.dart';
+import 'package:ataraxy/widgets/app_back_button.dart';
 import 'package:ataraxy/widgets/animated_field_counter.dart';
 import 'package:ataraxy/widgets/app_route.dart';
 import 'package:ataraxy/models/dream_signs.dart';
@@ -776,13 +777,10 @@ class _EntryScreenState extends State<EntryScreen> with WidgetsBindingObserver {
         flexibleSpace: PremiumHeader(colors: AppTheme.headerColors(scheme)),
         // Explicit leading instead of the implicit BackButton: the implicit
         // one ships a "Назад" Tooltip, which the user sees pop on a
-        // long-press over the arrow ("тултип назад убери").
-        // [PressableIconButton] has no tooltip and gives the same press
-        // recoil as the pin/save actions.
-        leading: PressableIconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          onPressed: _exitWithSave,
-        ),
+        // long-press over the arrow ("тултип назад убери"). AppBackButton
+        // has no tooltip and gives the same press recoil as the pin/save
+        // actions.
+        leading: AppBackButton(onPressed: _exitWithSave),
         title: Text(
           widget.entry == null
               ? L.tr(context, 'entryNew')
@@ -1606,6 +1604,9 @@ class _MdBtn extends StatelessWidget {
       child: Material(
         color: scheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(10),
+        // Clip.antiAlias so the ink/child respects the rounded corners; without
+        // it the solid Material paints rounded but leaves the child square.
+        clipBehavior: Clip.antiAlias,
         child: InkWell(
           borderRadius: BorderRadius.circular(10),
           onTap: onTap,

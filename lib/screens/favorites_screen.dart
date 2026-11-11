@@ -10,6 +10,7 @@ import 'package:video_player/video_player.dart';
 import 'package:image/image.dart' as img;
 
 import 'package:ataraxy/l10n/strings.dart';
+import 'package:ataraxy/widgets/app_back_button.dart';
 import 'package:ataraxy/widgets/animated_field_counter.dart';
 import 'package:ataraxy/models/chat_message.dart';
 import 'package:ataraxy/services/chat_service.dart';
@@ -447,6 +448,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        leading: const AppBackButton(),
         backgroundColor: Colors.transparent,
         foregroundColor: headerFg,
         elevation: 0,

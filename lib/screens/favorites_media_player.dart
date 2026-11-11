@@ -693,6 +693,7 @@ class _CropScreenState extends State<_CropScreen> {
       appBar: AppBar(
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
+        leading: const AppBackButton(),
         title: Text(L.tr(context, 'crop'), style: const TextStyle(fontWeight: FontWeight.w600)),
         actions: [
           IconButton(

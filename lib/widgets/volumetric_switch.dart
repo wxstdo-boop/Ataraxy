@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:ataraxy/widgets/press_scale.dart';
+
 /// A volumetric toggle switch with a gradient track, rounded white thumb,
 /// and a subtle spring animation.  Drop-in replacement for Material [Switch].
 ///
@@ -148,20 +150,26 @@ class VolumetricSwitchListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-      leading: leading,
-      title: Text(title, style: Theme.of(context).textTheme.bodyLarge),
-      subtitle: subtitle != null
-          ? Text(subtitle!, style: Theme.of(context).textTheme.bodySmall)
-          : null,
-      trailing: VolumetricSwitch(
-        value: value,
-        onChanged: onChanged,
-        activeTrackColor: activeTrackColor,
+    // Wrapped in PressScale so a switch row dips on touch like every other
+    // control — the rows were the last flat, ripple-only taps in Settings.
+    return PressScale(
+      scale: 0.98,
+      haptic: true,
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+        leading: leading,
+        title: Text(title, style: Theme.of(context).textTheme.bodyLarge),
+        subtitle: subtitle != null
+            ? Text(subtitle!, style: Theme.of(context).textTheme.bodySmall)
+            : null,
+        trailing: VolumetricSwitch(
+          value: value,
+          onChanged: onChanged,
+          activeTrackColor: activeTrackColor,
+        ),
+        onTap: () => onChanged(!value),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
-      onTap: () => onChanged(!value),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
     );
   }
 }

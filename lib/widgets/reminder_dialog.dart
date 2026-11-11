@@ -353,15 +353,22 @@ class _ReminderDialogState extends State<ReminderDialog>
         ),
       ),
       actions: [
+        // Shallow, symmetric dimple: the dialog's own buttons sat at the
+        // default full-depth recoil, which read as a jolt on such a small
+        // target ("отдача плавнее").
         PressScale(
-          scale: 0.92,
+          scale: 0.97,
+          duration: const Duration(milliseconds: 150),
+          symmetric: true,
           child: TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text(L.tr(context, 'cancel')),
           ),
         ),
         PressScale(
-          scale: 0.92,
+          scale: 0.97,
+          duration: const Duration(milliseconds: 150),
+          symmetric: true,
           child: TextButton(
             onPressed: () {
               // Turning the reminder on without a time used to silently

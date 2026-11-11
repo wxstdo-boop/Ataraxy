@@ -457,10 +457,10 @@ class NotificationService {
     // silently drops scheduled alarms even when exact-alarm is granted.
     // Asking the user to exempt the app from battery optimization is the
     // single highest-value fix for "test notification arrives, reminder
-    // never fires". The system dialog appears once; if denied we keep the
-    // inexact fallback (better than nothing).
-    // We now ALWAYS try to request battery exemption on Android to ensure reliability
-    if (Platform.isAndroid) {
+    // never fires". Only when the user actively enables the reminder — at
+    // startup we re-arm silently, and popping this system dialog on every
+    // launch was hostile.
+    if (Platform.isAndroid && requestBatteryExemption) {
       try {
         final batt = await Permission.ignoreBatteryOptimizations.status;
         if (!batt.isGranted && !batt.isRestricted) {

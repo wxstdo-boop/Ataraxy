@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:ataraxy/l10n/strings.dart';
+import 'package:ataraxy/widgets/app_back_button.dart';
 import 'package:ataraxy/theme/app_theme.dart';
 import 'package:ataraxy/widgets/animated_snack.dart';
 import 'package:ataraxy/widgets/app_avatar.dart';
@@ -19,7 +20,10 @@ class _AboutScreenState extends State<AboutScreen> {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Scaffold(
-      appBar: AppBar(title: Text(L.tr(context, 'about'))),
+      appBar: AppBar(
+        leading: const AppBackButton(),
+        title: Text(L.tr(context, 'about')),
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(

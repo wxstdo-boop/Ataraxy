@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'package:ataraxy/l10n/strings.dart';
+import 'package:ataraxy/widgets/app_back_button.dart';
 
 class PomodoroScreen extends StatelessWidget {
   const PomodoroScreen({super.key});
@@ -89,7 +90,10 @@ class _PomodoroBodyState extends State<_PomodoroBody> {
         ? 1.0
         : 1 - _remaining.inSeconds / _total.inSeconds;
     return Scaffold(
-      appBar: AppBar(title: Text(L.tr(context, 'pomodoroRunning'))),
+      appBar: AppBar(
+        leading: const AppBackButton(),
+        title: Text(L.tr(context, 'pomodoroRunning')),
+      ),
       body: Center(
         child: Stack(
           alignment: Alignment.center,

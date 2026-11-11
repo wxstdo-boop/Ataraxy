@@ -150,10 +150,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  /// Plays the content fade-through: invisible → visible over ~240ms. Called
-  /// from every action that changes which entries are shown.
-  void _fadeThroughContent() {
-    if (mounted) _viewFade.forward(from: 0.0);
+  /// Plays a content fade-through: fades the feed OUT, runs [swap] (which
+  /// applies the new filter), then fades the new content back IN. Fading the
+  /// old content out first is what removes the "вспышка": the previous code
+  /// swapped first and only then faded from 0, so the feed blinked empty for
+  /// a frame before the new records eased in.
+  Future<void> _fadeThroughContent(VoidCallback swap) async {
+    if (!mounted) return;
+    await _viewFade.reverse();
+    if (!mounted) return;
+    swap();
+    await _viewFade.forward();
   }
 
   /// Each frame of the collapse rebuilds the screen: the app bar reserves its
@@ -716,17 +723,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                       current: _category,
                                       sortMode: _sortMode,
                                       onChanged: (c) {
-                                        setState(() => _category = c);
-                                        _fadeThroughContent();
+                                        _fadeThroughContent(
+                                          () => setState(() => _category = c),
+                                        );
                                       },
                                       onSort: () {
                                         HapticFeedback.selectionClick();
-                                        setState(() {
-                                          _sortMode = _sortMode >= 2
-                                              ? -1
-                                              : _sortMode + 1;
-                                        });
-                                        _fadeThroughContent();
+                                        _fadeThroughContent(
+                                          () => setState(() {
+                                            _sortMode = _sortMode >= 2
+                                                ? -1
+                                                : _sortMode + 1;
+                                          }),
+                                        );
                                       },
                                     ),
                                   ),
@@ -1075,9 +1084,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                         onChanged: (value) {
                                           // Debounced: apply the query once
                                           // typing pauses, so the result set
-                                          // swaps ONCE (a single soft cross-
-                                          // fade) instead of re-filtering and
-                                          // re-animating on every keystroke.
+                                          // swaps ONCE, through the same
+                                          // fade-through as the category
+                                          // filter — no flash mid-typing.
                                           _searchDebounce?.cancel();
                                           _searchDebounce = Timer(
                                             const Duration(
@@ -1085,16 +1094,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                             ),
                                             () {
                                               if (!mounted) return;
-                                              setState(() {
-                                                _searchQuery = value;
-                                                // Forget the entrance memory so
-                                                // the NEW result set eases in
-                                                // (fade + slide) instead of
-                                                // popping — the "записи при
-                                                // поиске сменяются плавно"
-                                                // request.
-                                                _seenEntranceIds.clear();
-                                              });
+                                              if (value == _searchQuery) return;
+                                              _fadeThroughContent(
+                                                () => setState(
+                                                  () => _searchQuery = value,
+                                                ),
+                                              );
                                             },
                                           );
                                         },

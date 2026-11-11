@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:intl/intl.dart';
 import 'package:ataraxy/l10n/strings.dart';
+import 'package:ataraxy/widgets/app_back_button.dart';
 import 'package:ataraxy/models/dream_signs.dart';
 import 'package:ataraxy/models/entry.dart';
 import 'package:ataraxy/screens/entry_screen.dart';
@@ -123,6 +124,7 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
       },
       child: Scaffold(
       appBar: AppBar(
+        leading: const AppBackButton(),
         backgroundColor: Colors.transparent,
         foregroundColor: Colors.white,
         elevation: 0,

@@ -183,19 +183,16 @@ class SplashContent extends StatelessWidget {
                         fontFamily: AppTheme.displayFont,
                         fontStyle: FontStyle.italic,
                         fontSize: 38,
-                        fontWeight: FontWeight.w900,
+                        // SemiBold italic (Cormorant ships up to Bold). The
+                        // wordmark used to be Bold plus four zero-blur white
+                        // shadows that faked an even heavier cut — the user
+                        // read that stack as too fat ("имя тоньше надо"). A
+                        // real lighter cut carries the same elegance with no
+                        // faux-bold ringing around every glyph.
+                        fontWeight: FontWeight.w600,
                         color: Colors.white,
                         letterSpacing: 0.6,
-                        // Cormorant ships no weight past Bold, so `w900` falls
-                        // back to Bold. These four zero-blur white shadows in
-                        // the cardinal directions fatten every glyph a hair —
-                        // a cheap faux-bold that gives the wordmark the extra
-                        // "толще" the user asked for without a heavier cut.
                         shadows: const [
-                          Shadow(color: Colors.white, offset: Offset(-0.7, 0)),
-                          Shadow(color: Colors.white, offset: Offset(0.7, 0)),
-                          Shadow(color: Colors.white, offset: Offset(0, -0.7)),
-                          Shadow(color: Colors.white, offset: Offset(0, 0.7)),
                           Shadow(
                             color: Color(0x66000000),
                             blurRadius: 14,
@@ -322,38 +319,49 @@ class _CometPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final center = size.center(Offset.zero);
     final radius = (size.shortestSide - strokeWidth) / 2;
-    final rect = Rect.fromCircle(center: center, radius: radius);
 
-    // A CONSTANT-sweep arc rotating at constant angular speed. The old version
-    // breathed the sweep with `sin(phase*2)`, so the head (phase + sweep)
-    // accelerated and decelerated against the tail's steady motion — at the
-    // cycle wrap that read as the snake "starting a new lap" with a visible
-    // hitch ("новый цикл начинает"). A fixed sweep makes head and tail travel
-    // together, so the spin is one unbroken loop with no seam.
+    // One unbroken, endless loop. The arc geometry is FIXED in a local frame
+    // and the whole canvas is rotated by `phase` — the shader sector never
+    // moves, so there is no per-lap seam.
+    //
+    // Why not feed a growing `startAngle` to the SweepGradient: `ui.Gradient`
+    // normalises any angle outside [0, 2π] back into range, so once
+    // `startAngle + sweep` crossed 2π the gradient sector wrapped to the
+    // complementary arc while `drawArc` kept painting the original one — the
+    // lit head and the dark tail swapped sides for one frame. That visible
+    // flip every revolution is exactly the "snake starts a second lap"
+    // complaint. Rotating the canvas keeps the shader in [0, sweep], so
+    // `startAngle` is always in range and the motion never seams.
     final phase = t.value * 2 * math.pi;
-    final start = phase;
     const sweep = 4.6; // ~264°: a long, calm comet
 
     // Head bright, tail melting to nothing: a real "snake" (the old gradient
     // was symmetric — a bright MIDDLE fading at both ends — which read as a
-    // rotating dash, not a comet).
+    // rotating dash, not a comet). The tail (alpha 0) sits at 0, the head at
+    // `sweep`; `TileMode.clamp` extends those edge colours outside the sector,
+    // but only [0, sweep] is ever painted.
     final paint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = strokeWidth
-      ..strokeCap = StrokeCap.round
-      ..shader = SweepGradient(
-        startAngle: start,
-        endAngle: start + sweep,
-        colors: [
-          color.withValues(alpha: 0),
-          color.withValues(alpha: 0.10),
-          color.withValues(alpha: 0.45),
-          color,
-        ],
-        stops: const [0.0, 0.45, 0.78, 1.0],
-      ).createShader(rect);
+      ..strokeCap = StrokeCap.round;
 
-    canvas.drawArc(rect, start, sweep, false, paint);
+    canvas.save();
+    canvas.translate(center.dx, center.dy);
+    canvas.rotate(phase);
+    final localRect = Rect.fromCircle(center: Offset.zero, radius: radius);
+    paint.shader = SweepGradient(
+      startAngle: 0,
+      endAngle: sweep,
+      colors: [
+        color.withValues(alpha: 0),
+        color.withValues(alpha: 0.10),
+        color.withValues(alpha: 0.45),
+        color,
+      ],
+      stops: const [0.0, 0.45, 0.78, 1.0],
+    ).createShader(localRect);
+    canvas.drawArc(localRect, 0, sweep, false, paint);
+    canvas.restore();
   }
 
   @override

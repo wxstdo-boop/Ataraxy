@@ -379,8 +379,15 @@ class _DailyGuideScreenState extends State<DailyGuideScreen> {
       padding: const EdgeInsets.only(bottom: 10),
       child: Container(
         decoration: BoxDecoration(
-          color: scheme.surfaceContainerLow,
+          // Was `surfaceContainerLow` — near-white on the light themes, so a
+          // column of tips read as a stack of WHITE STRIPES rather than
+          // cards. The lesson card's surface + hairline outline gives the
+          // tiles a defined edge that separates them from the scaffold.
+          color: scheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(22),
+          border: Border.all(
+            color: scheme.outlineVariant.withValues(alpha: 0.3),
+          ),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
         child: Row(

@@ -935,7 +935,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   child: IgnorePointer(
                                     ignoring: !_refreshing,
                                     child: Container(
-                                      color: Colors.white,
+                                      // The refresh cover must blend into the
+                                      // feed, not punch a white hole in it.
+                                      // A hard `Colors.white` here flashed a
+                                      // full-screen white slab on every reload
+                                      // (pull-to-refresh, return from the
+                                      // editor) — the recurring "вспышка".
+                                      // The scaffold colour matches the feed
+                                      // wash and the header's rounded corners.
+                                      color: Theme.of(
+                                        context,
+                                      ).scaffoldBackgroundColor,
                                       child: FadeTransition(
                                         opacity: AlwaysStoppedAnimation(
                                           _refreshing ? 1.0 : 0.0,

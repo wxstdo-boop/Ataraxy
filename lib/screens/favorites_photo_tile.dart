@@ -88,9 +88,11 @@ class _PhotoTile extends StatelessWidget {
         duration: const Duration(milliseconds: 350),
         curve: Curves.easeOutCubic,
         decoration: BoxDecoration(
+          // surfaceContainerHighest, not Lowest: Lowest is pure white, so an
+          // unpinned bubble read as a white stripe over the tinted scaffold.
           color: message.pinned
               ? scheme.primaryContainer.withValues(alpha: 0.4)
-              : scheme.surfaceContainerLowest,
+              : scheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(20),
           border: message.pinned
               ? Border.all(color: scheme.primary.withValues(alpha: 0.3), width: 1.5)

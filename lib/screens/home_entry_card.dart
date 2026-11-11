@@ -192,7 +192,12 @@ class _EntryCardBodyState extends State<_EntryCardBody> {
               // Press highlight: the surface brightens softly (same 260ms
               // ease-out as the border) instead of the raw grey InkWell
               // block flashing in.
-              color: scheme.surfaceContainerLow
+              //
+              // surfaceContainerHighest, NOT Low: Low is near-neutral white on
+              // the light themes while the scaffold keeps the theme tint, so a
+              // column of cards read as WHITE STRIPES over the coloured feed.
+              // Highest carries the tint and still separates from the wash.
+              color: scheme.surfaceContainerHighest
                   .withValues(alpha: _pressed ? 0.98 : 0.85),
             ),
             child: Padding(

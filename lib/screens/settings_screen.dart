@@ -1167,7 +1167,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final scheme = Theme.of(context).colorScheme;
     final picked = await showModalBottomSheet<String>(
       context: context,
-      backgroundColor: scheme.surfaceContainerLow,
+      // Tinted container, not Low: Low is near-white on the light themes and
+      // the sheet read as a white slab over the tinted scaffold.
+      backgroundColor: scheme.surfaceContainerHigh,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),

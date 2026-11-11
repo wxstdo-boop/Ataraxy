@@ -282,8 +282,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     await prefs.setBool(_blurPrefKey, value);
   }
 
-  Future<void> _load() async {
-    if (!_loading && !_refreshing) {
+  /// Reloads the feed from storage.
+  ///
+  /// [showCover] gates the full-screen branded cover. It defaults to FALSE so
+  /// the automatic reloads that follow editing / pinning / returning from a
+  /// detail screen update the list in place — the new cards ease in via their
+  /// own entrance fade and the rest never blink. Only an explicit pull-to-
+  /// refresh or the refresh button raises the cover; firing it on every silent
+  /// reload was the recurring "вспышка" over the feed.
+  Future<void> _load({bool showCover = false}) async {
+    if (showCover && !_loading && !_refreshing) {
       setState(() => _refreshing = true);
     }
     try {
@@ -558,7 +566,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               // Reload the entries from storage — the
                               // button previously just waited 2.5s and
                               // locked the screen, which was wrong.
-                              _load().then((_) {
+                              _load(showCover: true).then((_) {
                                 if (!mounted || !context.mounted) return;
                                 // Debounce: rapid taps on refresh must not
                                 // stack a "Записи обновлены" snackbar per tap.
@@ -800,7 +808,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                       d.$2?.name ?? 'all',
                                                 ),
                                                 onPin: _togglePin,
-                                                onRefresh: _load,
+                                                onRefresh: () => _load(showCover: true),
                                                 onReorder: (oldIdx, newIdx) =>
                                                     _onReorder(
                                                       _filtered(d.$2),
@@ -847,7 +855,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                       d.$2?.name ?? 'all',
                                                 ),
                                                 onPin: _togglePin,
-                                                onRefresh: _load,
+                                                onRefresh: () => _load(showCover: true),
                                                 onReorder: (oldIdx, newIdx) =>
                                                     _onReorder(
                                                       _filtered(d.$2),
@@ -914,7 +922,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                         d.$2?.name ?? 'all',
                                                   ),
                                                   onPin: _togglePin,
-                                                  onRefresh: _load,
+                                                  onRefresh: () => _load(showCover: true),
                                                   onReorder: (oldIdx, newIdx) =>
                                                       _onReorder(
                                                         itemsNoNotes,

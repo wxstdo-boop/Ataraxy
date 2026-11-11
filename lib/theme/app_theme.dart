@@ -315,7 +315,11 @@ class AppTheme {
             width: 1,
           ),
         ),
-        color: scheme.surfaceContainerLow,
+        // surfaceContainerHighest, NOT Low: Low is near-neutral white on the
+        // light themes while the scaffold keeps the theme tint, so every card
+        // read as a WHITE STRIPE on a coloured background. Highest carries the
+        // tint and sits clearly apart from the scaffold.
+        color: scheme.surfaceContainerHighest,
         surfaceTintColor: Colors.transparent,
         margin: EdgeInsets.zero,
         // Soft drop shadow instead of Material's grey smear: gives the feed
@@ -417,7 +421,9 @@ class AppTheme {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
         elevation: 10,
         shadowColor: scheme.shadow.withValues(alpha: 0.18),
-        backgroundColor: scheme.surfaceContainerLow,
+        // Tinted container instead of the near-white Low — the light themes
+        // kept their tint here so dialogs stop reading as white slabs.
+        backgroundColor: scheme.surfaceContainerHigh,
         surfaceTintColor: Colors.transparent,
       ),
       switchTheme: SwitchThemeData(
@@ -462,7 +468,9 @@ class AppTheme {
         space: 1,
       ),
       bottomSheetTheme: BottomSheetThemeData(
-        backgroundColor: scheme.surfaceContainerLow,
+        // Same reasoning as cardTheme/dialogTheme: Low is near-white on the
+        // light themes and read as a white sheet against the tinted scaffold.
+        backgroundColor: scheme.surfaceContainerHigh,
         surfaceTintColor: Colors.transparent,
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
@@ -799,7 +807,7 @@ class AppTheme {
             width: 1,
           ),
         ),
-        color: hs.surfaceContainerLow,
+        color: hs.surfaceContainerHighest,
         surfaceTintColor: Colors.transparent,
         margin: EdgeInsets.zero,
         shadowColor: s.shadow.withValues(alpha: 0.12),

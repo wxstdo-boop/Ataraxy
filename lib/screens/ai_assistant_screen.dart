@@ -504,8 +504,9 @@ class AiFloatingAssistantState extends State<AiFloatingAssistant>
                     // gradient let the app behind (and the keyboard)
                     // bleed through and read as a muddy gray screen while
                     // typing. Solid surface keeps the chat crisp on every
-                    // theme.
-                    color: scheme.surfaceContainerLow,
+                    // theme. Highest (not Low) so the panel keeps the theme
+                    // tint instead of reading as a near-white stripe.
+                    color: scheme.surfaceContainerHighest,
                     border: Border.all(
                       color: scheme.primary.withValues(alpha: 0.28),
                       width: 1.2,

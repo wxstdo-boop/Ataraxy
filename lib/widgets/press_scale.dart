@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+/// Extra time the recoil (release) adds on top of the press-in [PressScale.duration].
+/// The dimple lands fast under the finger; the spring back is deliberately much
+/// slower so it settles like a spring instead of snapping ("отдача плавнее").
+const int _kPressRecoilExtraMs = 260;
+
 /// Wraps any tappable child and gives it a smooth "press dimple": while the
 /// finger is held the child eases down to [scale] and springs back on release.
 ///
@@ -26,7 +31,7 @@ class PressScale extends StatefulWidget {
     super.key,
     required this.child,
     this.scale = 0.94,
-    this.duration = const Duration(milliseconds: 130),
+    this.duration = const Duration(milliseconds: 120),
     this.haptic = false,
     this.symmetric = false,
   });
@@ -63,7 +68,8 @@ class _PressScaleState extends State<PressScale> {
             : (_pressed
                 ? widget.duration
                 : Duration(
-                    milliseconds: widget.duration.inMilliseconds + 120,
+                    milliseconds:
+                        widget.duration.inMilliseconds + _kPressRecoilExtraMs,
                   )),
         curve: Curves.easeOutCubic,
         child: widget.child,

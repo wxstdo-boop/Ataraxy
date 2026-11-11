@@ -324,11 +324,19 @@ class _CometPainter extends CustomPainter {
     final radius = (size.shortestSide - strokeWidth) / 2;
     final rect = Rect.fromCircle(center: center, radius: radius);
 
+    // A CONSTANT-sweep arc rotating at constant angular speed. The old version
+    // breathed the sweep with `sin(phase*2)`, so the head (phase + sweep)
+    // accelerated and decelerated against the tail's steady motion — at the
+    // cycle wrap that read as the snake "starting a new lap" with a visible
+    // hitch ("новый цикл начинает"). A fixed sweep makes head and tail travel
+    // together, so the spin is one unbroken loop with no seam.
     final phase = t.value * 2 * math.pi;
     final start = phase;
-    // Breathe the arc length between ~215° and ~285°.
-    final sweep = 4.2 + 0.5 * math.sin(phase * 2);
+    const sweep = 4.6; // ~264°: a long, calm comet
 
+    // Head bright, tail melting to nothing: a real "snake" (the old gradient
+    // was symmetric — a bright MIDDLE fading at both ends — which read as a
+    // rotating dash, not a comet).
     final paint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = strokeWidth
@@ -338,12 +346,11 @@ class _CometPainter extends CustomPainter {
         endAngle: start + sweep,
         colors: [
           color.withValues(alpha: 0),
-          color.withValues(alpha: 0.35),
+          color.withValues(alpha: 0.10),
+          color.withValues(alpha: 0.45),
           color,
-          color.withValues(alpha: 0.35),
-          color.withValues(alpha: 0),
         ],
-        stops: const [0.0, 0.25, 0.5, 0.75, 1.0],
+        stops: const [0.0, 0.45, 0.78, 1.0],
       ).createShader(rect);
 
     canvas.drawArc(rect, start, sweep, false, paint);

@@ -13,6 +13,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:ataraxy/l10n/strings.dart';
 import 'package:ataraxy/widgets/animated_field_counter.dart';
 import 'package:ataraxy/widgets/app_route.dart';
+import 'package:ataraxy/widgets/press_scale.dart';
 import 'package:ataraxy/widgets/pressable_icon_button.dart';
 import 'package:ataraxy/models/settings.dart';
 import 'package:ataraxy/providers/settings_provider.dart';
@@ -158,6 +159,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        leading: PressScale(
+          // Explicit leading so the back arrow gets the same soft press
+          // dimple + recoil as every other control (the stock BackButton
+          // only had the flat Material ripple).
+          scale: 0.88,
+          haptic: true,
+          child: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded),
+            onPressed: () => Navigator.of(context).maybePop(),
+          ),
+        ),
         title: Text(
           L.tr(context, 'settings'),
           style: Theme.of(context)
@@ -359,9 +371,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          OutlinedButton.icon(
-            onPressed: () async {
-              final details = await NotificationService.requestAllPermissions();
+          PressScale(
+            scale: 0.97,
+            child: OutlinedButton.icon(
+              onPressed: () async {
+                final details =
+                    await NotificationService.requestAllPermissions();
               final err = await NotificationService.sendTest();
               if (context.mounted) {
                 if (err == null && details.contains('ОТКЛОНЕНО')) {
@@ -381,12 +396,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
               }
             },
             icon: const Icon(Icons.notifications_rounded, size: 18),
-            label: Text(L.tr(context, 'testNotification')),
+              label: Text(L.tr(context, 'testNotification')),
+            ),
           ),
           const SizedBox(height: 8),
-          OutlinedButton.icon(
-            onPressed: () async {
-              final confirm = await showDialog<bool>(
+          PressScale(
+            scale: 0.97,
+            child: OutlinedButton.icon(
+              onPressed: () async {
+                final confirm = await showDialog<bool>(
                 context: context,
                 builder: (context) => AlertDialog(
                   title: Text(L.tr(context, 'confirmDelete')),
@@ -429,9 +447,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Icons.delete_forever_rounded,
               color: AppAccents.danger,
             ),
-            label: Text(
-              L.tr(context, 'clearData'),
-              style: const TextStyle(color: AppAccents.danger),
+              label: Text(
+                L.tr(context, 'clearData'),
+                style: const TextStyle(color: AppAccents.danger),
+              ),
             ),
           ),
           const SizedBox(height: 10),

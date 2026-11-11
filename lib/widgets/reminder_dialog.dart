@@ -22,11 +22,18 @@ class ReminderDialog extends StatefulWidget {
   State<ReminderDialog> createState() => _ReminderDialogState();
 }
 
-class _ReminderDialogState extends State<ReminderDialog> {
+class _ReminderDialogState extends State<ReminderDialog>
+    with SingleTickerProviderStateMixin {
   late bool _enabled;
   TimeOfDay? _time;
   final _text = TextEditingController();
   bool _error = false;
+
+  /// Drives the reveal/collapse of the time + text group. A real controller
+  /// (not a one-shot TweenAnimationBuilder) so it animates BOTH ways: the group
+  /// fades/slides in when the reminder is switched on and melts away when it is
+  /// switched off.
+  late final AnimationController _reveal;
 
   @override
   void initState() {
@@ -36,12 +43,27 @@ class _ReminderDialogState extends State<ReminderDialog> {
         ? null
         : _parseTime(widget.settings.reminderTime!);
     _text.text = widget.settings.reminderText ?? '';
+    _reveal = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+      value: _enabled ? 1.0 : 0.0,
+    );
   }
 
   @override
   void dispose() {
     _text.dispose();
+    _reveal.dispose();
     super.dispose();
+  }
+
+  void _setEnabled(bool value) {
+    setState(() => _enabled = value);
+    if (value) {
+      _reveal.forward();
+    } else {
+      _reveal.reverse();
+    }
   }
 
   TimeOfDay _parseTime(String v) {
@@ -58,8 +80,7 @@ class _ReminderDialogState extends State<ReminderDialog> {
     final t = _time;
     if (t == null) return false;
     final now = TimeOfDay.now();
-    return t.hour < now.hour ||
-        (t.hour == now.hour && t.minute <= now.minute);
+    return t.hour < now.hour || (t.hour == now.hour && t.minute <= now.minute);
   }
 
   Future<void> _pickTime() async {
@@ -95,9 +116,9 @@ class _ReminderDialogState extends State<ReminderDialog> {
                 // was silently blocked by a missing TIME. Validation now happens
                 // on Save (with the inline warning below); the toggle itself is
                 // never a no-op.
-                onChanged: (v) => setState(() => _enabled = v),
+                onChanged: _setEnabled,
               ),
-              onTap: () => setState(() => _enabled = !_enabled),
+              onTap: () => _setEnabled(!_enabled),
             ),
             // Validation hint: fades + slides in/out instead of popping
             // ("текст уведомления должен появляться и исчезать плавно").
@@ -267,57 +288,103 @@ class _ReminderDialogState extends State<ReminderDialog> {
                     )
                   : const SizedBox.shrink(),
             ),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.access_time_rounded),
-              title: Text(_time == null
-                  ? L.tr(context, 'reminderTime')
-                  : _time!.format(context)),
-              trailing: const Icon(Icons.edit_calendar_rounded),
-              onTap: _pickTime,
-            ),
-            // The chosen time may already be past for today — the daily
-            // reminder then fires first tomorrow. Say so explicitly, otherwise
-            // "it didn't fire at the set time" looks like a bug.
-            if (_enabled && _time != null && _firstFireTomorrow) ...[
-              const SizedBox(height: 2),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(
-                    Icons.info_outline_rounded,
-                    size: 14,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      L.tr(context, 'reminderNextFire', params: {
-                        'time': _fmt(_time!),
-                      }),
-                      style: TextStyle(
-                        fontSize: 12,
-                        height: 1.35,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
+            // The time row + notification-text field only make sense while the
+            // reminder is ON, so they REVEAL (fade + slide + size) when it is
+            // switched on and melt away when it is switched off — instead of
+            // snapping in/out ("текст уведомления появляется и исчезает
+            // плавно"). A persistent fade controller drives opacity/slide, so
+            // both the reveal AND the collapse are smooth.
+            ClipRect(
+              child: AnimatedBuilder(
+                animation: _reveal,
+                builder: (context, child) => Align(
+                  alignment: Alignment.topCenter,
+                  heightFactor: _reveal.value,
+                  child: Opacity(
+                    opacity: _reveal.value,
+                    child: Transform.translate(
+                      offset: Offset(0, 10 * (1 - _reveal.value)),
+                      child: child,
                     ),
                   ),
-                ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.access_time_rounded),
+                      // The chosen time cross-fades when it changes, so picking
+                      // a new one eases in instead of snapping.
+                      title: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 220),
+                        switchInCurve: Curves.easeOutCubic,
+                        switchOutCurve: Curves.easeInCubic,
+                        child: Text(
+                          _time == null
+                              ? L.tr(context, 'reminderTime')
+                              : _time!.format(context),
+                          key: ValueKey(_time?.toString() ?? 'none'),
+                        ),
+                      ),
+                      trailing: const Icon(Icons.edit_calendar_rounded),
+                      onTap: _pickTime,
+                    ),
+                    // The chosen time may already be past for today — the daily
+                    // reminder then fires first tomorrow. Say so explicitly,
+                    // otherwise "it didn't fire at the set time" looks like a
+                    // bug.
+                    if (_time != null && _firstFireTomorrow) ...[
+                      const SizedBox(height: 2),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            Icons.info_outline_rounded,
+                            size: 14,
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurfaceVariant,
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              L.tr(
+                                context,
+                                'reminderNextFire',
+                                params: {'time': _fmt(_time!)},
+                              ),
+                              style: TextStyle(
+                                fontSize: 12,
+                                height: 1.35,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                    TextField(
+                      cursorOpacityAnimates: true,
+                      magnifierConfiguration:
+                          TextMagnifierConfiguration.disabled,
+                      contextMenuBuilder: (ctx, state) =>
+                          buildLimitedContextMenu(ctx, state),
+                      controller: _text,
+                      maxLength: 50,
+                      decoration: InputDecoration(
+                        hintText: L.tr(context, 'reminderHint'),
+                        errorText:
+                            _error ? L.tr(context, 'reminderRequired') : null,
+                        counterText: '',
+                      ),
+                      onChanged: (_) => setState(() => _error = false),
+                    ),
+                  ],
+                ),
               ),
-            ],
-            TextField(
-        cursorOpacityAnimates: true,
-        magnifierConfiguration: TextMagnifierConfiguration.disabled,
-                contextMenuBuilder: (ctx, state) =>
-                    buildLimitedContextMenu(ctx, state),
-              controller: _text,
-              maxLength: 50,
-              decoration: InputDecoration(
-                hintText: L.tr(context, 'reminderHint'),
-                errorText: _error ? L.tr(context, 'reminderRequired') : null,
-                counterText: '',
-              ),
-              onChanged: (_) => setState(() => _error = false),
             ),
           ],
         ),

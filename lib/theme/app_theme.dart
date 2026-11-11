@@ -6,6 +6,7 @@ enum AppThemeMode {
   lightMaterialYou,
   lightLavender,
   lightGrok,
+  darkGrok,
   darkPeach,
   mutilated,
 }
@@ -17,6 +18,7 @@ extension AppThemeModeExtension on AppThemeMode {
       AppThemeMode.lightMaterialYou => 'Светлая персиковая',
       AppThemeMode.lightLavender => 'Лавандовая',
       AppThemeMode.lightGrok => 'Светлая Grok',
+      AppThemeMode.darkGrok => 'Тёмная Grok',
       AppThemeMode.darkPeach => 'Тёмная персиковая',
       // Без переводов — название темы одно во всех языках.
       AppThemeMode.mutilated => 'MUTILATED',
@@ -29,6 +31,7 @@ extension AppThemeModeExtension on AppThemeMode {
       AppThemeMode.lightMaterialYou => 'themeLightPeach',
       AppThemeMode.lightLavender => 'themeLightLavender',
       AppThemeMode.lightGrok => 'themeLightGrok',
+      AppThemeMode.darkGrok => 'themeDarkGrok',
       AppThemeMode.darkPeach => 'themeDarkPeach',
       AppThemeMode.mutilated => 'themeMutilated',
     };
@@ -634,6 +637,91 @@ class AppTheme {
     );
   }
 
+  /// Grok theme, night edition: the same stark black & white identity as
+  /// [darkGrok], inverted onto a true dark canvas. Charcoal ink becomes the
+  /// background and the warm paper becomes the type — a "terminal at night"
+  /// look rather than the light theme dimmed. Brightness is dark, so the
+  /// status bar and the header take their light-icon / deep-tone treatment
+  /// automatically.
+  static ThemeData darkGrokNight() {
+    const Color bg = Color(0xFF0E1013);
+    const Color surface = Color(0xFF14171C);
+    const Color surfaceHigh = Color(0xFF1B1F26);
+    const Color surfaceHighest = Color(0xFF242A33);
+    const Color paper = Color(0xFFF3F1ED);
+    const Color ink = Color(0xFFE9E7E2);
+    const Color muted = Color(0xFF9BA1AB);
+
+    final gs = ColorScheme.fromSeed(
+      seedColor: const Color(0xFF1C1F26),
+      brightness: Brightness.dark,
+      surface: surface,
+    ).copyWith(
+      // Primary is the light "paper" tone: it is what the accent pill, FAB and
+      // filled buttons paint with, and on dark Grok those should read as
+      // white-on-black, not another grey.
+      primary: paper,
+      onPrimary: const Color(0xFF14171C),
+      secondary: const Color(0xFFB9BEC7),
+      onSecondary: const Color(0xFF14171C),
+      tertiary: const Color(0xFF8E96A2),
+      onTertiary: const Color(0xFF14171C),
+      primaryContainer: surfaceHighest,
+      onPrimaryContainer: paper,
+      secondaryContainer: surfaceHigh,
+      onSecondaryContainer: ink,
+      tertiaryContainer: surfaceHigh,
+      onTertiaryContainer: ink,
+      surface: surface,
+      surfaceContainerLowest: bg,
+      surfaceContainerLow: surface,
+      surfaceContainer: const Color(0xFF171B21),
+      surfaceContainerHigh: surfaceHigh,
+      surfaceContainerHighest: surfaceHighest,
+      onSurface: ink,
+      onSurfaceVariant: muted,
+      outline: const Color(0xFF5A626D),
+      outlineVariant: const Color(0xFF333A44),
+    );
+
+    final themed = _base(
+      gs,
+      scaffoldBg: bg,
+      // Night Grok → a near-black snackbar with paper text.
+      snackBg: surfaceHighest,
+      snackFg: paper,
+    );
+
+    return themed.copyWith(
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStatePropertyAll<Color>(paper),
+        trackColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return const Color(0xFF6B7280);
+          }
+          return const Color(0xFF2C323B);
+        }),
+        trackOutlineColor: WidgetStatePropertyAll<Color>(Colors.transparent),
+      ),
+      checkboxTheme: CheckboxThemeData(
+        side: const BorderSide(color: muted, width: 1.5),
+        fillColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) return paper;
+          return Colors.transparent;
+        }),
+        checkColor: WidgetStatePropertyAll<Color>(const Color(0xFF14171C)),
+      ),
+      progressIndicatorTheme: ProgressIndicatorThemeData(color: paper),
+      iconButtonTheme: IconButtonThemeData(
+        style: IconButton.styleFrom(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+        ),
+      ),
+    );
+  }
+
   /// MUTILATED — a light, airy palette where *dusty* blood red seeps through
   /// the section backgrounds. Scaffold + card surfaces are warm and opaque so
   /// the animated blood-flow layer behind the app shows through softly;
@@ -830,6 +918,7 @@ class AppTheme {
       AppThemeMode.lightMaterialYou => lightMaterialYou(scheme: dynamicLight),
       AppThemeMode.lightLavender => lightLavender(),
       AppThemeMode.lightGrok => darkGrok(scheme: dynamicLight),
+      AppThemeMode.darkGrok => darkGrokNight(),
       AppThemeMode.darkPeach => darkPeach(),
       AppThemeMode.mutilated => lightMutilated(),
     };
@@ -867,6 +956,7 @@ class AppTheme {
       AppThemeMode.system => systemDark(dynamicDark),
       AppThemeMode.lightLavender => darkLavender(),
       AppThemeMode.lightGrok => darkGrok(scheme: dynamicDark),
+      AppThemeMode.darkGrok => darkGrokNight(),
       AppThemeMode.lightMaterialYou => darkPeach(),
       AppThemeMode.darkPeach => darkPeach(),
       // MUTILATED всегда светлая (свой отдельный вид).

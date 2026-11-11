@@ -151,12 +151,12 @@ class _StreakBadgeState extends State<StreakBadge>
     // recolors or resizes when the count changes — only the digits animate.
     final colors = [scheme.primary, scheme.tertiary];
 
-    // CONSTANT geometry: the disc is always 28px with the same digit size —
+    // CONSTANT geometry: the disc is always 24px with the same digit size —
     // nothing grows, shrinks or recolors as the streak increases. Huge
     // counts ('9999+') shrink INSIDE the fixed disc via FittedBox, so the
-    // header layout never jumps. Kept in proportion with the 18px header
-    // wordmark so the lockup sits quietly inside the bar.
-    const size = 28.0;
+    // header layout never jumps. Deliberately small (24px) so the lockup
+    // reads as a quiet marker next to the 18px wordmark, not a medallion.
+    const size = 24.0;
 
     return Semantics(
       container: true,
@@ -201,7 +201,7 @@ class _StreakBadgeState extends State<StreakBadge>
                     ),
                     child: Center(
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 5),
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
                         // FittedBox keeps the digits at full size for normal
                         // counts and only shrinks the text (never the disc)
                         // for extreme '9999+' values.
@@ -215,7 +215,7 @@ class _StreakBadgeState extends State<StreakBadge>
                               value >= 10000 ? '9999+' : '$value',
                               style: TextStyle(
                                 color: scheme.onPrimary,
-                                fontSize: 13,
+                                fontSize: 12,
                                 fontWeight: FontWeight.w900,
                                 height: 1,
                                 fontFeatures: const [
@@ -232,12 +232,12 @@ class _StreakBadgeState extends State<StreakBadge>
                   // the circle's top arc above the number, pompom pokes into
                   // the header headroom. Straight, centered.
                   Positioned(
-                    top: -6,
+                    top: -5,
                     left: 0,
                     right: 0,
                     child: Align(
                       alignment: Alignment.topCenter,
-                      child: const WinterHat(width: 21, height: 13),
+                      child: const WinterHat(width: 18, height: 11),
                     ),
                   ),
                 ],

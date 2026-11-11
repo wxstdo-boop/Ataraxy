@@ -1,4 +1,4 @@
-﻿import 'dart:async' show unawaited;
+﻿import 'dart:async' show Timer, unawaited;
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
@@ -61,8 +61,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen>
-    with SingleTickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final StorageService _storage = StorageService();
   static const String _blurPrefKey = 'title_blurred';
   List<JournalEntry> _entries = [];
@@ -103,6 +102,18 @@ class _HomeScreenState extends State<HomeScreen>
   /// lazy feed disposes off-screen cards, so this is what stops a card from
   /// re-animating (the "дёргает и мигает" flicker) every time it scrolls back.
   final Set<String> _seenEntranceIds = {};
+
+  /// Debounces the search query: the feed rebuilds once typing settles instead
+  /// of on every keystroke, so the results no longer flicker/jerk as each
+  /// character lands ("поиск дёргается").
+  Timer? _searchDebounce;
+
+  /// Drives the soft "fade through" whenever the visible SET changes (category
+  /// chip, sort mode, search query). The content is rebuilt in place — the
+  /// scroll views keep their identity, so scroll offset and per-card entrance
+  /// state survive — and only its opacity dips and eases back, so the swap
+  /// reads as one dissolve instead of an instant content punch.
+  late final AnimationController _viewFade;
   // The AI assistant is a plain widget mounted in this screen's Stack (NOT
   // a root-overlay OverlayEntry — that architecture caused the grey-screen
   // crash loop on this device). Long-pressing "+" toggles it; a second
@@ -131,6 +142,17 @@ class _HomeScreenState extends State<HomeScreen>
       curve: Curves.easeInOutCubic,
     );
     _barsCtrl.addListener(_onBarsTick);
+    _viewFade = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 240),
+      value: 1.0,
+    );
+  }
+
+  /// Plays the content fade-through: invisible → visible over ~240ms. Called
+  /// from every action that changes which entries are shown.
+  void _fadeThroughContent() {
+    if (mounted) _viewFade.forward(from: 0.0);
   }
 
   /// Each frame of the collapse rebuilds the screen: the app bar reserves its
@@ -164,9 +186,11 @@ class _HomeScreenState extends State<HomeScreen>
     _searchFocus.removeListener(_onSearchFocusChanged);
     _searchFocus.dispose();
     _searchController.dispose();
+    _searchDebounce?.cancel();
     _fabVisible.dispose();
     _barsCtrl.removeListener(_onBarsTick);
     _barsCtrl.dispose();
+    _viewFade.dispose();
     super.dispose();
   }
 
@@ -591,12 +615,12 @@ class _HomeScreenState extends State<HomeScreen>
                         fontStyle: FontStyle.normal,
                       ),
                     ),
-                    const SizedBox(width: 0),
-                    // A hair of negative offset tucks the badge right up
-                    // against the wordmark (the "y" descender overhangs its
-                    // advance box, so the badge visually hugs the text).
+                    const SizedBox(width: 8),
+                    // A small positive gap pushes the badge clearly to the
+                    // right of the wordmark (it used to hug the text with a
+                    // negative tuck, which read as "glued on").
                     Transform.translate(
-                      offset: const Offset(-3, 0),
+                      offset: const Offset(2, 0),
                       child: StreakBadge(streak: _streak),
                     ),
                     ],
@@ -690,16 +714,18 @@ class _HomeScreenState extends State<HomeScreen>
                                     child: _CategoryChips(
                                       current: _category,
                                       sortMode: _sortMode,
-                                      onChanged: (c) =>
-                                          setState(() => _category = c),
+                                      onChanged: (c) {
+                                        setState(() => _category = c);
+                                        _fadeThroughContent();
+                                      },
                                       onSort: () {
                                         HapticFeedback.selectionClick();
                                         setState(() {
-                                          _sortMode =
-                                              _sortMode >= 2
-                                                  ? -1
-                                                  : _sortMode + 1;
+                                          _sortMode = _sortMode >= 2
+                                              ? -1
+                                              : _sortMode + 1;
                                         });
+                                        _fadeThroughContent();
                                       },
                                     ),
                                   ),
@@ -709,9 +735,11 @@ class _HomeScreenState extends State<HomeScreen>
                           },
                         ),
                         Expanded(
-                          child: _StableFeed(
-                            rev: _contentRev,
-                            builder: (context) => Stack(
+                          child: FadeTransition(
+                            opacity: _viewFade,
+                            child: _StableFeed(
+                              rev: _contentRev,
+                              builder: (context) => Stack(
                             children: [
                               TabBarView(
                                 // Edge swipes spring back with rubber-band
@@ -976,8 +1004,9 @@ class _HomeScreenState extends State<HomeScreen>
                                   ),
                                 ),
                               ),
-                            ],
-                          ),
+                              ],
+                            ),
+                            ),
                           ),
                         ),
                       ],
@@ -1039,15 +1068,31 @@ class _HomeScreenState extends State<HomeScreen>
                                           EmDashInputFormatter(),
                                         ],
                                         onChanged: (value) {
-                                          setState(() {
-                                            _searchQuery = value;
-                                            // Forget the entrance memory so the
-                                            // NEW result set eases in (fade +
-                                            // slide) instead of popping — the
-                                            // "записи при поиске сменяются
-                                            // плавно" request.
-                                            _seenEntranceIds.clear();
-                                          });
+                                          // Debounced: apply the query once
+                                          // typing pauses, so the result set
+                                          // swaps ONCE (a single soft cross-
+                                          // fade) instead of re-filtering and
+                                          // re-animating on every keystroke.
+                                          _searchDebounce?.cancel();
+                                          _searchDebounce = Timer(
+                                            const Duration(
+                                              milliseconds: 200,
+                                            ),
+                                            () {
+                                              if (!mounted) return;
+                                              setState(() {
+                                                _searchQuery = value;
+                                                // Forget the entrance memory so
+                                                // the NEW result set eases in
+                                                // (fade + slide) instead of
+                                                // popping — the "записи при
+                                                // поиске сменяются плавно"
+                                                // request.
+                                                _seenEntranceIds.clear();
+                                              });
+                                              _fadeThroughContent();
+                                            },
+                                          );
                                         },
                                         autocorrect: false,
                                         enableSuggestions: false,

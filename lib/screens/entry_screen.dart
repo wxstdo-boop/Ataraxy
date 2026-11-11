@@ -11,6 +11,7 @@ import 'package:ataraxy/widgets/animated_field_counter.dart';
 import 'package:ataraxy/widgets/app_route.dart';
 import 'package:ataraxy/models/dream_signs.dart';
 import 'package:ataraxy/models/entry.dart';
+import 'package:ataraxy/widgets/press_scale.dart';
 import 'package:ataraxy/widgets/pressable_icon_button.dart';
 import 'package:ataraxy/providers/settings_provider.dart';
 import 'package:ataraxy/screens/entry_detail_screen.dart';
@@ -1046,9 +1047,13 @@ class _EntryScreenState extends State<EntryScreen> with WidgetsBindingObserver {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  IconButton.filled(
-                    onPressed: _addSign,
-                    icon: const Icon(Icons.add_rounded),
+                  PressScale(
+                    scale: 0.9,
+                    haptic: true,
+                    child: IconButton.filled(
+                      onPressed: _addSign,
+                      icon: const Icon(Icons.add_rounded),
+                    ),
                   ),
                 ],
               ),
@@ -1182,12 +1187,15 @@ class _EntryScreenState extends State<EntryScreen> with WidgetsBindingObserver {
                   ],
                 ),
                 const SizedBox(height: 10),
-                FilledButton.icon(
-                  onPressed: () => Navigator.of(context).push(
-                    fadeRoute(const PomodoroScreen()),
+                PressScale(
+                  scale: 0.97,
+                  child: FilledButton.icon(
+                    onPressed: () => Navigator.of(context).push(
+                      fadeRoute(const PomodoroScreen()),
+                    ),
+                    icon: const Icon(Icons.timer_rounded),
+                    label: Text(L.tr(context, 'pomodoroStartFocus')),
                   ),
-                  icon: const Icon(Icons.timer_rounded),
-                  label: Text(L.tr(context, 'pomodoroStartFocus')),
                 ),
               ],
             ],
@@ -1415,9 +1423,13 @@ class _EntryScreenState extends State<EntryScreen> with WidgetsBindingObserver {
                   ),
                 ),
                 const SizedBox(width: 8),
-                IconButton.filled(
-                  onPressed: _addTag,
-                  icon: const Icon(Icons.add_rounded),
+                PressScale(
+                  scale: 0.9,
+                  haptic: true,
+                  child: IconButton.filled(
+                    onPressed: _addTag,
+                    icon: const Icon(Icons.add_rounded),
+                  ),
                 ),
               ],
             ),

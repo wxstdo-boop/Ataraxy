@@ -177,6 +177,7 @@ const Map<String, Map<String, String>> kStrings = {
   'themeLightLavender': {'ru': 'Лавандовая', 'en': 'Lavender', 'fr': 'Lavande'},
   'themeDarkPeach': {'ru': 'Тёмная персиковая', 'en': 'Dark Peach', 'fr': 'Pêche Sombre'},
   'themeLightGrok': {'ru': 'Светлая Grok', 'en': 'Light Grok', 'fr': 'Grok Clair'},
+  'themeDarkGrok': {'ru': 'Тёмная Grok', 'en': 'Dark Grok', 'fr': 'Grok Sombre'},
   'favoritesAddAnyFile': {'ru': 'Добавить файл или фото', 'en': 'Add file or photo', 'fr': 'Ajouter un fichier ou une photo'},
   'favoritesPhotosEmpty': {'ru': 'Пока нет фото', 'en': 'No photos yet', 'fr': 'Pas encore de photos'},
   'favoritesPhotosEmptyHint': {'ru': 'Нажмите на скрепку, чтобы добавить фотографии', 'en': 'Tap the paperclip to add photos', 'fr': 'Appuyez sur le trombone pour ajouter des photos'},

@@ -118,6 +118,7 @@ class AppShellState extends State<AppShell> {
         AppThemeMode.darkPeach => ThemeMode.dark,
         AppThemeMode.lightLavender => ThemeMode.light,
         AppThemeMode.lightGrok => ThemeMode.light,
+        AppThemeMode.darkGrok => ThemeMode.dark,
         AppThemeMode.lightMaterialYou => ThemeMode.light,
         AppThemeMode.mutilated => ThemeMode.light,
       },

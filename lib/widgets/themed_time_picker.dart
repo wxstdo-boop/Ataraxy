@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'package:ataraxy/l10n/strings.dart';
+import 'package:ataraxy/theme/app_theme.dart';
+import 'package:ataraxy/widgets/press_scale.dart';
 
 /// A fully themed, iOS-style wheel time picker used everywhere in the app.
 ///
@@ -169,14 +171,15 @@ class _TimeWheelSheetState extends State<_TimeWheelSheet> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Grab handle.
+          // Grab handle: a translucent red bar so it reads as the drag /
+          // position marker ("верхний маркер — полупрозрачный красный").
           Container(
-            width: 40,
-            height: 4,
+            width: 44,
+            height: 5,
             margin: const EdgeInsets.only(bottom: 12),
             decoration: BoxDecoration(
-              color: scheme.onSurfaceVariant.withValues(alpha: 0.35),
-              borderRadius: BorderRadius.circular(2),
+              color: AppAccents.danger.withValues(alpha: 0.45),
+              borderRadius: BorderRadius.circular(3),
             ),
           ),
           if (widget.helpText != null && widget.helpText!.isNotEmpty) ...[
@@ -224,16 +227,25 @@ class _TimeWheelSheetState extends State<_TimeWheelSheet> {
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: Text(L.tr(context, 'cancel')),
+              // Cancel/OK get the same soft press dimple as the rest of the
+              // app's controls (the sheet's own buttons were the only flat,
+              // ripple-only taps left).
+              PressScale(
+                scale: 0.94,
+                child: TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text(L.tr(context, 'cancel')),
+                ),
               ),
               const SizedBox(width: 8),
-              FilledButton(
-                onPressed: () => Navigator.of(context).pop(
-                  TimeOfDay(hour: _hour, minute: _minute),
+              PressScale(
+                scale: 0.94,
+                child: FilledButton(
+                  onPressed: () => Navigator.of(context).pop(
+                    TimeOfDay(hour: _hour, minute: _minute),
+                  ),
+                  child: Text(L.tr(context, 'ok')),
                 ),
-                child: Text(L.tr(context, 'ok')),
               ),
             ],
           ),

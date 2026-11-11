@@ -158,41 +158,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final headerFg = Colors.white;
 
     return Scaffold(
-      appBar: HeaderBackedAppBar(
-        colors: AppTheme.headerColors(scheme),
-        appBar: AppBar(
-          leading: PressScale(
-            // Explicit leading so the back arrow gets the same soft press
-            // dimple + recoil as every other control (the stock BackButton
-            // only had the flat Material ripple).
-            scale: 0.88,
-            haptic: true,
-            child: IconButton(
-              icon: const Icon(Icons.arrow_back_rounded),
-              onPressed: () => Navigator.of(context).maybePop(),
-            ),
+      appBar: AppBar(
+        leading: PressScale(
+          // Explicit leading so the back arrow gets the same soft press
+          // dimple + recoil as every other control (the stock BackButton
+          // only had the flat Material ripple).
+          scale: 0.88,
+          haptic: true,
+          child: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded),
+            onPressed: () => Navigator.of(context).maybePop(),
           ),
-          title: Text(
-            L.tr(context, 'settings'),
-            style: Theme.of(context)
-                    .appBarTheme
-                    .titleTextStyle
-                    ?.copyWith(color: headerFg, fontWeight: FontWeight.bold) ??
-                TextStyle(color: headerFg, fontWeight: FontWeight.bold),
+        ),
+        title: Text(
+          L.tr(context, 'settings'),
+          style: Theme.of(context)
+                  .appBarTheme
+                  .titleTextStyle
+                  ?.copyWith(color: headerFg, fontWeight: FontWeight.bold) ??
+              TextStyle(color: headerFg, fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: Colors.transparent,
+        foregroundColor: headerFg,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        toolbarHeight: 72,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.only(
+            bottomLeft: Radius.circular(28),
+            bottomRight: Radius.circular(28),
           ),
-          backgroundColor: Colors.transparent,
-          foregroundColor: headerFg,
-          elevation: 0,
-          scrolledUnderElevation: 0,
-          toolbarHeight: 72,
-          shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.only(
-              bottomLeft: Radius.circular(28),
-              bottomRight: Radius.circular(28),
-            ),
-          ),
-          flexibleSpace: PremiumHeader(colors: AppTheme.headerColors(scheme)),
-        )
+        ),
+        flexibleSpace: PremiumHeader(colors: AppTheme.headerColors(scheme)),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -259,20 +256,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 color: scheme.outline.withValues(alpha: 0.3),
               ),
             ),
-            child: ListTile(
-              leading: const Icon(Icons.pin_rounded),
-              title: Text(L.tr(context, 'pin')),
-              subtitle: settings.pin != null
-                  ? Text('••••')
-                  : null,
-              trailing: TextButton(
-                onPressed: () => _managePin(context, provider, settings),
-                child: Text(
-                  settings.pin != null
-                      ? L.tr(context, 'changePin')
-                      : L.tr(context, 'setPin'),
+            child: PressScale(
+              scale: 0.98,
+              child: ListTile(
+                leading: const Icon(Icons.pin_rounded),
+                title: Text(L.tr(context, 'pin')),
+                subtitle: settings.pin != null
+                    ? Text('••••')
+                    : null,
+                trailing: TextButton(
+                  onPressed: () => _managePin(context, provider, settings),
+                  child: Text(
+                    settings.pin != null
+                        ? L.tr(context, 'changePin')
+                        : L.tr(context, 'setPin'),
+                  ),
                 ),
-              ),
+            )
             ),
           ),
           // Smoothly appears when a PIN is set and collapses (fade + size)
@@ -341,36 +341,40 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 color: scheme.outline.withValues(alpha: 0.3),
               ),
             ),
-            child: ListTile(
-              leading: const Icon(Icons.notifications_active_rounded),
-              title: Text(L.tr(context, 'reminders')),
-              subtitle: settings.reminderEnabled &&
-                      settings.reminderTime != null
-                  ? Text(
-                      '${settings.reminderTime} · ${settings.reminderText ?? ''}',
-                    )
-                  : null,
-              trailing: const Icon(Icons.chevron_right_rounded),
-              onTap: () async {
-                final result = await showDialog<AppSettings>(
-                  context: context,
-                  builder: (_) => ReminderDialog(settings: settings),
-                );
-                if (result != null && context.mounted) {
-                  provider.onChanged(result);
-                  await NotificationService.updateReminderFromSettings(
-                    result,
-                    requestBatteryExemption: result.reminderEnabled,
+            child: PressScale(
+              scale: 0.98,
+              haptic: true,
+              child: ListTile(
+                leading: const Icon(Icons.notifications_active_rounded),
+                title: Text(L.tr(context, 'reminders')),
+                subtitle: settings.reminderEnabled &&
+                        settings.reminderTime != null
+                    ? Text(
+                        '${settings.reminderTime} · ${settings.reminderText ?? ''}',
+                      )
+                    : null,
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () async {
+                  final result = await showDialog<AppSettings>(
+                    context: context,
+                    builder: (_) => ReminderDialog(settings: settings),
                   );
-                  if (context.mounted) {
-                    AnimatedSnack.show(
-                      context,
-                      L.tr(context, result.reminderEnabled ? 'reminderSet' : 'reminderDisabled'),
-                      type: result.reminderEnabled ? SnackType.success : SnackType.info,
+                  if (result != null && context.mounted) {
+                    provider.onChanged(result);
+                    await NotificationService.updateReminderFromSettings(
+                      result,
+                      requestBatteryExemption: result.reminderEnabled,
                     );
+                    if (context.mounted) {
+                      AnimatedSnack.show(
+                        context,
+                        L.tr(context, result.reminderEnabled ? 'reminderSet' : 'reminderDisabled'),
+                        type: result.reminderEnabled ? SnackType.success : SnackType.info,
+                      );
+                    }
                   }
-                }
-              },
+                },
+            )
             ),
           ),
           const SizedBox(height: 8),
@@ -555,16 +559,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             child: Column(
               children: [
-                ListTile(
-                  leading: const Icon(Icons.upload_rounded),
-                  title: Text(L.tr(context, 'export')),
-                  onTap: () => _export(context),
+                PressScale(
+                  scale: 0.98,
+                  haptic: true,
+                  child: ListTile(
+                    leading: const Icon(Icons.upload_rounded),
+                    title: Text(L.tr(context, 'export')),
+                    onTap: () => _export(context),
+                )
                 ),
                 const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.download_rounded),
-                  title: Text(L.tr(context, 'import')),
-                  onTap: () => _import(context),
+                PressScale(
+                  scale: 0.98,
+                  haptic: true,
+                  child: ListTile(
+                    leading: const Icon(Icons.download_rounded),
+                    title: Text(L.tr(context, 'import')),
+                    onTap: () => _import(context),
+                )
                 ),
                 const Divider(height: 1),
                 VolumetricSwitchListTile(
@@ -609,13 +621,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
            const SizedBox(height: 12),
-           ListTile(
-             leading: const Icon(Icons.info_outline_rounded),
-             title: Text(L.tr(context, 'about')),
-             trailing: const Icon(Icons.chevron_right_rounded),
-             onTap: () => Navigator.of(context).push(
-               fadeRoute(const AboutScreen()),
-             ),
+           PressScale(
+             scale: 0.98,
+             haptic: true,
+             child: ListTile(
+               leading: const Icon(Icons.info_outline_rounded),
+               title: Text(L.tr(context, 'about')),
+               trailing: const Icon(Icons.chevron_right_rounded),
+               onTap: () => Navigator.of(context).push(
+                 fadeRoute(const AboutScreen()),
+               ),
+           )
            ),
            const SizedBox(height: 8),
            Container(
@@ -627,18 +643,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
              ),
              child: Column(
                children: [
-                 ListTile(
-                   leading: const Icon(Icons.system_update_alt_rounded),
-                   title: Text(L.tr(context, 'updateTitle')),
-                   subtitle: Text(_updateMessage ?? L.tr(context, 'updateHint')),
-                   trailing: _isUpdating
-                       ? const SizedBox(
-                           width: 22,
-                           height: 22,
-                           child: CircularProgressIndicator(strokeWidth: 2),
-                         )
-                       : const Icon(Icons.download_rounded),
-                   onTap: _isUpdating ? null : _checkAndInstallUpdate,
+                 PressScale(
+                   scale: 0.98,
+                   haptic: true,
+                   child: ListTile(
+                     leading: const Icon(Icons.system_update_alt_rounded),
+                     title: Text(L.tr(context, 'updateTitle')),
+                     subtitle: Text(_updateMessage ?? L.tr(context, 'updateHint')),
+                     trailing: _isUpdating
+                         ? const SizedBox(
+                             width: 22,
+                             height: 22,
+                             child: CircularProgressIndicator(strokeWidth: 2),
+                           )
+                         : const Icon(Icons.download_rounded),
+                     onTap: _isUpdating ? null : _checkAndInstallUpdate,
+                 )
                  ),
                  if (_updateProgress != null)
                    Padding(
@@ -649,11 +669,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
              ),
            ),
            const SizedBox(height: 12),
-           ListTile(
-             leading: const Icon(Icons.refresh_rounded),
-             title: Text(L.tr(context, 'resetSettings')),
-             trailing: const Icon(Icons.chevron_right_rounded),
-             onTap: () => _resetSettings(context),
+           PressScale(
+             scale: 0.98,
+             haptic: true,
+             child: ListTile(
+               leading: const Icon(Icons.refresh_rounded),
+               title: Text(L.tr(context, 'resetSettings')),
+               trailing: const Icon(Icons.chevron_right_rounded),
+               onTap: () => _resetSettings(context),
+           )
            ),
           const SizedBox(height: 20),
           Text(
@@ -748,71 +772,79 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
                 ),
-                ListTile(
-                  leading: const Icon(Icons.dns_rounded),
-                  title: Text(L.tr(context, 'aiProvider')),
-                  // The label/model cross-fades smoothly when the key
-                  // changes instead of snapping.
-                  subtitle: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 300),
-                    switchInCurve: Curves.easeOutCubic,
-                    switchOutCurve: Curves.easeInCubic,
-                    transitionBuilder: (child, anim) => FadeTransition(
-                      opacity: anim,
-                      child: SlideTransition(
-                        position: Tween<Offset>(
-                          begin: const Offset(0, 0.35),
-                          end: Offset.zero,
-                        ).animate(anim),
-                        child: child,
+                PressScale(
+                  scale: 0.98,
+                  haptic: true,
+                  child: ListTile(
+                    leading: const Icon(Icons.dns_rounded),
+                    title: Text(L.tr(context, 'aiProvider')),
+                    // The label/model cross-fades smoothly when the key
+                    // changes instead of snapping.
+                    subtitle: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 300),
+                      switchInCurve: Curves.easeOutCubic,
+                      switchOutCurve: Curves.easeInCubic,
+                      transitionBuilder: (child, anim) => FadeTransition(
+                        opacity: anim,
+                        child: SlideTransition(
+                          position: Tween<Offset>(
+                            begin: const Offset(0, 0.35),
+                            end: Offset.zero,
+                          ).animate(anim),
+                          child: child,
+                        ),
+                      ),
+                      child: Text(
+                        () {
+                          final det = AiService.providerForKey(settings.aiKey);
+                          return '${det.label} · ${det.model}';
+                        }(),
+                        key: ValueKey(
+                          '${AiService.providerForKey(settings.aiKey).label} · '
+                          '${AiService.providerForKey(settings.aiKey).model}',
+                        ),
                       ),
                     ),
-                    child: Text(
-                      () {
-                        final det = AiService.providerForKey(settings.aiKey);
-                        return '${det.label} · ${det.model}';
-                      }(),
-                      key: ValueKey(
-                        '${AiService.providerForKey(settings.aiKey).label} · '
-                        '${AiService.providerForKey(settings.aiKey).model}',
-                      ),
-                    ),
-                  ),
-                  trailing: const Icon(Icons.chevron_right_rounded),
-                  onTap: () => _showProviderInfo(context),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    onTap: () => _showProviderInfo(context),
+                )
                 ),
                 const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.key_rounded),
-                  title: Text(L.tr(context, 'aiKey')),
-                  // The key preview is always MASKED here (privacy) — the
-                  // eye lives INSIDE the edit dialog's input field, where
-                  // the key text smoothly fades between hidden and shown.
-                  subtitle: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 300),
-                    switchInCurve: Curves.easeOutCubic,
-                    switchOutCurve: Curves.easeInCubic,
-                    transitionBuilder: (child, anim) => FadeTransition(
-                      opacity: anim,
-                      child: SlideTransition(
-                        position: Tween<Offset>(
-                          begin: const Offset(0, 0.35),
-                          end: Offset.zero,
-                        ).animate(anim),
-                        child: child,
+                PressScale(
+                  scale: 0.98,
+                  haptic: true,
+                  child: ListTile(
+                    leading: const Icon(Icons.key_rounded),
+                    title: Text(L.tr(context, 'aiKey')),
+                    // The key preview is always MASKED here (privacy) — the
+                    // eye lives INSIDE the edit dialog's input field, where
+                    // the key text smoothly fades between hidden and shown.
+                    subtitle: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 300),
+                      switchInCurve: Curves.easeOutCubic,
+                      switchOutCurve: Curves.easeInCubic,
+                      transitionBuilder: (child, anim) => FadeTransition(
+                        opacity: anim,
+                        child: SlideTransition(
+                          position: Tween<Offset>(
+                            begin: const Offset(0, 0.35),
+                            end: Offset.zero,
+                          ).animate(anim),
+                          child: child,
+                        ),
+                      ),
+                      child: Text(
+                        (settings.aiKey ?? '').isEmpty
+                            ? L.tr(context, 'aiKeyEmpty')
+                            : _maskKey(settings.aiKey!),
+                        key: ValueKey(settings.aiKey),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    child: Text(
-                      (settings.aiKey ?? '').isEmpty
-                          ? L.tr(context, 'aiKeyEmpty')
-                          : _maskKey(settings.aiKey!),
-                      key: ValueKey(settings.aiKey),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  trailing: const Icon(Icons.chevron_right_rounded),
-                  onTap: () => _editAiKey(context, provider, settings),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    onTap: () => _editAiKey(context, provider, settings),
+                )
                 ),
                 // Key-source pills BELOW the tile (outside its tap area, so
                 // they never get swallowed by the ListTile onTap). Label sits
@@ -871,16 +903,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ),
                 const Divider(height: 1),
-                ListTile(
-                  leading: const Icon(Icons.speed_rounded),
-                  title: Text(L.tr(context, 'aiDailyLimit')),
-                  subtitle: Text(
-                    settings.aiDailyLimit <= 0
-                        ? L.tr(context, 'aiLimitUnlimited')
-                        : _perDayLimitLabel(context, settings.aiDailyLimit),
-                  ),
-                  trailing: const Icon(Icons.chevron_right_rounded),
-                  onTap: () => _editAiLimit(context, provider, settings),
+                PressScale(
+                  scale: 0.98,
+                  haptic: true,
+                  child: ListTile(
+                    leading: const Icon(Icons.speed_rounded),
+                    title: Text(L.tr(context, 'aiDailyLimit')),
+                    subtitle: Text(
+                      settings.aiDailyLimit <= 0
+                          ? L.tr(context, 'aiLimitUnlimited')
+                          : _perDayLimitLabel(context, settings.aiDailyLimit),
+                    ),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    onTap: () => _editAiLimit(context, provider, settings),
+                )
                 ),
                       ],
                     ),

@@ -761,68 +761,65 @@ class _EntryScreenState extends State<EntryScreen> with WidgetsBindingObserver {
         if (!didPop) _exitWithSave();
       },
       child: Scaffold(
-      appBar: HeaderBackedAppBar(
-        colors: AppTheme.headerColors(scheme),
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          foregroundColor: Colors.white,
-          elevation: 0,
-          scrolledUnderElevation: 0,
-          toolbarHeight: 72,
-          shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.only(
-              bottomLeft: Radius.circular(28),
-              bottomRight: Radius.circular(28),
-            ),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        toolbarHeight: 72,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.only(
+            bottomLeft: Radius.circular(28),
+            bottomRight: Radius.circular(28),
           ),
-          flexibleSpace: PremiumHeader(colors: AppTheme.headerColors(scheme)),
-          // Explicit leading instead of the implicit BackButton: the implicit
-          // one ships a "Назад" Tooltip, which the user sees pop on a
-          // long-press over the arrow ("тултип назад убери").
-          // [PressableIconButton] has no tooltip and gives the same press
-          // recoil as the pin/save actions.
-          leading: PressableIconButton(
-            icon: const Icon(Icons.arrow_back_rounded),
-            onPressed: _exitWithSave,
-          ),
-          title: Text(
-            widget.entry == null
-                ? L.tr(context, 'entryNew')
-                : L.tr(context, 'entryEdit'),
-          ),
-          actions: [
-            PressableIconButton(
-              // Smooth pin toggle: the pin rotates 90° and springs to the
-              // filled/outline state with a scale pop, themed by primary.
-              onPressed: () => setState(() => _pinned = !_pinned),
-              icon: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 280),
-                switchInCurve: Curves.easeOutBack,
-                switchOutCurve: Curves.easeInCubic,
-                transitionBuilder: (child, animation) => RotationTransition(
-                  turns: Tween(begin: 0.25, end: 0.0).animate(animation),
-                  child: ScaleTransition(
-                    scale: Tween(begin: 0.5, end: 1.0).animate(animation),
-                    child: FadeTransition(opacity: animation, child: child),
-                  ),
-                ),
-                child: Icon(
-                  _pinned
-                      ? Icons.push_pin_rounded
-                      : Icons.push_pin_outlined,
-                  key: ValueKey(_pinned),
-                  color: _pinned
-                      ? Theme.of(context).colorScheme.primary
-                      : Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
+        flexibleSpace: PremiumHeader(colors: AppTheme.headerColors(scheme)),
+        // Explicit leading instead of the implicit BackButton: the implicit
+        // one ships a "Назад" Tooltip, which the user sees pop on a
+        // long-press over the arrow ("тултип назад убери").
+        // [PressableIconButton] has no tooltip and gives the same press
+        // recoil as the pin/save actions.
+        leading: PressableIconButton(
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: _exitWithSave,
+        ),
+        title: Text(
+          widget.entry == null
+              ? L.tr(context, 'entryNew')
+              : L.tr(context, 'entryEdit'),
+        ),
+        actions: [
+          PressableIconButton(
+            // Smooth pin toggle: the pin rotates 90° and springs to the
+            // filled/outline state with a scale pop, themed by primary.
+            onPressed: () => setState(() => _pinned = !_pinned),
+            icon: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 280),
+              switchInCurve: Curves.easeOutBack,
+              switchOutCurve: Curves.easeInCubic,
+              transitionBuilder: (child, animation) => RotationTransition(
+                turns: Tween(begin: 0.25, end: 0.0).animate(animation),
+                child: ScaleTransition(
+                  scale: Tween(begin: 0.5, end: 1.0).animate(animation),
+                  child: FadeTransition(opacity: animation, child: child),
                 ),
               ),
+              child: Icon(
+                _pinned
+                    ? Icons.push_pin_rounded
+                    : Icons.push_pin_outlined,
+                key: ValueKey(_pinned),
+                color: _pinned
+                    ? Theme.of(context).colorScheme.primary
+                    : Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
-            PressableIconButton(
-              onPressed: () => _save(),
-              icon: const Icon(Icons.check_rounded),
-            ),
-          ],
-        )
+          ),
+          PressableIconButton(
+            onPressed: () => _save(),
+            icon: const Icon(Icons.check_rounded),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),

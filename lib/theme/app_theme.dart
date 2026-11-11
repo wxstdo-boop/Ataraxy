@@ -650,12 +650,14 @@ class AppTheme {
     const Color surfaceHighest = Color(0xFF242A33);
     const Color ink = Color(0xFFE9E7E2);
     const Color muted = Color(0xFF9BA1AB);
-    // The accent used to be near-white paper (#F3F1ED): the pill, FAB and
-    // filled buttons all painted a blinding white slab on the near-black
-    // canvas ("слепит цветом"). A calm desaturated grey keeps the Grok
-    // monochrome identity while cutting the glare — the accents read as
-    // soft light, not a flash.
-    const Color accent = Color(0xFFC4C8CE);
+    // The accent used to be near-white paper (#F3F1ED), then a light grey
+    // (#C4C8CE). Both still read as a blinding slab: the FAB is a solid 56px
+    // disc of this colour, so anything light enough to look "paper" glares on
+    // the near-black canvas ("слепит FAB"). A calm MID grey keeps the Grok
+    // monochrome identity and stops the glare entirely; `onPrimary` flips to a
+    // light paper ink so labels on the accent pill / FAB stay readable.
+    const Color accent = Color(0xFF5F666E);
+    const Color onAccent = Color(0xFFF5F4F1);
 
     final gs = ColorScheme.fromSeed(
       seedColor: const Color(0xFF1C1F26),
@@ -663,7 +665,7 @@ class AppTheme {
       surface: surface,
     ).copyWith(
       primary: accent,
-      onPrimary: const Color(0xFF14171C),
+      onPrimary: onAccent,
       secondary: const Color(0xFF9BA1AB),
       onSecondary: const Color(0xFF14171C),
       tertiary: const Color(0xFF7E8590),
@@ -696,10 +698,13 @@ class AppTheme {
 
     return themed.copyWith(
       switchTheme: SwitchThemeData(
-        thumbColor: WidgetStatePropertyAll<Color>(accent),
+        // The thumb is light paper so it stands out on BOTH the accent
+        // (selected) and the dark (unselected) track; the accent itself is now
+        // a mid grey and would disappear as a thumb.
+        thumbColor: WidgetStatePropertyAll<Color>(onAccent),
         trackColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return const Color(0xFF6B7280);
+            return accent;
           }
           return const Color(0xFF2C323B);
         }),
@@ -711,7 +716,7 @@ class AppTheme {
           if (states.contains(WidgetState.selected)) return accent;
           return Colors.transparent;
         }),
-        checkColor: WidgetStatePropertyAll<Color>(const Color(0xFF14171C)),
+        checkColor: WidgetStatePropertyAll<Color>(onAccent),
       ),
       progressIndicatorTheme: ProgressIndicatorThemeData(color: accent),
       iconButtonTheme: IconButtonThemeData(

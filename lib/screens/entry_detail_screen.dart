@@ -122,86 +122,83 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
         }
       },
       child: Scaffold(
-      appBar: HeaderBackedAppBar(
-        colors: AppTheme.headerColors(scheme),
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          foregroundColor: Colors.white,
-          elevation: 0,
-          scrolledUnderElevation: 0,
-          toolbarHeight: 72,
-          shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.only(
-              bottomLeft: Radius.circular(28),
-              bottomRight: Radius.circular(28),
-            ),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        toolbarHeight: 72,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.only(
+            bottomLeft: Radius.circular(28),
+            bottomRight: Radius.circular(28),
           ),
-          flexibleSpace: PremiumHeader(colors: AppTheme.headerColors(scheme)),
-          title: Text(L.tr(context, entry.type.labelKey)),
-          actions: [
-            PressableIconButton(
-              icon: const Icon(Icons.edit_rounded),
-              onPressed: _openEditor,
+        ),
+        flexibleSpace: PremiumHeader(colors: AppTheme.headerColors(scheme)),
+        title: Text(L.tr(context, entry.type.labelKey)),
+        actions: [
+          PressableIconButton(
+            icon: const Icon(Icons.edit_rounded),
+            onPressed: _openEditor,
+          ),
+          PressableIconButton(
+            icon: Icon(
+              entry.pinned ? Icons.push_pin_rounded : Icons.push_pin_outlined,
+              color: entry.pinned ? AppAccents.amber : null,
             ),
-            PressableIconButton(
-              icon: Icon(
-                entry.pinned ? Icons.push_pin_rounded : Icons.push_pin_outlined,
-                color: entry.pinned ? AppAccents.amber : null,
-              ),
-              onPressed: () async {
-                await widget.storage.patchEntry(
-                  entry.id,
-                  {'pinned': !entry.pinned},
-                );
+            onPressed: () async {
+              await widget.storage.patchEntry(
+                entry.id,
+                {'pinned': !entry.pinned},
+              );
+              if (context.mounted) {
+                Navigator.of(context).pop(true);
+              }
+            },
+          ),
+          PressableIconButton(
+            icon: const Icon(Icons.delete_outline_rounded),
+            onPressed: () async {
+              final confirm = await showDialog<bool>(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: Text(L.tr(context, 'deleteTitle')),
+                  content: Text(L.tr(context, 'deleteContent')),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(ctx).pop(false),
+                      child: Text(L.tr(context, 'cancel')),
+                    ),
+                    FilledButton(
+                      onPressed: () => Navigator.of(ctx).pop(true),
+                      child: Text(L.tr(context, 'delete')),
+                    ),
+                  ],
+                ),
+              );
+              if (confirm == true) {
+                final deleted = entry;
+                await widget.storage.deleteEntry(entry.id);
                 if (context.mounted) {
+                  AnimatedSnack.show(
+                    context,
+                    L.tr(context, 'entryDeleted'),
+                    type: SnackType.info,
+                    duration: const Duration(seconds: 5),
+                    action: SnackBarAction(
+                      label: L.tr(context, 'restore'),
+                      onPressed: () async {
+                        await widget.storage.restoreEntry(deleted);
+                        widget.onRestored?.call();
+                      },
+                    ),
+                  );
                   Navigator.of(context).pop(true);
                 }
-              },
-            ),
-            PressableIconButton(
-              icon: const Icon(Icons.delete_outline_rounded),
-              onPressed: () async {
-                final confirm = await showDialog<bool>(
-                  context: context,
-                  builder: (ctx) => AlertDialog(
-                    title: Text(L.tr(context, 'deleteTitle')),
-                    content: Text(L.tr(context, 'deleteContent')),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.of(ctx).pop(false),
-                        child: Text(L.tr(context, 'cancel')),
-                      ),
-                      FilledButton(
-                        onPressed: () => Navigator.of(ctx).pop(true),
-                        child: Text(L.tr(context, 'delete')),
-                      ),
-                    ],
-                  ),
-                );
-                if (confirm == true) {
-                  final deleted = entry;
-                  await widget.storage.deleteEntry(entry.id);
-                  if (context.mounted) {
-                    AnimatedSnack.show(
-                      context,
-                      L.tr(context, 'entryDeleted'),
-                      type: SnackType.info,
-                      duration: const Duration(seconds: 5),
-                      action: SnackBarAction(
-                        label: L.tr(context, 'restore'),
-                        onPressed: () async {
-                          await widget.storage.restoreEntry(deleted);
-                          widget.onRestored?.call();
-                        },
-                      ),
-                    );
-                    Navigator.of(context).pop(true);
-                  }
-                }
-              },
-            ),
-          ],
-        )
+              }
+            },
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),

@@ -108,6 +108,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   /// character lands ("поиск дёргается").
   Timer? _searchDebounce;
 
+  /// Drives the soft "fade through" whenever the visible SET changes (category
+  /// chip, sort mode). The content is rebuilt in place — the scroll views keep
+  /// their identity, so scroll offset and per-card entrance state survive — and
+  /// only its opacity dips and eases back, so the swap reads as one dissolve
+  /// instead of an instant content punch ("смена при категориях неплавная").
+  late final AnimationController _viewFade;
+
   // The AI assistant is a plain widget mounted in this screen's Stack (NOT
   // a root-overlay OverlayEntry — that architecture caused the grey-screen
   // crash loop on this device). Long-pressing "+" toggles it; a second
@@ -136,6 +143,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       curve: Curves.easeInOutCubic,
     );
     _barsCtrl.addListener(_onBarsTick);
+    _viewFade = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 240),
+      value: 1.0,
+    );
+  }
+
+  /// Plays the content fade-through: invisible → visible over ~240ms. Called
+  /// from every action that changes which entries are shown.
+  void _fadeThroughContent() {
+    if (mounted) _viewFade.forward(from: 0.0);
   }
 
   /// Each frame of the collapse rebuilds the screen: the app bar reserves its
@@ -173,6 +191,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _fabVisible.dispose();
     _barsCtrl.removeListener(_onBarsTick);
     _barsCtrl.dispose();
+    _viewFade.dispose();
     super.dispose();
   }
 
@@ -489,169 +508,166 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         // the AI chat both summon the keyboard, and the floating content
         // would visibly jump. Content is scrollable so nothing gets hidden.
         resizeToAvoidBottomInset: false,
-        appBar: HeaderBackedAppBar(
-          colors: AppTheme.headerColors(scheme),
-          appBar: AppBar(
-            backgroundColor: Colors.transparent,
-            // Always white foreground — the gradient AppBar needs white icons
-            // and text to be readable regardless of the theme brightness.
-            foregroundColor: Colors.white,
-            elevation: 0,
-            scrolledUnderElevation: 0,
-            toolbarHeight: 64,
-            shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(28),
-                bottomRight: Radius.circular(28),
-              ),
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          // Always white foreground — the gradient AppBar needs white icons
+          // and text to be readable regardless of the theme brightness.
+          foregroundColor: Colors.white,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          toolbarHeight: 64,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.only(
+              bottomLeft: Radius.circular(28),
+              bottomRight: Radius.circular(28),
             ),
-            flexibleSpace: PremiumHeader(colors: AppTheme.headerColors(scheme)),
-            leading: SizedBox(
-              width: 48,
-              height: 48,
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 200),
-                child: _refreshing
-                    ? Center(
-                        key: const ValueKey('spinner'),
-                        child: SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 3,
-                          ),
-                        ),
-                      )
-                    : PressScale(
-                        scale: 0.86,
-                        haptic: true,
-                        child: IconButton(
-                        key: const ValueKey('refresh'),
-                        icon: const Icon(Icons.refresh_rounded),
-                        onPressed: showRefresh
-                            ? () {
-                                // Reload the entries from storage — the
-                                // button previously just waited 2.5s and
-                                // locked the screen, which was wrong.
-                                _load().then((_) {
-                                  if (!mounted || !context.mounted) return;
-                                  // Debounce: rapid taps on refresh must not
-                                  // stack a "Записи обновлены" snackbar per tap.
-                                  final now = DateTime.now();
-                                  if (now.difference(_lastRefreshSnackAt) <
-                                      const Duration(seconds: 2)) {
-                                    return;
-                                  }
-                                  _lastRefreshSnackAt = now;
-                                  AnimatedSnack.show(
-                                    context,
-                                    L.tr(context, 'entriesUpdated'),
-                                    type: SnackType.success,
-                                  );
-                                });
-                              }
-                            : null,
-                      ),
-                      ),
-              ),
-            ),
-            // Title pinned to the LEFT (as the wordmark was originally), not
-            // centered — the streak badge sits right after it.
-            titleSpacing: 0,
-            title: GestureDetector(
-              // Tap hides the title (fade out, no blur); tap again brings it
-              // back smoothly.
-              onTap: () => setState(() {
-                _blurred = !_blurred;
-                _persistBlurPref(_blurred);
-              }),
-              child: AnimatedOpacity(
-                duration: const Duration(milliseconds: 350),
-                curve: Curves.easeInOut,
-                opacity: _blurred ? 0.0 : 1.0,
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  // The wordmark + streak badge are fixed-width; on a narrow
-                  // 360dp phone the AppBar's title slot is only ~184px, so the
-                  // Row overflowed (41px on Redmi Note 12) and painted the
-                  // yellow-black stripe. Scale the whole lockup down to fit
-                  // instead of clipping or wrapping it.
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                      // The wordmark stands clean — the winter beanie now sits
-                      // on the streak badge (it belongs to the celebration,
-                      // not to the static logo).
-                      const Text(
-                        'Ataraxy.',
-                        style: TextStyle(
+          ),
+          flexibleSpace: PremiumHeader(colors: AppTheme.headerColors(scheme)),
+          leading: SizedBox(
+            width: 48,
+            height: 48,
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 200),
+              child: _refreshing
+                  ? Center(
+                      key: const ValueKey('spinner'),
+                      child: SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(
                           color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
-                          // Explicitly opt OUT of the theme's italic
-                          // display font (Cormorant) — the brand wordmark
-                          // keeps its original system-sans look.
-                          fontFamily: 'sans-serif',
-                          fontStyle: FontStyle.normal,
+                          strokeWidth: 3,
                         ),
                       ),
-                      // A tight gap keeps the badge hugging the wordmark (it
-                      // read as floating too far right), and the small negative
-                      // nudge pulls it a hair further left — "стрик ближе левее".
-                      const SizedBox(width: 3),
-                      Transform.translate(
-                        offset: const Offset(-1, 0),
-                        child: StreakBadge(streak: _streak),
-                      ),
-                      ],
+                    )
+                  : PressScale(
+                      scale: 0.86,
+                      haptic: true,
+                      child: IconButton(
+                      key: const ValueKey('refresh'),
+                      icon: const Icon(Icons.refresh_rounded),
+                      onPressed: showRefresh
+                          ? () {
+                              // Reload the entries from storage — the
+                              // button previously just waited 2.5s and
+                              // locked the screen, which was wrong.
+                              _load().then((_) {
+                                if (!mounted || !context.mounted) return;
+                                // Debounce: rapid taps on refresh must not
+                                // stack a "Записи обновлены" snackbar per tap.
+                                final now = DateTime.now();
+                                if (now.difference(_lastRefreshSnackAt) <
+                                    const Duration(seconds: 2)) {
+                                  return;
+                                }
+                                _lastRefreshSnackAt = now;
+                                AnimatedSnack.show(
+                                  context,
+                                  L.tr(context, 'entriesUpdated'),
+                                  type: SnackType.success,
+                                );
+                              });
+                            }
+                          : null,
                     ),
+                    ),
+            ),
+          ),
+          // Title pinned to the LEFT (as the wordmark was originally), not
+          // centered — the streak badge sits right after it.
+          titleSpacing: 0,
+          title: GestureDetector(
+            // Tap hides the title (fade out, no blur); tap again brings it
+            // back smoothly.
+            onTap: () => setState(() {
+              _blurred = !_blurred;
+              _persistBlurPref(_blurred);
+            }),
+            child: AnimatedOpacity(
+              duration: const Duration(milliseconds: 350),
+              curve: Curves.easeInOut,
+              opacity: _blurred ? 0.0 : 1.0,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                // The wordmark + streak badge are fixed-width; on a narrow
+                // 360dp phone the AppBar's title slot is only ~184px, so the
+                // Row overflowed (41px on Redmi Note 12) and painted the
+                // yellow-black stripe. Scale the whole lockup down to fit
+                // instead of clipping or wrapping it.
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                    // The wordmark stands clean — the winter beanie now sits
+                    // on the streak badge (it belongs to the celebration,
+                    // not to the static logo).
+                    const Text(
+                      'Ataraxy.',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                        // Explicitly opt OUT of the theme's italic
+                        // display font (Cormorant) — the brand wordmark
+                        // keeps its original system-sans look.
+                        fontFamily: 'sans-serif',
+                        fontStyle: FontStyle.normal,
+                      ),
+                    ),
+                    // A tight gap keeps the badge hugging the wordmark (it
+                    // read as floating too far right), and the small negative
+                    // nudge pulls it a hair further left — "стрик ближе левее".
+                    const SizedBox(width: 3),
+                    Transform.translate(
+                      offset: const Offset(-1, 0),
+                      child: StreakBadge(streak: _streak),
+                    ),
+                    ],
                   ),
                 ),
               ),
             ),
-            actions: [
-              _SearchToggleButton(
-                isSearching: _searching,
-                onTap: () {
-                  if (_searching) {
-                    _closeSearch();
-                  } else {
-                    _openSearch();
-                  }
-                },
-              ),
-              PressableIconButton(
-                icon: const Icon(Icons.insights_rounded),
-                onPressed: () {
-                  _searchFocus.unfocus();
-                  Navigator.of(
-                    context,
-                  ).push(fadeRoute(const StatisticsScreen()));
-                },
-              ),
-              PressableIconButton(
-                icon: const Icon(Icons.settings_rounded),
-                onPressed: () {
-                  _searchFocus.unfocus();
-                  Navigator.of(
-                    context,
-                  ).push(fadeRoute(const SettingsScreen())).then((_) => _load());
-                },
-              ),
-            ],
-            bottom: _SmoothTabPills(
-              labels: defs.map((d) => d.$1).toList(),
-              headerColor: headerBg,
-              collapse: _barsT,
-              onTap: (index) {
-                _searchFocus.unfocus();
+          ),
+          actions: [
+            _SearchToggleButton(
+              isSearching: _searching,
+              onTap: () {
+                if (_searching) {
+                  _closeSearch();
+                } else {
+                  _openSearch();
+                }
               },
             ),
-          )
+            PressableIconButton(
+              icon: const Icon(Icons.insights_rounded),
+              onPressed: () {
+                _searchFocus.unfocus();
+                Navigator.of(
+                  context,
+                ).push(fadeRoute(const StatisticsScreen()));
+              },
+            ),
+            PressableIconButton(
+              icon: const Icon(Icons.settings_rounded),
+              onPressed: () {
+                _searchFocus.unfocus();
+                Navigator.of(
+                  context,
+                ).push(fadeRoute(const SettingsScreen())).then((_) => _load());
+              },
+            ),
+          ],
+          bottom: _SmoothTabPills(
+            labels: defs.map((d) => d.$1).toList(),
+            headerColor: headerBg,
+            collapse: _barsT,
+            onTap: (index) {
+              _searchFocus.unfocus();
+            },
+          ),
         ),
         body: _loading
             ? const SkeletonList()
@@ -701,6 +717,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                       sortMode: _sortMode,
                                       onChanged: (c) {
                                         setState(() => _category = c);
+                                        _fadeThroughContent();
                                       },
                                       onSort: () {
                                         HapticFeedback.selectionClick();
@@ -709,6 +726,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                               ? -1
                                               : _sortMode + 1;
                                         });
+                                        _fadeThroughContent();
                                       },
                                     ),
                                   ),
@@ -720,7 +738,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         Expanded(
                           child: _StableFeed(
                             rev: _contentRev,
-                            builder: (context) => Stack(
+                            builder: (context) => FadeTransition(
+                              opacity: _viewFade,
+                              child: Stack(
                               children: [
                                 TabBarView(
                                   // Edge swipes spring back with rubber-band
@@ -990,6 +1010,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   ),
                                 ),
                               ],
+                            ),
                             ),
                           ),
                         ),

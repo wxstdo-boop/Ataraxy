@@ -111,16 +111,23 @@ release, so bump `version:` in `pubspec.yaml` before tagging.
   differs from the scaffold, those corners show up as white "просветы".
 - `PremiumHeader` is `ClipRRect`-ed to the same radius as the AppBar `shape`.
   Keep the two radii in sync or the gradient bleeds past the rounded corner.
-- Wrap every screen `AppBar` in `HeaderBackedAppBar(colors:…, appBar: AppBar(…))`
-  (`lib/widgets/premium_header.dart`). It paints the same gradient on a square
-  `DecoratedBox` behind the bar so the notch left by the rounded-bottom `shape`
-  is filled; a bare `AppBar` lets the scaffold show through as a pale wedge.
+- Every screen `AppBar` uses a rounded-bottom `shape` with a `PremiumHeader`
+  `flexibleSpace`. Do NOT re-introduce a wrapper that paints the gradient
+  behind the whole square app-bar rectangle: a `HeaderBackedAppBar` was tried
+  to hide the notch the rounding leaves, but the user rejected the resulting
+  "edge alignment" ("верни как было") — the bare AppBar + clipped header is the
+  intended look, corners included.
 - `MUTILATED` and `Grok` themes override `cardTheme` in a `.copyWith`, which
   replaces the base `cardTheme` entirely — re-declare the hairline rim +
   shadow there too, or those themes lose the card depth every other theme has.
 - Don't over-"harmonise": pushing secondary/tertiary onto the primary's hue
   (or cranking chroma) makes every theme collapse into one muddy wash. The
   user prefers the calmer palette; keep hue offsets small and chroma capped.
+- Dark Grok's accent (`primary`) must stay a MID grey (~`#5F666E`). It drives
+  the FAB, the selected pill and filled buttons; a light "paper" accent reads
+  as a blinding slab on the near-black canvas ("слепит FAB"). Because the
+  accent is now darker, `onPrimary` must be LIGHT paper ink for contrast
+  (`test/app_theme_test.dart` asserts `onPrimary` vs `primary` ≥ 4.5).
 
 ## Animation pitfalls
 
@@ -176,3 +183,20 @@ release, so bump `version:` in `pubspec.yaml` before tagging.
 - During onboarding, `HomeContent` keeps `HomeScreen` mounted behind the
   welcome card (`Opacity(0)` + `IgnorePointer`) so the feed is laid out and
   rasterised before "Начать пользоваться" is tapped — avoids the build spike.
+- `main()` calls `runApp` as early as possible: only `_precacheAvatar()` is
+  awaited up front (so the splash logo paints on frame 1 instead of blinking
+  in). Notification init, auto-export load and the reminder refresh are
+  `unawaited` AFTER `runApp` — running them before it held the flat-colour
+  native launch window on screen for the whole boot.
+- `_precacheAvatar()` must precache the exact `ResizeImage(AssetImage(...),
+  width: 96*dpr)` variant the splash requests, resolved with the same
+  `devicePixelRatio`. Precaching the bare `AssetImage` populated a different
+  image-cache key, so the splash re-decoded the avatar on its first frame
+  ("АДА появляется не сразу").
+- Keep per-frame animations paint-only. The AI bubble's pulse used to animate
+  its `width`/`height` (a full layout + blurred-shadow repaint every frame);
+  it is now a fixed-size `Container` under a `Transform.scale` inside a
+  `RepaintBoundary`. Prefer `Transform`/opacity over animating layout.
+- Category/sort changes in `HomeScreen` rebuild the feed in place (the scroll
+  views keep a stable identity) and dip `_viewFade` (a 240 ms fade-through) so
+  the swap reads as one dissolve instead of an instant content punch.

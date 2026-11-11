@@ -93,7 +93,13 @@ testWidgets('tulpa toggle calls onChanged with true', (tester) async {
 
     // tap a theme tile by its label — this used to swap the root widget and
     // pop the route, kicking the user back out of Settings
-    await tester.tap(find.text('Dark Peach'));
+    final themeTile = find.text('Dark Peach');
+    // The tile sits below the default 600px test viewport, so scroll it into
+    // view first — otherwise the tap lands off-screen, silently misses, and
+    // the assertion below passes without exercising the swap at all.
+    await tester.ensureVisible(themeTile);
+    await tester.pumpAndSettle();
+    await tester.tap(themeTile);
     for (var i = 0; i < 8; i++) {
       await tester.pump(const Duration(milliseconds: 200));
     }

@@ -379,15 +379,22 @@ class AiFloatingAssistantState extends State<AiFloatingAssistant>
   }
 
   Widget _bubbleBody(ColorScheme scheme) {
-    return AnimatedBuilder(
-      animation: _bubblePulse,
-      builder: (context, child) {
-        final p = _bubblePulse.value; // 0..1
-        // Compact (44px), theme-aware bubble with a soft light pulse and a
-        // crisp outline so it reads sharply over any background.
-        return Container(
-          width: 44 + p * 2.5,
-          height: 44 + p * 2.5,
+    // The pulse used to animate the bubble's width/height, which forced a
+    // full LAYOUT pass (and a blurred-shadow repaint) every frame while the
+    // bubble sat minimized on the home screen — a real drag on mid-range
+    // phones ("весь апп лагает"). The footprint is now fixed and the pulse is
+    // a paint-only [Transform.scale] over a STATIC child, so the animation
+    // never relayouts and the RepaintBoundary keeps its repaints local.
+    return RepaintBoundary(
+      child: AnimatedBuilder(
+        animation: _bubblePulse,
+        builder: (context, child) => Transform.scale(
+          scale: 1 + _bubblePulse.value * 0.055,
+          child: child,
+        ),
+        child: Container(
+          width: 44,
+          height: 44,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             gradient: LinearGradient(
@@ -402,8 +409,8 @@ class AiFloatingAssistantState extends State<AiFloatingAssistant>
             ),
             boxShadow: [
               BoxShadow(
-                color: scheme.primary.withValues(alpha: 0.45 + p * 0.2),
-                blurRadius: 14 + p * 6,
+                color: scheme.primary.withValues(alpha: 0.55),
+                blurRadius: 17,
                 offset: const Offset(0, 6),
               ),
               BoxShadow(
@@ -415,7 +422,7 @@ class AiFloatingAssistantState extends State<AiFloatingAssistant>
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.18),
                 blurRadius: 1,
-                offset: const Offset(0, 0),
+                offset: Offset.zero,
               ),
             ],
           ),
@@ -456,8 +463,8 @@ class AiFloatingAssistantState extends State<AiFloatingAssistant>
               ),
             ],
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 

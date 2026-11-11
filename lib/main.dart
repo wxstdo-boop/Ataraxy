@@ -52,35 +52,33 @@ void main() async {
   // Run non-critical initialization in parallel
   final notificationService = NotificationService();
   final autoExport = AutoExportService();
-  
-  // These can run in parallel as they don't block the UI
-  final initFuture = Future.wait([
-    _guarded(notificationService.initialize(), 'Notification init'),
-    _guarded(autoExport.loadState(), 'Auto-export load'),
-    _precacheAvatar(),
-  ]);
-  
-  // Update reminders from settings (depends on settings being loaded)
-  try {
-    await NotificationService.updateReminderFromSettings(settings);
-  } catch (e) {
-    debugPrint('[Boot] Reminder update failed (non-fatal): $e');
-  }
-  
-  // Set auto-export callback
+
+  // Precache the avatar BEFORE the first frame so the splash logo paints
+  // immediately instead of blinking in a beat later ("АДА появляется не
+  // сразу"). This is the only piece of the boot we must finish up front.
+  await _precacheAvatar();
+
+  // Draw the first frame NOW — the Flutter splash (with the avatar) is on
+  // screen from this point. Everything below is non-critical boot work and
+  // used to run BEFORE runApp, holding the native launch window (a flat
+  // colour, no logo) on screen for its whole duration.
+  runApp(
+    MyApp(notificationService: notificationService, initialSettings: settings),
+  );
+
   autoExport.setExportCallback(() async {
     return StorageService().exportToJson();
   });
-
-  // Wait for parallel initialization to complete
-  try {
-    await initFuture;
-  } catch (e) {
-    debugPrint('[Boot] Parallel init failed (non-fatal): $e');
-  }
-
-  runApp(
-    MyApp(notificationService: notificationService, initialSettings: settings),
+  // Deferred off the startup path: notification setup, auto-export state and
+  // the reminder refresh all do platform-channel I/O that would otherwise
+  // delay the first frame.
+  unawaited(_guarded(notificationService.initialize(), 'Notification init'));
+  unawaited(_guarded(autoExport.loadState(), 'Auto-export load'));
+  unawaited(
+    _guarded(
+      NotificationService.updateReminderFromSettings(settings),
+      'Reminder update',
+    ),
   );
 }
 
@@ -96,9 +94,26 @@ Future<void> _guarded(Future<dynamic> future, String label) async {
 
 /// Loads and decodes the app avatar before the first frame so the splash
 /// screen can show it immediately.
+///
+/// The splash requests the avatar RESIZED (`cacheWidth: 96 * dpr`), which
+/// resolves to a different image-cache key than the raw asset. Precaching the
+/// bare `AssetImage` therefore populated a key the splash never looked up, and
+/// the tile re-decoded on its first frame — the avatar "появляется не сразу".
+/// We precache the exact [ResizeImage] variant the widget will ask for, using
+/// the same width formula, so the first painted frame already has it.
 Future<void> _precacheAvatar() async {
-  final provider = const AssetImage('assets/ataraxy.png');
-  final stream = provider.resolve(ImageConfiguration.empty);
+  final dpr =
+      WidgetsBinding.instance.platformDispatcher.views.first.devicePixelRatio;
+  final targetWidth = (96 * dpr).ceil();
+  final provider = ResizeImage(
+    const AssetImage('assets/ataraxy.png'),
+    width: targetWidth,
+  );
+  // Resolve with the same devicePixelRatio the widget will use: AssetImage
+  // picks its asset variant (and thus its cache key) from
+  // `configuration.devicePixelRatio`, so an `ImageConfiguration.empty`
+  // (dpr 1.0) would key a different image and defeat the precache.
+  final stream = provider.resolve(ImageConfiguration(devicePixelRatio: dpr));
   final completer = Completer<void>();
   late final ImageStreamListener listener;
   void done() {
@@ -107,14 +122,10 @@ Future<void> _precacheAvatar() async {
     completer.complete();
   }
 
-  listener = ImageStreamListener(
-    (_, _) => done(),
-    onError: (_, _) => done(),
-  );
+  listener = ImageStreamListener((_, _) => done(), onError: (_, _) => done());
   stream.addListener(listener);
   // Safety net: if the asset stream never delivers AND never errors (rare
-  // but possible on some engines), don't block startup forever — the splash
-  // paints the avatar from its own FadeInImage anyway.
+  // but possible on some engines), don't block startup forever.
   try {
     await completer.future.timeout(const Duration(seconds: 1));
   } catch (_) {

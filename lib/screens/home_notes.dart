@@ -84,25 +84,22 @@ class _NotesListScreenState extends State<_NotesListScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: HeaderBackedAppBar(
-        colors: AppTheme.headerColors(Theme.of(context).colorScheme),
-        appBar: AppBar(
-          title: Text(L.tr(context, 'tabNotes')),
-          foregroundColor: Colors.white,
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          scrolledUnderElevation: 0,
-          toolbarHeight: 72,
-          shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.only(
-              bottomLeft: Radius.circular(28),
-              bottomRight: Radius.circular(28),
-            ),
+      appBar: AppBar(
+        title: Text(L.tr(context, 'tabNotes')),
+        foregroundColor: Colors.white,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        toolbarHeight: 72,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.only(
+            bottomLeft: Radius.circular(28),
+            bottomRight: Radius.circular(28),
           ),
-          flexibleSpace: PremiumHeader(
-            colors: AppTheme.headerColors(Theme.of(context).colorScheme),
-          ),
-        )
+        ),
+        flexibleSpace: PremiumHeader(
+          colors: AppTheme.headerColors(Theme.of(context).colorScheme),
+        ),
       ),
       body: _notes.isEmpty
           ? Center(

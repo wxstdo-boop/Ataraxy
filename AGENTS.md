@@ -123,6 +123,15 @@ release, so bump `version:` in `pubspec.yaml` before tagging.
 - Don't over-"harmonise": pushing secondary/tertiary onto the primary's hue
   (or cranking chroma) makes every theme collapse into one muddy wash. The
   user prefers the calmer palette; keep hue offsets small and chroma capped.
+- The recurring "белые полосы" (white stripes over cards in Settings / on the
+  home feed) were NOT a stray white box. `_harmonise` desaturates the whole
+  scheme, so `surfaceContainerLow`/`Lowest` land near-neutral white — while
+  the scaffold uses the RAW, still-tinted `surfaceContainerLow`. Cards filled
+  with the harmonised Low therefore rendered as near-white slabs on a coloured
+  background. Fill card-like surfaces (cardTheme, dialogTheme,
+  bottomSheetTheme, `home_entry_card`, AI panel, favorites bubbles) with the
+  tinted `surfaceContainerHighest`/`High` instead. `test/app_theme_test.dart`
+  guards contrast but not this; verify by sampling rendered pixels.
 - Dark Grok's accent (`primary`) must stay a MID grey (~`#5F666E`). It drives
   the FAB, the selected pill and filled buttons; a light "paper" accent reads
   as a blinding slab on the near-black canvas ("слепит FAB"). Because the

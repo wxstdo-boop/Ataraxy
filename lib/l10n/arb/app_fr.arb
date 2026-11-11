@@ -132,7 +132,7 @@
   "reminders": "Rappels",
   "reminderTime": "Heure de notification",
   "reminderText": "Texte de notification",
-  "reminderHint": "Quoi rappeler (obligatoire)",
+  "reminderHint": "Quoi rappeler",
   "reminderSet": "Rappel défini",
   "reminderDisabled": "Rappel désactivé",
   "reminderRequired": "Saisissez le texte",

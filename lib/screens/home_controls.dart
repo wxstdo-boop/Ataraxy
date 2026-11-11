@@ -337,26 +337,24 @@ class _ListSection extends StatelessWidget {
       );
     }
 
-    // Smooth empty↔populated transition (search clearing to "Записей пока
-    // нет", category/day filter switches): a 260ms cross-fade sized to the
-    // incoming child, so the swap reads as one soft dissolve.
+    // Smooth empty↔populated swap (search clearing to "Записей пока нет",
+    // category/day filter switches). The INCOMING child fades + slides in on
+    // its own; the OUTGOING one is dropped immediately instead of fading out
+    // on top of it. Cross-fading both made the old content ghost over the new
+    // for the whole transition — the "Записей пока нет" flashing over the
+    // freshly-filtered records during a search ("при поиске записей мигает
+    // перед записей пока нет"). A one-sided fade has nothing to overlap, and
+    // the records themselves still ease in via each card's own entrance.
     return RepaintBoundary(
       child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 260),
+        duration: const Duration(milliseconds: 200),
         switchInCurve: Curves.easeOutCubic,
-        switchOutCurve: Curves.easeIn,
-        layoutBuilder: (currentChild, previousChildren) => ClipRect(
-          child: Stack(
-            alignment: Alignment.topCenter,
-            children: [
-              // Outgoing children are Positioned so they NEVER inflate the
-              // Stack's size (Stack sizes to non-positioned children only) —
-              // the incoming child defines the section height alone.
-              ...previousChildren.map((w) => Positioned.fill(child: w)),
-              ?currentChild,
-            ],
-          ),
-        ),
+        transitionBuilder: (child, animation) =>
+            FadeTransition(opacity: animation, child: child),
+        // Only the current child is laid out (sized to the incoming content),
+        // so the shorter empty state can never inflate the section mid-swap.
+        layoutBuilder: (currentChild, previousChildren) =>
+            currentChild ?? const SizedBox.shrink(),
         child: KeyedSubtree(
           key: ValueKey(entries.isEmpty ? 'section-empty' : 'section-list'),
           child: listChild,

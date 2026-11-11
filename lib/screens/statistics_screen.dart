@@ -369,20 +369,23 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
   }
 
   PreferredSizeWidget _buildAppBar(ColorScheme scheme, BuildContext context) {
-    return AppBar(
-      backgroundColor: Colors.transparent,
-      foregroundColor: Colors.white,
-      elevation: 0,
-      scrolledUnderElevation: 0,
-      toolbarHeight: 72,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(28),
-          bottomRight: Radius.circular(28),
+    return HeaderBackedAppBar(
+      colors: AppTheme.headerColors(scheme),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        toolbarHeight: 72,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.only(
+            bottomLeft: Radius.circular(28),
+            bottomRight: Radius.circular(28),
+          ),
         ),
+        flexibleSpace: PremiumHeader(colors: AppTheme.headerColors(scheme)),
+        title: Text(L.tr(context, 'statistics')),
       ),
-      flexibleSpace: PremiumHeader(colors: AppTheme.headerColors(scheme)),
-      title: Text(L.tr(context, 'statistics')),
     );
   }
 

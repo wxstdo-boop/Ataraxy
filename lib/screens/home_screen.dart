@@ -108,12 +108,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   /// character lands ("поиск дёргается").
   Timer? _searchDebounce;
 
-  /// Drives the soft "fade through" whenever the visible SET changes (category
-  /// chip, sort mode, search query). The content is rebuilt in place — the
-  /// scroll views keep their identity, so scroll offset and per-card entrance
-  /// state survive — and only its opacity dips and eases back, so the swap
-  /// reads as one dissolve instead of an instant content punch.
-  late final AnimationController _viewFade;
   // The AI assistant is a plain widget mounted in this screen's Stack (NOT
   // a root-overlay OverlayEntry — that architecture caused the grey-screen
   // crash loop on this device). Long-pressing "+" toggles it; a second
@@ -142,17 +136,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       curve: Curves.easeInOutCubic,
     );
     _barsCtrl.addListener(_onBarsTick);
-    _viewFade = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 240),
-      value: 1.0,
-    );
-  }
-
-  /// Plays the content fade-through: invisible → visible over ~240ms. Called
-  /// from every action that changes which entries are shown.
-  void _fadeThroughContent() {
-    if (mounted) _viewFade.forward(from: 0.0);
   }
 
   /// Each frame of the collapse rebuilds the screen: the app bar reserves its
@@ -190,7 +173,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _fabVisible.dispose();
     _barsCtrl.removeListener(_onBarsTick);
     _barsCtrl.dispose();
-    _viewFade.dispose();
     super.dispose();
   }
 
@@ -507,166 +489,169 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         // the AI chat both summon the keyboard, and the floating content
         // would visibly jump. Content is scrollable so nothing gets hidden.
         resizeToAvoidBottomInset: false,
-        appBar: AppBar(
-          backgroundColor: Colors.transparent,
-          // Always white foreground — the gradient AppBar needs white icons
-          // and text to be readable regardless of the theme brightness.
-          foregroundColor: Colors.white,
-          elevation: 0,
-          scrolledUnderElevation: 0,
-          toolbarHeight: 64,
-          shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.only(
-              bottomLeft: Radius.circular(28),
-              bottomRight: Radius.circular(28),
+        appBar: HeaderBackedAppBar(
+          colors: AppTheme.headerColors(scheme),
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            // Always white foreground — the gradient AppBar needs white icons
+            // and text to be readable regardless of the theme brightness.
+            foregroundColor: Colors.white,
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            toolbarHeight: 64,
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(28),
+                bottomRight: Radius.circular(28),
+              ),
             ),
-          ),
-          flexibleSpace: PremiumHeader(colors: AppTheme.headerColors(scheme)),
-          leading: SizedBox(
-            width: 48,
-            height: 48,
-            child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 200),
-              child: _refreshing
-                  ? Center(
-                      key: const ValueKey('spinner'),
-                      child: SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(
+            flexibleSpace: PremiumHeader(colors: AppTheme.headerColors(scheme)),
+            leading: SizedBox(
+              width: 48,
+              height: 48,
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 200),
+                child: _refreshing
+                    ? Center(
+                        key: const ValueKey('spinner'),
+                        child: SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 3,
+                          ),
+                        ),
+                      )
+                    : PressScale(
+                        scale: 0.86,
+                        haptic: true,
+                        child: IconButton(
+                        key: const ValueKey('refresh'),
+                        icon: const Icon(Icons.refresh_rounded),
+                        onPressed: showRefresh
+                            ? () {
+                                // Reload the entries from storage — the
+                                // button previously just waited 2.5s and
+                                // locked the screen, which was wrong.
+                                _load().then((_) {
+                                  if (!mounted || !context.mounted) return;
+                                  // Debounce: rapid taps on refresh must not
+                                  // stack a "Записи обновлены" snackbar per tap.
+                                  final now = DateTime.now();
+                                  if (now.difference(_lastRefreshSnackAt) <
+                                      const Duration(seconds: 2)) {
+                                    return;
+                                  }
+                                  _lastRefreshSnackAt = now;
+                                  AnimatedSnack.show(
+                                    context,
+                                    L.tr(context, 'entriesUpdated'),
+                                    type: SnackType.success,
+                                  );
+                                });
+                              }
+                            : null,
+                      ),
+                      ),
+              ),
+            ),
+            // Title pinned to the LEFT (as the wordmark was originally), not
+            // centered — the streak badge sits right after it.
+            titleSpacing: 0,
+            title: GestureDetector(
+              // Tap hides the title (fade out, no blur); tap again brings it
+              // back smoothly.
+              onTap: () => setState(() {
+                _blurred = !_blurred;
+                _persistBlurPref(_blurred);
+              }),
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 350),
+                curve: Curves.easeInOut,
+                opacity: _blurred ? 0.0 : 1.0,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  // The wordmark + streak badge are fixed-width; on a narrow
+                  // 360dp phone the AppBar's title slot is only ~184px, so the
+                  // Row overflowed (41px on Redmi Note 12) and painted the
+                  // yellow-black stripe. Scale the whole lockup down to fit
+                  // instead of clipping or wrapping it.
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                      // The wordmark stands clean — the winter beanie now sits
+                      // on the streak badge (it belongs to the celebration,
+                      // not to the static logo).
+                      const Text(
+                        'Ataraxy.',
+                        style: TextStyle(
                           color: Colors.white,
-                          strokeWidth: 3,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                          // Explicitly opt OUT of the theme's italic
+                          // display font (Cormorant) — the brand wordmark
+                          // keeps its original system-sans look.
+                          fontFamily: 'sans-serif',
+                          fontStyle: FontStyle.normal,
                         ),
                       ),
-                    )
-                  : PressScale(
-                      scale: 0.86,
-                      haptic: true,
-                      child: IconButton(
-                      key: const ValueKey('refresh'),
-                      icon: const Icon(Icons.refresh_rounded),
-                      onPressed: showRefresh
-                          ? () {
-                              // Reload the entries from storage — the
-                              // button previously just waited 2.5s and
-                              // locked the screen, which was wrong.
-                              _load().then((_) {
-                                if (!mounted || !context.mounted) return;
-                                // Debounce: rapid taps on refresh must not
-                                // stack a "Записи обновлены" snackbar per tap.
-                                final now = DateTime.now();
-                                if (now.difference(_lastRefreshSnackAt) <
-                                    const Duration(seconds: 2)) {
-                                  return;
-                                }
-                                _lastRefreshSnackAt = now;
-                                AnimatedSnack.show(
-                                  context,
-                                  L.tr(context, 'entriesUpdated'),
-                                  type: SnackType.success,
-                                );
-                              });
-                            }
-                          : null,
-                    ),
-                    ),
-            ),
-          ),
-          // Title pinned to the LEFT (as the wordmark was originally), not
-          // centered — the streak badge sits right after it.
-          titleSpacing: 0,
-          title: GestureDetector(
-            // Tap hides the title (fade out, no blur); tap again brings it
-            // back smoothly.
-            onTap: () => setState(() {
-              _blurred = !_blurred;
-              _persistBlurPref(_blurred);
-            }),
-            child: AnimatedOpacity(
-              duration: const Duration(milliseconds: 350),
-              curve: Curves.easeInOut,
-              opacity: _blurred ? 0.0 : 1.0,
-              child: Align(
-                alignment: Alignment.centerLeft,
-                // The wordmark + streak badge are fixed-width; on a narrow
-                // 360dp phone the AppBar's title slot is only ~184px, so the
-                // Row overflowed (41px on Redmi Note 12) and painted the
-                // yellow-black stripe. Scale the whole lockup down to fit
-                // instead of clipping or wrapping it.
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                    // The wordmark stands clean — the winter beanie now sits
-                    // on the streak badge (it belongs to the celebration,
-                    // not to the static logo).
-                    const Text(
-                      'Ataraxy.',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                        // Explicitly opt OUT of the theme's italic
-                        // display font (Cormorant) — the brand wordmark
-                        // keeps its original system-sans look.
-                        fontFamily: 'sans-serif',
-                        fontStyle: FontStyle.normal,
+                      // A tight gap keeps the badge hugging the wordmark (it
+                      // read as floating too far right), and the small negative
+                      // nudge pulls it a hair further left — "стрик ближе левее".
+                      const SizedBox(width: 3),
+                      Transform.translate(
+                        offset: const Offset(-1, 0),
+                        child: StreakBadge(streak: _streak),
                       ),
+                      ],
                     ),
-                    const SizedBox(width: 8),
-                    // A small positive gap pushes the badge clearly to the
-                    // right of the wordmark (it used to hug the text with a
-                    // negative tuck, which read as "glued on").
-                    Transform.translate(
-                      offset: const Offset(2, 0),
-                      child: StreakBadge(streak: _streak),
-                    ),
-                    ],
                   ),
                 ),
               ),
             ),
-          ),
-          actions: [
-            _SearchToggleButton(
-              isSearching: _searching,
-              onTap: () {
-                if (_searching) {
-                  _closeSearch();
-                } else {
-                  _openSearch();
-                }
-              },
-            ),
-            PressableIconButton(
-              icon: const Icon(Icons.insights_rounded),
-              onPressed: () {
+            actions: [
+              _SearchToggleButton(
+                isSearching: _searching,
+                onTap: () {
+                  if (_searching) {
+                    _closeSearch();
+                  } else {
+                    _openSearch();
+                  }
+                },
+              ),
+              PressableIconButton(
+                icon: const Icon(Icons.insights_rounded),
+                onPressed: () {
+                  _searchFocus.unfocus();
+                  Navigator.of(
+                    context,
+                  ).push(fadeRoute(const StatisticsScreen()));
+                },
+              ),
+              PressableIconButton(
+                icon: const Icon(Icons.settings_rounded),
+                onPressed: () {
+                  _searchFocus.unfocus();
+                  Navigator.of(
+                    context,
+                  ).push(fadeRoute(const SettingsScreen())).then((_) => _load());
+                },
+              ),
+            ],
+            bottom: _SmoothTabPills(
+              labels: defs.map((d) => d.$1).toList(),
+              headerColor: headerBg,
+              collapse: _barsT,
+              onTap: (index) {
                 _searchFocus.unfocus();
-                Navigator.of(
-                  context,
-                ).push(fadeRoute(const StatisticsScreen()));
               },
             ),
-            PressableIconButton(
-              icon: const Icon(Icons.settings_rounded),
-              onPressed: () {
-                _searchFocus.unfocus();
-                Navigator.of(
-                  context,
-                ).push(fadeRoute(const SettingsScreen())).then((_) => _load());
-              },
-            ),
-          ],
-          bottom: _SmoothTabPills(
-            labels: defs.map((d) => d.$1).toList(),
-            headerColor: headerBg,
-            collapse: _barsT,
-            onTap: (index) {
-              _searchFocus.unfocus();
-            },
-          ),
+          )
         ),
         body: _loading
             ? const SkeletonList()
@@ -716,7 +701,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                       sortMode: _sortMode,
                                       onChanged: (c) {
                                         setState(() => _category = c);
-                                        _fadeThroughContent();
                                       },
                                       onSort: () {
                                         HapticFeedback.selectionClick();
@@ -725,7 +709,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                               ? -1
                                               : _sortMode + 1;
                                         });
-                                        _fadeThroughContent();
                                       },
                                     ),
                                   ),
@@ -735,166 +718,53 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           },
                         ),
                         Expanded(
-                          child: FadeTransition(
-                            opacity: _viewFade,
-                            child: _StableFeed(
-                              rev: _contentRev,
-                              builder: (context) => Stack(
-                            children: [
-                              TabBarView(
-                                // Edge swipes spring back with rubber-band
-                                // tension instead of hitting a hard wall (the
-                                // "свайп-натяжение" on the first/last tab).
-                                physics: const BouncingScrollPhysics(
-                                  parent: AlwaysScrollableScrollPhysics(),
-                                ),
-                                children: defs
-                                    .map(
-                                      (d) => d.$2 == EntryType.life
-                                          ? _ListSection(
-                                              key: ValueKey(
-                                                d.$2?.name ?? 'all',
-                                              ),
-                                              // Favorites banners scroll
-                                              // WITH the entries now.
-                                              header: Column(
-                                                children: [
-                                                  _FavoriteActivitiesBanner(
-                                                    onTap: () {
-                                                      Navigator.of(
-                                                        context,
-                                                      ).push(
-                                                        fadeRoute(
-                                                          const FavoriteActivityScreen(),
-                                                        ),
-                                                      );
-                                                    },
-                                                  ),
-                                                  _FavoritesBanner(
-                                                    onTap: () {
-                                                      Navigator.of(context).push(
-                                                        fadeRoute(
-                                                          const FavoritesScreen(),
-                                                        ),
-                                                      );
-                                                    },
-                                                  ),
-                                                ],
-                                              ),
-                                              entries: _filtered(d.$2),
-                                              onTap: (e) => _openDetail(
-                                                e,
-                                                heroPrefix:
-                                                    d.$2?.name ?? 'all',
-                                              ),
-                                              onPin: _togglePin,
-                                              onRefresh: _load,
-                                              onReorder:
-                                                  (oldIdx, newIdx) =>
-                                                      _onReorder(
-                                                        _filtered(d.$2),
-                                                        oldIdx,
-                                                        newIdx,
-                                                      ),
-                                              emptyText: d.$3,
-                                              seenEntranceIds: _seenEntranceIds,
-                                            )
-                                          : d.$2 == EntryType.dream ||
-                                                d.$2 == EntryType.tulpa
-                                          ? _ListSection(
-                                              key: ValueKey(
-                                                d.$2?.name ?? 'all',
-                                              ),
-                                              header: _DailyGuideBanner(
-                                                topic: d.$2 == EntryType.dream
-                                                    ? DailyGuideTopic
-                                                          .lucidDreams
-                                                    : DailyGuideTopic.tulpa,
-                                                onTap: () =>
-                                                    Navigator.of(
-                                                      context,
-                                                    ).push(
-                                                      fadeRoute(
-                                                        DailyGuideScreen(
-                                                          topic:
-                                                              d.$2 ==
-                                                                  EntryType
-                                                                      .dream
-                                                              ? DailyGuideTopic
-                                                                    .lucidDreams
-                                                              : DailyGuideTopic
-                                                                    .tulpa,
-                                                        ),
-                                                      ),
-                                                    ),
-                                              ),
-                                              entries: _filtered(d.$2),
-                                              onTap: (e) => _openDetail(
-                                                e,
-                                                heroPrefix:
-                                                    d.$2?.name ?? 'all',
-                                              ),
-                                              onPin: _togglePin,
-                                              onRefresh: _load,
-                                              onReorder:
-                                                  (oldIdx, newIdx) =>
-                                                      _onReorder(
-                                                        _filtered(d.$2),
-                                                        oldIdx,
-                                                        newIdx,
-                                                      ),
-                                              emptyText: d.$3,
-                                              seenEntranceIds: _seenEntranceIds,
-                                            )
-                                          : () {
-                                              // Hide notes (general) from the
-                                              // "ВСЕ" tab list — they're only
-                                              // reachable via the banner.
-                                              final itemsNoNotes =
-                                                  _filtered(d.$2)
-                                                      .where(
-                                                        (e) =>
-                                                            e.type !=
-                                                            EntryType
-                                                                .general,
-                                                      )
-                                                      .toList();
-                                              return _ListSection(
+                          child: _StableFeed(
+                            rev: _contentRev,
+                            builder: (context) => Stack(
+                              children: [
+                                TabBarView(
+                                  // Edge swipes spring back with rubber-band
+                                  // tension instead of hitting a hard wall (the
+                                  // "свайп-натяжение" on the first/last tab).
+                                  physics: const BouncingScrollPhysics(
+                                    parent: AlwaysScrollableScrollPhysics(),
+                                  ),
+                                  children: defs
+                                      .map(
+                                        (d) => d.$2 == EntryType.life
+                                            ? _ListSection(
                                                 key: ValueKey(
                                                   d.$2?.name ?? 'all',
                                                 ),
-                                                header: _AllBanner(
-                                                  // NOT `_filtered(...)`: the
-                                                  // banner hides itself when
-                                                  // there are no notes, so a
-                                                  // category filter that
-                                                  // happens to drop every note
-                                                  // used to collapse the header
-                                                  // and shift the whole section.
-                                                  entries: _entries,
-                                                  onTap: () {
-                                                    final notes = _entries
-                                                        .where(
-                                                          (e) =>
-                                                              e.type ==
-                                                              EntryType
-                                                                  .general,
-                                                        )
-                                                        .toList();
-                                                    Navigator.of(context).push(
-                                                      fadeRoute(
-                                                        _NotesListScreen(
-                                                          notes: notes,
-                                                          storage: _storage,
-                                                          onChanged: _load,
-                                                        ),
-                                                      ),
-                                                    );
-                                                  },
+                                                // Favorites banners scroll
+                                                // WITH the entries now.
+                                                header: Column(
+                                                  children: [
+                                                    _FavoriteActivitiesBanner(
+                                                      onTap: () {
+                                                        Navigator.of(
+                                                          context,
+                                                        ).push(
+                                                          fadeRoute(
+                                                            const FavoriteActivityScreen(),
+                                                          ),
+                                                        );
+                                                      },
+                                                    ),
+                                                    _FavoritesBanner(
+                                                      onTap: () {
+                                                        Navigator.of(
+                                                          context,
+                                                        ).push(
+                                                          fadeRoute(
+                                                            const FavoritesScreen(),
+                                                          ),
+                                                        );
+                                                      },
+                                                    ),
+                                                  ],
                                                 ),
-                                                heroPrefix:
-                                                    d.$2?.name ?? 'all',
-                                                entries: itemsNoNotes,
+                                                entries: _filtered(d.$2),
                                                 onTap: (e) => _openDetail(
                                                   e,
                                                   heroPrefix:
@@ -904,108 +774,222 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                 onRefresh: _load,
                                                 onReorder: (oldIdx, newIdx) =>
                                                     _onReorder(
-                                                      itemsNoNotes,
+                                                      _filtered(d.$2),
                                                       oldIdx,
                                                       newIdx,
                                                     ),
                                                 emptyText: d.$3,
-                                                seenEntranceIds: _seenEntranceIds,
-                                              );
-                                            }(),
-                                    )
-                                    .toList(),
-                              ),
-                              AnimatedOpacity(
-                                opacity: _refreshing ? 1 : 0,
-                                duration: const Duration(milliseconds: 400),
-                                child: IgnorePointer(
-                                  ignoring: !_refreshing,
-                                  child: Container(
-                                    color: Colors.white,
-                                    child: FadeTransition(
-                                      opacity: AlwaysStoppedAnimation(
-                                        _refreshing ? 1.0 : 0.0,
-                                      ),
-                                      child: Center(
-                                        child: TweenAnimationBuilder<double>(
-                                          duration: const Duration(
-                                            milliseconds: 500,
-                                          ),
-                                          curve: Curves.easeOutBack,
-                                          tween: Tween(
-                                            begin: 0.7,
-                                            end: _refreshing ? 1.0 : 0.7,
-                                          ),
-                                          builder: (ctx, scale, child) =>
-                                              Transform.scale(
-                                                scale: scale,
-                                                child: child,
-                                              ),
-                                          child: Column(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Container(
-                                                padding: const EdgeInsets.all(
-                                                  16,
+                                                seenEntranceIds:
+                                                    _seenEntranceIds,
+                                              )
+                                            : d.$2 == EntryType.dream ||
+                                                  d.$2 == EntryType.tulpa
+                                            ? _ListSection(
+                                                key: ValueKey(
+                                                  d.$2?.name ?? 'all',
                                                 ),
-                                                decoration: BoxDecoration(
-                                                  color: Colors.black,
-                                                  shape: BoxShape.circle,
-                                                  boxShadow: const [
-                                                    BoxShadow(
-                                                      color: Colors.black26,
-                                                      blurRadius: 22,
-                                                      offset: Offset(0, 8),
+                                                header: _DailyGuideBanner(
+                                                  topic: d.$2 == EntryType.dream
+                                                      ? DailyGuideTopic
+                                                            .lucidDreams
+                                                      : DailyGuideTopic.tulpa,
+                                                  onTap: () =>
+                                                      Navigator.of(
+                                                        context,
+                                                      ).push(
+                                                        fadeRoute(
+                                                          DailyGuideScreen(
+                                                            topic:
+                                                                d.$2 ==
+                                                                    EntryType
+                                                                        .dream
+                                                                ? DailyGuideTopic
+                                                                      .lucidDreams
+                                                                : DailyGuideTopic
+                                                                      .tulpa,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                ),
+                                                entries: _filtered(d.$2),
+                                                onTap: (e) => _openDetail(
+                                                  e,
+                                                  heroPrefix:
+                                                      d.$2?.name ?? 'all',
+                                                ),
+                                                onPin: _togglePin,
+                                                onRefresh: _load,
+                                                onReorder: (oldIdx, newIdx) =>
+                                                    _onReorder(
+                                                      _filtered(d.$2),
+                                                      oldIdx,
+                                                      newIdx,
                                                     ),
-                                                  ],
+                                                emptyText: d.$3,
+                                                seenEntranceIds:
+                                                    _seenEntranceIds,
+                                              )
+                                            : () {
+                                                // Hide notes (general) from the
+                                                // "ВСЕ" tab list — they're only
+                                                // reachable via the banner.
+                                                final itemsNoNotes =
+                                                    _filtered(d.$2)
+                                                        .where(
+                                                          (e) =>
+                                                              e.type !=
+                                                              EntryType.general,
+                                                        )
+                                                        .toList();
+                                                return _ListSection(
+                                                  key: ValueKey(
+                                                    d.$2?.name ?? 'all',
+                                                  ),
+                                                  header: _AllBanner(
+                                                    // NOT `_filtered(...)`: the
+                                                    // banner hides itself when
+                                                    // there are no notes, so a
+                                                    // category filter that
+                                                    // happens to drop every note
+                                                    // used to collapse the header
+                                                    // and shift the whole section.
+                                                    entries: _entries,
+                                                    onTap: () {
+                                                      final notes = _entries
+                                                          .where(
+                                                            (e) =>
+                                                                e.type ==
+                                                                EntryType
+                                                                    .general,
+                                                          )
+                                                          .toList();
+                                                      Navigator.of(
+                                                        context,
+                                                      ).push(
+                                                        fadeRoute(
+                                                          _NotesListScreen(
+                                                            notes: notes,
+                                                            storage: _storage,
+                                                            onChanged: _load,
+                                                          ),
+                                                        ),
+                                                      );
+                                                    },
+                                                  ),
+                                                  heroPrefix:
+                                                      d.$2?.name ?? 'all',
+                                                  entries: itemsNoNotes,
+                                                  onTap: (e) => _openDetail(
+                                                    e,
+                                                    heroPrefix:
+                                                        d.$2?.name ?? 'all',
+                                                  ),
+                                                  onPin: _togglePin,
+                                                  onRefresh: _load,
+                                                  onReorder: (oldIdx, newIdx) =>
+                                                      _onReorder(
+                                                        itemsNoNotes,
+                                                        oldIdx,
+                                                        newIdx,
+                                                      ),
+                                                  emptyText: d.$3,
+                                                  seenEntranceIds:
+                                                      _seenEntranceIds,
+                                                );
+                                              }(),
+                                      )
+                                      .toList(),
+                                ),
+                                AnimatedOpacity(
+                                  opacity: _refreshing ? 1 : 0,
+                                  duration: const Duration(milliseconds: 400),
+                                  child: IgnorePointer(
+                                    ignoring: !_refreshing,
+                                    child: Container(
+                                      color: Colors.white,
+                                      child: FadeTransition(
+                                        opacity: AlwaysStoppedAnimation(
+                                          _refreshing ? 1.0 : 0.0,
+                                        ),
+                                        child: Center(
+                                          child: TweenAnimationBuilder<double>(
+                                            duration: const Duration(
+                                              milliseconds: 500,
+                                            ),
+                                            curve: Curves.easeOutBack,
+                                            tween: Tween(
+                                              begin: 0.7,
+                                              end: _refreshing ? 1.0 : 0.7,
+                                            ),
+                                            builder: (ctx, scale, child) =>
+                                                Transform.scale(
+                                                  scale: scale,
+                                                  child: child,
                                                 ),
-                                                child: ClipOval(
-                                                  child: Image.asset(
-                                                    'assets/ataraxy.png',
-                                                    width: 80,
-                                                    height: 80,
-                                                    fit: BoxFit.cover,
-                                                    cacheWidth:
-                                                        (80 *
-                                                                MediaQuery.devicePixelRatioOf(
-                                                                  context,
-                                                                ))
-                                                            .ceil(),
-                                                    filterQuality:
-                                                        FilterQuality.high,
+                                            child: Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Container(
+                                                  padding: const EdgeInsets.all(
+                                                    16,
+                                                  ),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.black,
+                                                    shape: BoxShape.circle,
+                                                    boxShadow: const [
+                                                      BoxShadow(
+                                                        color: Colors.black26,
+                                                        blurRadius: 22,
+                                                        offset: Offset(0, 8),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  child: ClipOval(
+                                                    child: Image.asset(
+                                                      'assets/ataraxy.png',
+                                                      width: 80,
+                                                      height: 80,
+                                                      fit: BoxFit.cover,
+                                                      cacheWidth:
+                                                          (80 *
+                                                                  MediaQuery.devicePixelRatioOf(
+                                                                    context,
+                                                                  ))
+                                                              .ceil(),
+                                                      filterQuality:
+                                                          FilterQuality.high,
+                                                    ),
                                                   ),
                                                 ),
-                                              ),
-                                              const SizedBox(height: 18),
-                                              Text(
-                                                'Ataraxy',
-                                                style: TextStyle(
-                                                  color: scheme.primary,
-                                                  fontSize: 24,
-                                                  fontWeight: FontWeight.bold,
-                                                  letterSpacing: 1.2,
+                                                const SizedBox(height: 18),
+                                                Text(
+                                                  'Ataraxy',
+                                                  style: TextStyle(
+                                                    color: scheme.primary,
+                                                    fontSize: 24,
+                                                    fontWeight: FontWeight.bold,
+                                                    letterSpacing: 1.2,
+                                                  ),
                                                 ),
-                                              ),
-                                              const SizedBox(height: 16),
-                                              SizedBox(
-                                                width: 28,
-                                                height: 28,
-                                                child:
-                                                    CircularProgressIndicator(
-                                                      color: scheme.primary,
-                                                      strokeWidth: 3,
-                                                    ),
-                                              ),
-                                            ],
+                                                const SizedBox(height: 16),
+                                                SizedBox(
+                                                  width: 28,
+                                                  height: 28,
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                        color: scheme.primary,
+                                                        strokeWidth: 3,
+                                                      ),
+                                                ),
+                                              ],
+                                            ),
                                           ),
                                         ),
                                       ),
                                     ),
                                   ),
                                 ),
-                              ),
                               ],
-                            ),
                             ),
                           ),
                         ),
@@ -1090,7 +1074,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                 // request.
                                                 _seenEntranceIds.clear();
                                               });
-                                              _fadeThroughContent();
                                             },
                                           );
                                         },

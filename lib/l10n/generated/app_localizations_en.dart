@@ -420,7 +420,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get reminderText => 'Notification text';
 
   @override
-  String get reminderHint => 'What to remember (required)';
+  String get reminderHint => 'What to remember';
 
   @override
   String get reminderSet => 'Reminder set';
@@ -540,6 +540,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get themeLightGrok => 'Light Grok';
+
+  @override
+  String get themeDarkGrok => 'Dark Grok';
 
   @override
   String get favoritesAddAnyFile => 'Add file or photo';
@@ -1112,6 +1115,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get permissions => 'Permissions';
+
+  @override
+  String get checkPermissionsAction => 'Check permissions';
+
+  @override
+  String get permissionsOk => 'Permissions OK';
+
+  @override
+  String get permissionsCheckFailed => 'Check the permissions';
 
   @override
   String get miuiHint =>

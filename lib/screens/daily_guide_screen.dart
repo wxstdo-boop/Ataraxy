@@ -190,20 +190,23 @@ class _DailyGuideScreenState extends State<DailyGuideScreen> {
         ? [shiftHue(scheme.primary), shiftHue(scheme.tertiary)]
         : [shiftHue(scheme.secondary), shiftHue(scheme.tertiary)];
     return Scaffold(
-      appBar: AppBar(
-        title: Text(title),
-        backgroundColor: Colors.transparent,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        toolbarHeight: 72,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.only(
-            bottomLeft: Radius.circular(28),
-            bottomRight: Radius.circular(28),
+      appBar: HeaderBackedAppBar(
+        colors: themeGradient,
+        appBar: AppBar(
+          title: Text(title),
+          backgroundColor: Colors.transparent,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          toolbarHeight: 72,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.only(
+              bottomLeft: Radius.circular(28),
+              bottomRight: Radius.circular(28),
+            ),
           ),
-        ),
-        flexibleSpace: PremiumHeader(colors: themeGradient),
+          flexibleSpace: PremiumHeader(colors: themeGradient),
+        )
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),

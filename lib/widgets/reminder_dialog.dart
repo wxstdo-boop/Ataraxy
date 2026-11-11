@@ -27,7 +27,6 @@ class _ReminderDialogState extends State<ReminderDialog>
   late bool _enabled;
   TimeOfDay? _time;
   final _text = TextEditingController();
-  bool _error = false;
 
   /// Drives the reveal/collapse of the time + text group. A real controller
   /// (not a one-shot TweenAnimationBuilder) so it animates BOTH ways: the group
@@ -113,46 +112,13 @@ class _ReminderDialogState extends State<ReminderDialog>
                 // Toggling ALWAYS flips the switch. The old version refused to
                 // move whenever the time/text were not filled yet, so after
                 // typing the text the switch still looked dead — the reminder
-                // was silently blocked by a missing TIME. Validation now happens
-                // on Save (with the inline warning below); the toggle itself is
-                // never a no-op.
+                // was silently blocked by a missing TIME. Save now fills in the
+                // default time instead of refusing, so the toggle is never a
+                // no-op and no inline warning is needed.
                 onChanged: _setEnabled,
               ),
               onTap: () => _setEnabled(!_enabled),
             ),
-            // Validation hint: fades + slides in/out instead of popping
-            // ("текст уведомления должен появляться и исчезать плавно").
-            AnimatedSize(
-              duration: const Duration(milliseconds: 240),
-              curve: Curves.easeOutCubic,
-              alignment: Alignment.topCenter,
-              child: _enabled && (_time == null || _text.text.trim().isEmpty)
-                  ? Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Icon(
-                            Icons.error_outline_rounded,
-                            size: 15,
-                            color: AppAccents.amber,
-                          ),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              L.tr(context, 'reminderRequired'),
-                              style: const TextStyle(
-                                color: AppAccents.amber,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  : const SizedBox(width: double.infinity),
-            ),
-            // Кнопка проверки разрешений — показывается если включено напоминание.
             // AnimatedSize + FadeTransition дают плавное появление блока
             // (раньше он просто "впрыгивал" при включении переключателя).
             AnimatedSize(
@@ -376,11 +342,8 @@ class _ReminderDialogState extends State<ReminderDialog>
                       maxLength: 50,
                       decoration: InputDecoration(
                         hintText: L.tr(context, 'reminderHint'),
-                        errorText:
-                            _error ? L.tr(context, 'reminderRequired') : null,
                         counterText: '',
                       ),
-                      onChanged: (_) => setState(() => _error = false),
                     ),
                   ],
                 ),
@@ -401,13 +364,18 @@ class _ReminderDialogState extends State<ReminderDialog>
           scale: 0.92,
           child: TextButton(
             onPressed: () {
-              if (_enabled && (_time == null || _text.text.trim().isEmpty)) {
-                setState(() => _error = true);
-                return;
-              }
+              // Turning the reminder on without a time used to silently
+              // refuse the Save (the dialog just stayed open with no
+              // explanation) — that was the "текст есть, а не сохраняется"
+              // bug. Fall back to the default 20:00 instead, so a Save
+              // ALWAYS returns the edited settings.
+              final effectiveTime = _enabled
+                  ? (_time ?? const TimeOfDay(hour: 20, minute: 0))
+                  : null;
               final next = widget.settings.copyWith(
                 reminderEnabled: _enabled,
-                reminderTime: _time == null ? null : _fmt(_time!),
+                reminderTime:
+                    effectiveTime == null ? null : _fmt(effectiveTime),
                 reminderText:
                     _text.text.trim().isEmpty ? null : _text.text.trim(),
               );

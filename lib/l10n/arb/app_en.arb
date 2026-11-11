@@ -132,7 +132,7 @@
   "reminders": "Reminders",
   "reminderTime": "Notification time",
   "reminderText": "Notification text",
-  "reminderHint": "What to remember (required)",
+  "reminderHint": "What to remember",
   "reminderSet": "Reminder set",
   "reminderDisabled": "Reminder disabled",
   "reminderRequired": "Enter the notification text",

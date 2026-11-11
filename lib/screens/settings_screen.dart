@@ -158,38 +158,41 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final headerFg = Colors.white;
 
     return Scaffold(
-      appBar: AppBar(
-        leading: PressScale(
-          // Explicit leading so the back arrow gets the same soft press
-          // dimple + recoil as every other control (the stock BackButton
-          // only had the flat Material ripple).
-          scale: 0.88,
-          haptic: true,
-          child: IconButton(
-            icon: const Icon(Icons.arrow_back_rounded),
-            onPressed: () => Navigator.of(context).maybePop(),
+      appBar: HeaderBackedAppBar(
+        colors: AppTheme.headerColors(scheme),
+        appBar: AppBar(
+          leading: PressScale(
+            // Explicit leading so the back arrow gets the same soft press
+            // dimple + recoil as every other control (the stock BackButton
+            // only had the flat Material ripple).
+            scale: 0.88,
+            haptic: true,
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back_rounded),
+              onPressed: () => Navigator.of(context).maybePop(),
+            ),
           ),
-        ),
-        title: Text(
-          L.tr(context, 'settings'),
-          style: Theme.of(context)
-                  .appBarTheme
-                  .titleTextStyle
-                  ?.copyWith(color: headerFg, fontWeight: FontWeight.bold) ??
-              TextStyle(color: headerFg, fontWeight: FontWeight.bold),
-        ),
-        backgroundColor: Colors.transparent,
-        foregroundColor: headerFg,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        toolbarHeight: 72,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.only(
-            bottomLeft: Radius.circular(28),
-            bottomRight: Radius.circular(28),
+          title: Text(
+            L.tr(context, 'settings'),
+            style: Theme.of(context)
+                    .appBarTheme
+                    .titleTextStyle
+                    ?.copyWith(color: headerFg, fontWeight: FontWeight.bold) ??
+                TextStyle(color: headerFg, fontWeight: FontWeight.bold),
           ),
-        ),
-        flexibleSpace: PremiumHeader(colors: AppTheme.headerColors(scheme)),
+          backgroundColor: Colors.transparent,
+          foregroundColor: headerFg,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          toolbarHeight: 72,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.only(
+              bottomLeft: Radius.circular(28),
+              bottomRight: Radius.circular(28),
+            ),
+          ),
+          flexibleSpace: PremiumHeader(colors: AppTheme.headerColors(scheme)),
+        )
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),

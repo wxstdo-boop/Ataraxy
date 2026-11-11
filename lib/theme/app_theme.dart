@@ -639,35 +639,37 @@ class AppTheme {
 
   /// Grok theme, night edition: the same stark black & white identity as
   /// [darkGrok], inverted onto a true dark canvas. Charcoal ink becomes the
-  /// background and the warm paper becomes the type — a "terminal at night"
-  /// look rather than the light theme dimmed. Brightness is dark, so the
-  /// status bar and the header take their light-icon / deep-tone treatment
-  /// automatically.
+  /// background and a calm light grey carries the type and the accents — a
+  /// "terminal at night" look rather than the light theme dimmed. Brightness
+  /// is dark, so the status bar and the header take their light-icon /
+  /// deep-tone treatment automatically.
   static ThemeData darkGrokNight() {
     const Color bg = Color(0xFF0E1013);
     const Color surface = Color(0xFF14171C);
     const Color surfaceHigh = Color(0xFF1B1F26);
     const Color surfaceHighest = Color(0xFF242A33);
-    const Color paper = Color(0xFFF3F1ED);
     const Color ink = Color(0xFFE9E7E2);
     const Color muted = Color(0xFF9BA1AB);
+    // The accent used to be near-white paper (#F3F1ED): the pill, FAB and
+    // filled buttons all painted a blinding white slab on the near-black
+    // canvas ("слепит цветом"). A calm desaturated grey keeps the Grok
+    // monochrome identity while cutting the glare — the accents read as
+    // soft light, not a flash.
+    const Color accent = Color(0xFFC4C8CE);
 
     final gs = ColorScheme.fromSeed(
       seedColor: const Color(0xFF1C1F26),
       brightness: Brightness.dark,
       surface: surface,
     ).copyWith(
-      // Primary is the light "paper" tone: it is what the accent pill, FAB and
-      // filled buttons paint with, and on dark Grok those should read as
-      // white-on-black, not another grey.
-      primary: paper,
+      primary: accent,
       onPrimary: const Color(0xFF14171C),
-      secondary: const Color(0xFFB9BEC7),
+      secondary: const Color(0xFF9BA1AB),
       onSecondary: const Color(0xFF14171C),
-      tertiary: const Color(0xFF8E96A2),
+      tertiary: const Color(0xFF7E8590),
       onTertiary: const Color(0xFF14171C),
       primaryContainer: surfaceHighest,
-      onPrimaryContainer: paper,
+      onPrimaryContainer: ink,
       secondaryContainer: surfaceHigh,
       onSecondaryContainer: ink,
       tertiaryContainer: surfaceHigh,
@@ -689,12 +691,12 @@ class AppTheme {
       scaffoldBg: bg,
       // Night Grok → a near-black snackbar with paper text.
       snackBg: surfaceHighest,
-      snackFg: paper,
+      snackFg: ink,
     );
 
     return themed.copyWith(
       switchTheme: SwitchThemeData(
-        thumbColor: WidgetStatePropertyAll<Color>(paper),
+        thumbColor: WidgetStatePropertyAll<Color>(accent),
         trackColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
             return const Color(0xFF6B7280);
@@ -706,12 +708,12 @@ class AppTheme {
       checkboxTheme: CheckboxThemeData(
         side: const BorderSide(color: muted, width: 1.5),
         fillColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) return paper;
+          if (states.contains(WidgetState.selected)) return accent;
           return Colors.transparent;
         }),
         checkColor: WidgetStatePropertyAll<Color>(const Color(0xFF14171C)),
       ),
-      progressIndicatorTheme: ProgressIndicatorThemeData(color: paper),
+      progressIndicatorTheme: ProgressIndicatorThemeData(color: accent),
       iconButtonTheme: IconButtonThemeData(
         style: IconButton.styleFrom(
           shape: RoundedRectangleBorder(

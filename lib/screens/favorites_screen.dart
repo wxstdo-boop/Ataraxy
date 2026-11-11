@@ -446,39 +446,42 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     final headerIconBg = Colors.white.withValues(alpha: 0.2);
 
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        foregroundColor: headerFg,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        toolbarHeight: 72,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.only(
-            bottomLeft: Radius.circular(28),
-            bottomRight: Radius.circular(28),
+      appBar: HeaderBackedAppBar(
+        colors: AppTheme.headerColors(scheme),
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          foregroundColor: headerFg,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          toolbarHeight: 72,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.only(
+              bottomLeft: Radius.circular(28),
+              bottomRight: Radius.circular(28),
+            ),
           ),
-        ),
-        flexibleSpace: PremiumHeader(colors: AppTheme.headerColors(scheme)),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: headerIconBg,
-                borderRadius: BorderRadius.circular(12),
+          flexibleSpace: PremiumHeader(colors: AppTheme.headerColors(scheme)),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: headerIconBg,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(Icons.bookmark_rounded, size: 18, color: headerFg),
               ),
-              child: Icon(Icons.bookmark_rounded, size: 18, color: headerFg),
-            ),
-            const SizedBox(width: 10),
-            Text(
-              L.tr(context, 'favoritesTitle'),
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: headerFg,
+              const SizedBox(width: 10),
+              Text(
+                L.tr(context, 'favoritesTitle'),
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: headerFg,
+                ),
               ),
-            ),
-          ],
-        ),
+            ],
+          ),
+        )
       ),
       body: _loading
           ? const SkeletonList(count: 4)

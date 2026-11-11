@@ -895,7 +895,7 @@ abstract class AppLocalizations {
   /// No description provided for @reminderHint.
   ///
   /// In ru, this message translates to:
-  /// **'Что напомнить (обязательно)'**
+  /// **'Что напомнить'**
   String get reminderHint;
 
   /// No description provided for @reminderSet.
@@ -1131,6 +1131,12 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Светлая Grok'**
   String get themeLightGrok;
+
+  /// No description provided for @themeDarkGrok.
+  ///
+  /// In ru, this message translates to:
+  /// **'Тёмная Grok'**
+  String get themeDarkGrok;
 
   /// No description provided for @favoritesAddAnyFile.
   ///
@@ -2181,6 +2187,24 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Разрешения'**
   String get permissions;
+
+  /// No description provided for @checkPermissionsAction.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проверить разрешения'**
+  String get checkPermissionsAction;
+
+  /// No description provided for @permissionsOk.
+  ///
+  /// In ru, this message translates to:
+  /// **'Разрешения OK'**
+  String get permissionsOk;
+
+  /// No description provided for @permissionsCheckFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проверьте разрешения'**
+  String get permissionsCheckFailed;
 
   /// No description provided for @miuiHint.
   ///

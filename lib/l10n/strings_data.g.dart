@@ -137,7 +137,7 @@ const Map<String, Map<String, String>> kStrings = {
   'reminders': {'ru': 'Напоминания', 'en': 'Reminders', 'fr': 'Rappels'},
   'reminderTime': {'ru': 'Время уведомления', 'en': 'Notification time', 'fr': 'Heure de notification'},
   'reminderText': {'ru': 'Текст уведомления', 'en': 'Notification text', 'fr': 'Texte de notification'},
-  'reminderHint': {'ru': 'Что напомнить (обязательно)', 'en': 'What to remember (required)', 'fr': 'Quoi rappeler (obligatoire)'},
+  'reminderHint': {'ru': 'Что напомнить', 'en': 'What to remember', 'fr': 'Quoi rappeler'},
   'reminderSet': {'ru': 'Напоминание установлено', 'en': 'Reminder set', 'fr': 'Rappel défini'},
   'reminderDisabled': {'ru': 'Напоминание отключено', 'en': 'Reminder disabled', 'fr': 'Rappel désactivé'},
   'reminderRequired': {'ru': 'Укажите текст уведомления', 'en': 'Enter the notification text', 'fr': 'Saisissez le texte'},

@@ -421,7 +421,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get reminderText => 'Текст уведомления';
 
   @override
-  String get reminderHint => 'Что напомнить (обязательно)';
+  String get reminderHint => 'Что напомнить';
 
   @override
   String get reminderSet => 'Напоминание установлено';
@@ -541,6 +541,9 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get themeLightGrok => 'Светлая Grok';
+
+  @override
+  String get themeDarkGrok => 'Тёмная Grok';
 
   @override
   String get favoritesAddAnyFile => 'Добавить файл или фото';
@@ -1118,6 +1121,15 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get permissions => 'Разрешения';
+
+  @override
+  String get checkPermissionsAction => 'Проверить разрешения';
+
+  @override
+  String get permissionsOk => 'Разрешения OK';
+
+  @override
+  String get permissionsCheckFailed => 'Проверьте разрешения';
 
   @override
   String get miuiHint =>

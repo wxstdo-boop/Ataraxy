@@ -422,7 +422,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get reminderText => 'Texte de notification';
 
   @override
-  String get reminderHint => 'Quoi rappeler (obligatoire)';
+  String get reminderHint => 'Quoi rappeler';
 
   @override
   String get reminderSet => 'Rappel défini';
@@ -542,6 +542,9 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get themeLightGrok => 'Grok Clair';
+
+  @override
+  String get themeDarkGrok => 'Grok Sombre';
 
   @override
   String get favoritesAddAnyFile => 'Ajouter un fichier ou une photo';
@@ -1126,6 +1129,15 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get permissions => 'Permissions';
+
+  @override
+  String get checkPermissionsAction => 'Vérifier les permissions';
+
+  @override
+  String get permissionsOk => 'Permissions OK';
+
+  @override
+  String get permissionsCheckFailed => 'Vérifiez les permissions';
 
   @override
   String get miuiHint =>

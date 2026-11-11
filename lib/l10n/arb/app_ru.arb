@@ -132,7 +132,7 @@
   "reminders": "Напоминания",
   "reminderTime": "Время уведомления",
   "reminderText": "Текст уведомления",
-  "reminderHint": "Что напомнить (обязательно)",
+  "reminderHint": "Что напомнить",
   "reminderSet": "Напоминание установлено",
   "reminderDisabled": "Напоминание отключено",
   "reminderRequired": "Укажите текст уведомления",

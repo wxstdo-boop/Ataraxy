@@ -111,6 +111,10 @@ release, so bump `version:` in `pubspec.yaml` before tagging.
   differs from the scaffold, those corners show up as white "просветы".
 - `PremiumHeader` is `ClipRRect`-ed to the same radius as the AppBar `shape`.
   Keep the two radii in sync or the gradient bleeds past the rounded corner.
+- Wrap every screen `AppBar` in `HeaderBackedAppBar(colors:…, appBar: AppBar(…))`
+  (`lib/widgets/premium_header.dart`). It paints the same gradient on a square
+  `DecoratedBox` behind the bar so the notch left by the rounded-bottom `shape`
+  is filled; a bare `AppBar` lets the scaffold show through as a pale wedge.
 - `MUTILATED` and `Grok` themes override `cardTheme` in a `.copyWith`, which
   replaces the base `cardTheme` entirely — re-declare the hairline rim +
   shadow there too, or those themes lose the card depth every other theme has.

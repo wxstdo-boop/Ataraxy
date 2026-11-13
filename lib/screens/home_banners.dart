@@ -54,8 +54,10 @@ class _DailyGuideBanner extends StatelessWidget {
         child: Material(
         color: Colors.transparent,
         borderRadius: BorderRadius.circular(28),
-        elevation: 6,
-        shadowColor: gradient.first.withValues(alpha: 0.3),
+        // Flat plate: the old elevation-6 + coloured shadow bled a soft
+        // "отсвет" around the banner that read as a reflection on the light
+        // themes. The gradient carries the depth on its own now.
+        elevation: 0,
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onTap,
@@ -69,110 +71,73 @@ class _DailyGuideBanner extends StatelessWidget {
               ),
               borderRadius: BorderRadius.circular(28),
             ),
-            child: Stack(
-              children: [
-                // Subtle decorative circles in the background for depth
-                Positioned(
-                  top: -20,
-                  right: -20,
-                  child: Container(
-                    width: 90,
-                    height: 90,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(18, 16, 14, 16),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Icon tile: a faint DARK scrim instead of the old frosted
+                  // white fill + white border + coloured glow. Those white
+                  // overlays were the "белые полосы" that sat on the plate as
+                  // a cheap reflection.
+                  Container(
+                    width: 52,
+                    height: 52,
                     decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.white.withValues(alpha: 0.08),
+                      color: Colors.black.withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: Icon(prompt.icon, color: Colors.white, size: 24),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          prompt.title,
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                                fontSize: 15,
+                                letterSpacing: 0.2,
+                              ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          prompt.subtitle,
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: Colors.white.withValues(alpha: 0.92),
+                                height: 1.3,
+                              ),
+                        ),
+                      ],
                     ),
                   ),
-                ),
-                Positioned(
-                  bottom: -15,
-                  left: 30,
-                  child: Container(
-                    width: 60,
-                    height: 60,
+                  // Day counter badge — shows which prompt
+                  // of the cycle we're on. Dark scrim, not white.
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.white.withValues(alpha: 0.06),
+                      color: Colors.black.withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      '${idx + 1}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(18, 16, 14, 16),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Icon tile with frosted glass + glow
-                      Container(
-                        width: 52,
-                        height: 52,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.22),
-                          borderRadius: BorderRadius.circular(18),
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.30),
-                            width: 1,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: gradient.first.withValues(alpha: 0.35),
-                              blurRadius: 14,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: Icon(prompt.icon, color: Colors.white, size: 24),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              prompt.title,
-                              style: Theme.of(context).textTheme.titleSmall
-                                  ?.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.white,
-                                    fontSize: 15,
-                                    letterSpacing: 0.2,
-                                  ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              prompt.subtitle,
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(
-                                    color: Colors.white.withValues(alpha: 0.92),
-                                    height: 1.3,
-                                  ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      // Day counter badge — shows which prompt
-                      // of the cycle we're on.
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.18),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          '${idx + 1}',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

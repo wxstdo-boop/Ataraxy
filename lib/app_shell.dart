@@ -140,14 +140,16 @@ class AppShellState extends State<AppShell> {
       themeAnimationCurve: Curves.easeInOutCubic,
       // Rubber-band "tension" everywhere: swiping past the FIRST tab to the
       // left, past the LAST tab to the right (and pulling any list beyond
-      // its top/bottom edge) stretches smoothly and springs back instead of
-      // hitting a hard wall. This is the iOS-style bounce the user asked
-      // for on the tab edges + vertical overscroll in all sections.
-      scrollBehavior: const MaterialScrollBehavior().copyWith(
-        physics: const BouncingScrollPhysics(
-          parent: AlwaysScrollableScrollPhysics(),
-        ),
-      ),
+      // its top/bottom edge) springs back instead of hitting a hard wall.
+      // This is the iOS-style bounce the user asked for on the tab edges +
+      // vertical overscroll in all sections.
+      //
+      // [_AppScrollBehavior] keeps that bounce but drops Material 3's default
+      // `StretchingOverscrollIndicator`, which literally stretches the scrolled
+      // content — on the reading/editor screens it smeared whole paragraphs
+      // (the "натягивается текст абзацами" jank). The bounce is the wanted
+      // feel; the content stretch is not.
+      scrollBehavior: const _AppScrollBehavior(),
       builder: (context, child) {
         return ListenableBuilder(
           listenable: widget.settingsNotifier,
@@ -206,4 +208,27 @@ class AppShellState extends State<AppShell> {
     ),
   );
   }
+}
+
+/// App-wide scroll behavior: the iOS-style rubber-band bounce the user asked
+/// for, with Material 3's content-stretching overscroll indicator removed.
+///
+/// Returning [child] unchanged from [buildOverscrollIndicator] keeps the
+/// bounce physics (from [physics]) but stops the content itself from being
+/// smeared/stretched at the scroll edges — the "текст натягивается" bug on the
+/// reading and editor screens.
+class _AppScrollBehavior extends MaterialScrollBehavior {
+  const _AppScrollBehavior();
+
+  @override
+  ScrollPhysics getScrollPhysics(BuildContext context) =>
+      const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics());
+
+  @override
+  Widget buildOverscrollIndicator(
+    BuildContext context,
+    Widget child,
+    ScrollableDetails details,
+  ) =>
+      child;
 }

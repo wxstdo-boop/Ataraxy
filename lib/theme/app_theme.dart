@@ -580,7 +580,10 @@ class AppTheme {
     const Color paper = Color(0xFFFAF9F7);
     const Color ink = Color(0xFF1F2328);
     const Color textSecondary = Color(0xFF555B66);
-    const Color neutralGrey = Color(0xFFE7E4DF);
+    // Cool grey containers (were warm beige `#E7E4DF`): the beige fill on the
+    // cards sat next to the cool `surfaceContainerHigh` and read as a sickly
+    // "блевотный отсвет" that hurt the eyes. One cool family fixes it.
+    const Color neutralGrey = Color(0xFFE4E3E9);
 
     final gs = ColorScheme.fromSeed(
       seedColor: charcoal,
@@ -596,6 +599,10 @@ class AppTheme {
       primaryContainer: neutralGrey,
       onPrimaryContainer: charcoal,
       surface: paper,
+      surfaceContainerLowest: const Color(0xFFFFFFFF),
+      surfaceContainerLow: const Color(0xFFF7F7FA),
+      surfaceContainer: const Color(0xFFF1F1F5),
+      surfaceContainerHigh: const Color(0xFFEBEAEF),
       surfaceContainerHighest: neutralGrey,
       onSurface: ink,
       onSurfaceVariant: textSecondary,

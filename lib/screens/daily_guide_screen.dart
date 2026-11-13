@@ -245,26 +245,19 @@ class _DailyGuideScreenState extends State<DailyGuideScreen> {
           colors: gradientColors,
         ),
         borderRadius: BorderRadius.circular(32),
-        boxShadow: [
-          BoxShadow(
-            color: (isDream ? scheme.primary : scheme.secondary)
-                .withValues(alpha: 0.35),
-            blurRadius: 24,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        // No coloured glow: the old shadow bled a soft "отсвет" onto the
+        // page that read as a reflection. The gradient holds its own depth.
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Faint DARK scrim, not the old frosted white fill + white border —
+          // those white overlays were the "белые полосы" on the plate.
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.25),
+              color: Colors.black.withValues(alpha: 0.16),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.35),
-              ),
             ),
             child: Icon(lesson.icon, color: Colors.white, size: 28),
           ),
@@ -284,7 +277,7 @@ class _DailyGuideScreenState extends State<DailyGuideScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.22),
+              color: Colors.black.withValues(alpha: 0.16),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(

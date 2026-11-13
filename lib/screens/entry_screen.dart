@@ -807,8 +807,10 @@ class _EntryScreenState extends State<EntryScreen> with WidgetsBindingObserver {
                     ? Icons.push_pin_rounded
                     : Icons.push_pin_outlined,
                 key: ValueKey(_pinned),
+                // Pinned marker: semi-transparent red so it reads as a
+                // deliberate bookmark, not another theme-tinted glyph.
                 color: _pinned
-                    ? Theme.of(context).colorScheme.primary
+                    ? AppAccents.danger.withValues(alpha: 0.7)
                     : Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
@@ -1398,8 +1400,11 @@ class _EntryScreenState extends State<EntryScreen> with WidgetsBindingObserver {
                           ? Icons.star_rounded
                           : Icons.star_outline_rounded,
                       key: ValueKey(active),
+                      // Mood stars: semi-transparent red (was the theme's
+                      // primary, which read as just another accent). The
+                      // muted red matches the pinned marker.
                       color: active
-                          ? scheme.primary
+                          ? AppAccents.danger.withValues(alpha: 0.7)
                           : scheme.onSurface.withValues(alpha: 0.3),
                       size: 32,
                     ),

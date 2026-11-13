@@ -206,6 +206,20 @@ release, so bump `version:` in `pubspec.yaml` before tagging.
   its `width`/`height` (a full layout + blurred-shadow repaint every frame);
   it is now a fixed-size `Container` under a `Transform.scale` inside a
   `RepaintBoundary`. Prefer `Transform`/opacity over animating layout.
-- Category/sort changes in `HomeScreen` rebuild the feed in place (the scroll
-  views keep a stable identity) and dip `_viewFade` (a 240 ms fade-through) so
-  the swap reads as one dissolve instead of an instant content punch.
+- Category/sort/search changes in `HomeScreen` rebuild the feed in place (the
+  scroll views keep a stable identity) and dip `_viewFade` toward 0.55 — NOT to
+  0 — so the swap reads as one continuous dissolve with no blank "вспышка". The
+  dip is re-entrancy-guarded by `_viewFadeToken`.
+- The app's `scrollBehavior` is `_AppScrollBehavior` (app_shell.dart): it keeps
+  the rubber-band `BouncingScrollPhysics` but overrides `buildOverscrollIndicator`
+  to a no-op, killing Material 3's `StretchingOverscrollIndicator` — that stretch
+  smeared whole paragraphs ("натягивается текст абзацами") on the reading/editor
+  screens. Re-add a bounce physics; never re-add the stretch indicator.
+- Light Grok (`darkGrok(scheme: dynamicLight)`) defines its OWN container ramp
+  (cool greys) instead of relying on the stock `fromSeed` beige: the old beige
+  `surfaceContainerHighest` read as a sickly "блевотный отсвет" on the cards.
+- Banners/hero plates use a faint BLACK scrim (`Colors.black.withValues(alpha:
+  .14)`) for icon tiles/badges — never frosted `Colors.white.withValues(...)`
+  fills or white borders, which read as white stripes / cheap reflection.
+- The home wordmark is `Ataraxy` (NO trailing dot). The dot stays only on the
+  splash, settings and lock screens.

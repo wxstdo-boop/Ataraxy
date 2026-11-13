@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:ataraxy/l10n/strings.dart';
+import 'package:ataraxy/widgets/press_scale.dart';
 import 'package:ataraxy/widgets/winter_hat.dart';
 
 /// Compact circular day-streak badge shown next to the Ataraxy wordmark in
@@ -165,7 +166,14 @@ class _StreakBadgeState extends State<StreakBadge>
           '${widget.streak} ${L.tr(context, 'streakDays')} — ${L.tr(context, 'streak')}',
       child: GestureDetector(
         onLongPress: _showInfo,
-        child: FadeTransition(
+        // A soft press dimple + spring recoil on tap, so the badge answers a
+        // touch like the rest of the app ("стрику плавную отдачу уменьшения").
+        // A bare GestureDetector (not InkWell) keeps the tap target and the
+        // long-press-to-explain behaviour unchanged.
+        child: PressScale(
+          scale: 0.88,
+          duration: const Duration(milliseconds: 110),
+          child: FadeTransition(
           opacity: _fade,
           child: SlideTransition(
             position: _slide,
@@ -244,6 +252,7 @@ class _StreakBadgeState extends State<StreakBadge>
               ),
             ),
           ),
+        ),
         ),
     );
   }

@@ -335,7 +335,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
             child: PressScale(
-              scale: 0.98,
+              scale: 0.96,
               haptic: true,
               child: ListTile(
                 leading: const Icon(Icons.notifications_active_rounded),
@@ -372,7 +372,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 8),
           PressScale(
-            scale: 0.97,
+            scale: 0.95,
             child: OutlinedButton.icon(
               onPressed: () async {
                 final details =

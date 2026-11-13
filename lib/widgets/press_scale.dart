@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 /// Extra time the recoil (release) adds on top of the press-in [PressScale.duration].
 /// The dimple lands fast under the finger; the spring back is deliberately much
 /// slower so it settles like a spring instead of snapping ("отдача плавнее").
-const int _kPressRecoilExtraMs = 260;
+const int _kPressRecoilExtraMs = 320;
 
 /// Wraps any tappable child and gives it a smooth "press dimple": while the
 /// finger is held the child eases down to [scale] and springs back on release.
@@ -62,6 +62,8 @@ class _PressScaleState extends State<PressScale> {
         // Asymmetric timing: the dimple snaps in quickly under the finger, but
         // the recoil back to full size is slower and eased out, so the release
         // reads as smooth instead of a hard pop ("отдача уменьшения плавная").
+        // The recoil uses `easeOutBack`, so it springs a hair PAST full size
+        // and settles — the "отдача" the notification buttons asked for.
         // `symmetric` opts out (tests assert one shared duration).
         duration: widget.symmetric
             ? widget.duration
@@ -71,7 +73,7 @@ class _PressScaleState extends State<PressScale> {
                     milliseconds:
                         widget.duration.inMilliseconds + _kPressRecoilExtraMs,
                   )),
-        curve: Curves.easeOutCubic,
+        curve: _pressed ? Curves.easeOutCubic : Curves.easeOutBack,
         child: widget.child,
       ),
     );

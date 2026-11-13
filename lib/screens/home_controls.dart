@@ -180,10 +180,6 @@ class _ListSection extends StatelessWidget {
   /// мигает" flicker. Shared with the parent so the memory outlives the list.
   final Set<String>? seenEntranceIds;
 
-  /// True only during the frame a swap is applied — cards ENTERING the set
-  /// animate in too (they are fresh elements).
-  final bool replay;
-
   const _ListSection({
     super.key,
     required this.entries,
@@ -195,7 +191,6 @@ class _ListSection extends StatelessWidget {
     this.header,
     this.heroPrefix = '',
     this.seenEntranceIds,
-    this.replay = false,
   });
 
   @override
@@ -332,7 +327,6 @@ class _ListSection extends StatelessWidget {
                 entry: entry,
                 heroTag: '$heroPrefix-${entry.id}',
                 animate: seenEntranceIds == null || seenEntranceIds!.add(entry.id),
-                replay: replay,
                 onTap: () => onTap(entry),
                 onPin: () => onPin(entry),
               );
@@ -344,23 +338,25 @@ class _ListSection extends StatelessWidget {
     }
 
     // Smooth empty↔populated swap (search clearing to "Записей пока нет",
-    // category/day filter switches). The INCOMING child fades + slides in on
-    // its own; the OUTGOING one is dropped immediately instead of fading out
-    // on top of it. Cross-fading both made the old content ghost over the new
-    // for the whole transition — the "Записей пока нет" flashing over the
-    // freshly-filtered records during a search ("при поиске записей мигает
-    // перед записей пока нет"). A one-sided fade has nothing to overlap, and
-    // the records themselves still ease in via each card's own entrance.
+    // category/day filter switches). BOTH children cross-fade — the incoming
+    // one rises from 0 while the outgoing one eases to 0 underneath it — so the
+    // surface never blinks: dropping the outgoing instantly (the old
+    // `currentChild ?? shrink` layout) revealed the bright scaffold for a few
+    // frames and read as the "вспышка" the user kept rejecting.
+    //
+    // Both children are full-height scroll views (the section lives in an
+    // `Expanded`), so the default Stack layout sizes to the taller one without
+    // inflating the shorter empty state — that inflation was the reason the
+    // outgoing child used to be dropped, and it does not apply here.
     return RepaintBoundary(
       child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 200),
+        duration: const Duration(milliseconds: 220),
         switchInCurve: Curves.easeOutCubic,
-        transitionBuilder: (child, animation) =>
-            FadeTransition(opacity: animation, child: child),
-        // Only the current child is laid out (sized to the incoming content),
-        // so the shorter empty state can never inflate the section mid-swap.
-        layoutBuilder: (currentChild, previousChildren) =>
-            currentChild ?? const SizedBox.shrink(),
+        switchOutCurve: Curves.easeInCubic,
+        transitionBuilder: (child, animation) => FadeTransition(
+          opacity: animation,
+          child: child,
+        ),
         child: KeyedSubtree(
           key: ValueKey(entries.isEmpty ? 'section-empty' : 'section-list'),
           child: listChild,

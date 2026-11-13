@@ -15,6 +15,11 @@ class VolumetricSwitch extends StatelessWidget {
   final Color? inactiveTrackColor;
   final Color? thumbColor;
 
+  /// Gives the switch its own press dimple. On by default so the control
+  /// answers a touch like every other button; [VolumetricSwitchListTile] turns
+  /// it off because its row already dips the whole tile.
+  final bool dimple;
+
   const VolumetricSwitch({
     super.key,
     required this.value,
@@ -22,6 +27,7 @@ class VolumetricSwitch extends StatelessWidget {
     this.activeTrackColor,
     this.inactiveTrackColor,
     this.thumbColor,
+    this.dimple = true,
   });
 
   @override
@@ -31,7 +37,7 @@ class VolumetricSwitch extends StatelessWidget {
     final inactive = inactiveTrackColor ?? scheme.surfaceContainerHighest;
     final thumb = thumbColor ?? Colors.white;
 
-    return GestureDetector(
+    final switchBody = GestureDetector(
       onTap: onChanged != null ? () => onChanged!(!value) : null,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 320),
@@ -62,9 +68,12 @@ class VolumetricSwitch extends StatelessWidget {
               blurRadius: 10,
               offset: const Offset(0, 3),
             ),
-            // Inner highlight on top edge for 3D glass effect
+            // Subtle inner shading for depth. Was a WHITE top-edge highlight,
+            // which on the light themes read as a white rim inside the control
+            // (the same "белые полосы" trap as elsewhere) — a faint dark shade
+            // gives the depth without any white overlay.
             BoxShadow(
-              color: Colors.white.withValues(alpha: value ? 0.25 : 0.15),
+              color: Colors.black.withValues(alpha: value ? 0.10 : 0.08),
               blurRadius: 2,
               offset: const Offset(0, 1),
               spreadRadius: -1,
@@ -125,6 +134,9 @@ class VolumetricSwitch extends StatelessWidget {
         ),
       ),
     );
+    return dimple
+        ? PressScale(scale: 0.9, haptic: true, child: switchBody)
+        : switchBody;
   }
 }
 
@@ -166,6 +178,9 @@ class VolumetricSwitchListTile extends StatelessWidget {
           value: value,
           onChanged: onChanged,
           activeTrackColor: activeTrackColor,
+          // The whole row already dips below; keep the switch from dimpling
+          // twice.
+          dimple: false,
         ),
         onTap: () => onChanged(!value),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),

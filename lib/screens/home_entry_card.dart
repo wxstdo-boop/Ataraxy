@@ -9,14 +9,15 @@ class _EntryCard extends StatefulWidget {
   /// Hero tag for the shared-element transition into the detail screen.
   final String heroTag;
 
-  /// Whether this card should play the fade+slide entrance. False after the
-  /// first list of the session has animated — later cards render statically
-  /// (no controller, no timers), which removes scroll/rebuild jank.
+  /// Whether this card should play the fade+slide entrance. True only for the
+  /// first list of the session (so the initial cascade plays once); later cards
+  /// render statically (no controller, no timers), which removes scroll/rebuild
+  /// jank. Cards that ENTER the visible set on a filter/sort/search swap do NOT
+  /// animate: replaying their entrance inside the section cross-fade made the
+  /// incoming opacity quadratic (switcher × card fade), so the outgoing empty
+  /// state faded out faster than the cards appeared and the bright scaffold
+  /// flashed through — the "вспышка" on empty↔populated switches.
   final bool animate;
-
-  /// True only during the frame a filter/sort/search swap is applied, so cards
-  /// that ENTER the visible set animate in too (they are fresh elements).
-  final bool replay;
 
   const _EntryCard({
     super.key,
@@ -26,7 +27,6 @@ class _EntryCard extends StatefulWidget {
     required this.onPin,
     required this.heroTag,
     this.animate = true,
-    this.replay = false,
   });
 
   @override
@@ -43,9 +43,7 @@ class _EntryCardState extends State<_EntryCard>
   void initState() {
     super.initState();
     // First list of the session: `animate` staggers the initial cascade.
-    // On a later filter/sort/search swap `replay` is true for one frame, so
-    // cards that enter the set animate in as well.
-    if (widget.animate || widget.replay) _play();
+    if (widget.animate) _play();
   }
 
   @override
@@ -55,9 +53,8 @@ class _EntryCardState extends State<_EntryCard>
     // blink. It used to replay `_play()`, which resets the controller to 0 —
     // so every surviving card dropped to full transparency for the stagger
     // delay and then faded back, reading as a hard "вспышка" rather than a
-    // smooth switch. Only cards that ENTER the visible set animate now (they
-    // are fresh elements, handled via `replay` in initState); survivors stay
-    // put while the new cards ease in around them.
+    // smooth switch. Survivors now stay put; the section cross-fade carries
+    // the swap instead.
   }
 
   /// (Re)starts the fade+slide. Creates the controller lazily so cards that
@@ -566,10 +563,11 @@ class _MarkdownPreview extends StatelessWidget {
             softLineBreak: true,
             styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
               // A blank-line paragraph break must read as MORE than a line
-              // break. The library default (8px) is smaller than the line
-              // leading here, so paragraphs merged into one block
-              // ("не разделяются абзацы"). Scale the gap to the paragraph size.
-              blockSpacing: 12,
+              // break — the gap is derived from the line leading (the library
+              // default and a flat constant both read as merged).
+              blockSpacing: markdownBlockSpacing(
+                theme.textTheme.bodyMedium?.copyWith(height: 1.4),
+              ),
               p: theme.textTheme.bodyMedium?.copyWith(
                 color: scheme.onSurface.withValues(alpha: 0.78),
                 height: 1.4,

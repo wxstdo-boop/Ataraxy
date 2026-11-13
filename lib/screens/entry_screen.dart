@@ -19,6 +19,7 @@ import 'package:ataraxy/screens/entry_detail_screen.dart';
 import 'package:ataraxy/screens/pomodoro_screen.dart';
 import 'package:ataraxy/services/storage_service.dart';
 import 'package:ataraxy/theme/app_theme.dart';
+import 'package:ataraxy/theme/markdown_spacing.dart';
 import 'package:ataraxy/widgets/limited_context_menu.dart';
 import 'package:ataraxy/widgets/animated_snack.dart';
 import 'package:ataraxy/widgets/animated_chip.dart';
@@ -1284,8 +1285,14 @@ class _EntryScreenState extends State<EntryScreen> with WidgetsBindingObserver {
                                 Theme.of(context),
                               ).copyWith(
                                 // Paragraph breaks must out-size the line
-                                // leading, else blank-line paragraphs merge.
-                                blockSpacing: 14,
+                                // leading, else blank-line paragraphs merge;
+                                // derive the gap from the paragraph style.
+                                blockSpacing: markdownBlockSpacing(
+                                  Theme.of(context)
+                                      .textTheme
+                                      .bodyLarge
+                                      ?.copyWith(height: 1.6),
+                                ),
                                 p: Theme.of(context)
                                     .textTheme
                                     .bodyLarge

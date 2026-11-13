@@ -8,6 +8,7 @@ import 'package:ataraxy/models/entry.dart';
 import 'package:ataraxy/screens/entry_screen.dart';
 import 'package:ataraxy/services/storage_service.dart';
 import 'package:ataraxy/theme/app_theme.dart';
+import 'package:ataraxy/theme/markdown_spacing.dart';
 import 'package:ataraxy/widgets/animated_snack.dart';
 import 'package:ataraxy/widgets/app_route.dart';
 import 'package:ataraxy/widgets/em_dash_formatter.dart';
@@ -304,10 +305,12 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
                           // renders as a real break, not a collapsed space.
                           softLineBreak: true,
                           styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
-                            // Blank-line paragraph breaks must be visually
-                            // larger than the in-paragraph line leading, or
-                            // paragraphs merge ("не разделяются абзацы").
-                            blockSpacing: 14,
+                            // A blank-line paragraph break must read as MORE
+                            // than a line break; derive the gap from the line
+                            // leading (a flat constant reads as merged).
+                            blockSpacing: markdownBlockSpacing(
+                              Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.6),
+                            ),
                             p: Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.6),
                             code: TextStyle(
                               backgroundColor: scheme.surfaceContainerHighest,

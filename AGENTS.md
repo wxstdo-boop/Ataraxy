@@ -199,8 +199,10 @@ release, so bump `version:` in `pubspec.yaml` before tagging.
   line leading at the body styles used here (`height` 1.4–1.6), so a blank-line
   paragraph break looked like an ordinary line break and paragraphs merged
   ("не разделяются абзацы"). Every `MarkdownBody` in the app now sets an
-  explicit `blockSpacing` (10–14) larger than the line leading — keep it when
-  adding a new markdown surface.
+  explicit `blockSpacing` larger than the line leading — keep it when
+  adding a new markdown surface. Derive it with `markdownBlockSpacing(style)`
+  (`lib/theme/markdown_spacing.dart`) instead of a flat constant: a fixed 12–14
+  is still below the leading at `height` 1.4+ (e.g. 25.6px) and paragraphs merge.
 
 ## Performance notes
 
@@ -234,11 +236,16 @@ release, so bump `version:` in `pubspec.yaml` before tagging.
   it is now a fixed-size `Container` under a `Transform.scale` inside a
   `RepaintBoundary`. Prefer `Transform`/opacity over animating layout.
 - Category/sort/search changes in `HomeScreen` rebuild the feed in place (the
-  scroll views keep a stable identity). There is NO feed-wide opacity dip any
-  more (the old `_viewFade` read as a "вспышка"); instead the visible cards
-  themselves replay a one-shot staggered fade+slide via `_entranceRev` /
-  `_entranceReplay`, threaded through `_ListSection` (`home_controls.dart`) into
-  `_EntryCard` (`home_entry_card.dart`).
+  scroll views keep a stable identity). There is NO feed-wide opacity dip and
+  NO per-card replay on a swap: the section itself cross-fades
+  (`_ListSection`'s `AnimatedSwitcher`) while the entering cards render
+  statically. Replaying the cards' entrance INSIDE that cross-fade made the
+  incoming opacity quadratic, so the outgoing empty state faded out faster than
+  the cards appeared and the bright scaffold flashed through — the "вспышка" on
+  empty↔populated switches. `_EntryCard.animate` is therefore true ONLY for the
+  first list of the session (via the shared `seenEntranceIds` one-shot set),
+  never during a swap. `test/home_screen_test.dart` samples frame luminance to
+  assert the switch stays monotone.
 - Daily hue variation for themed gradients (home banner + daily-guide header)
   lives in `AppTheme.dailyHueShift(dayIndex)` (capped ±24°) and
   `AppTheme.shiftHue(color, delta)`. Never reintroduce a `% 360` full-wheel

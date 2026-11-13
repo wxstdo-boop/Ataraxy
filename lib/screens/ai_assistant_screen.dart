@@ -13,6 +13,7 @@ import 'package:ataraxy/widgets/em_dash_formatter.dart';
 import 'package:ataraxy/widgets/pressable_icon_button.dart';
 import 'package:ataraxy/providers/chat_controller.dart';
 import 'package:ataraxy/theme/app_theme.dart';
+import 'package:ataraxy/theme/markdown_spacing.dart';
 
 /// АДА — floating AI assistant. A big draggable bubble that hovers over the
 /// app; tap it to expand into a chat window. The chat has read access to all
@@ -1488,8 +1489,11 @@ class _BubbleState extends State<_Bubble> {
                   Theme.of(context),
                 ).copyWith(
                   // Keep paragraph breaks clearly larger than the line
-                  // leading so a blank-line break reads as a new paragraph.
-                  blockSpacing: 10,
+                  // leading so a blank-line break reads as a new paragraph;
+                  // derive the gap from the paragraph style.
+                  blockSpacing: markdownBlockSpacing(
+                    const TextStyle(height: 1.4, fontSize: 13.5),
+                  ),
                   p: TextStyle(
                     color: scheme.onSurface,
                     height: 1.4,

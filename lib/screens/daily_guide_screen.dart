@@ -207,11 +207,14 @@ class _DailyGuideScreenState extends State<DailyGuideScreen> {
         ),
         flexibleSpace: PremiumHeader(colors: themeGradient),
       ),
-      // Tint the page a step below the scaffold: the tip tiles sit on
-      // `surfaceContainerHighest`, and on the light themes the scaffold's own
-      // near-white background showed through the gaps as a column of WHITE
-      // STRIPES. A slightly deeper wash keeps the tiles reading as cards.
-      backgroundColor: scheme.surfaceContainerHigh,
+      // The page must sit a CLEAR step below the tip tiles, not next to them.
+      // `surfaceContainerHigh` (#f1e7e5) vs the tiles' `surfaceContainerHighest`
+      // (#eee1dc) differ by only ~8 luminance, so on the light themes the tiles
+      // dissolved into the page and the section read as a pale field of faint
+      // text — the "белые полосы" in the dream/tulpa advice. The page uses the
+      // app scaffold wash (the SAME relationship the home feed uses and the
+      // user accepted) so the tiles read as raised cards with a real edge.
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
         children: [

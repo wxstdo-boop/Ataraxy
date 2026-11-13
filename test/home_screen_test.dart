@@ -1,5 +1,6 @@
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
 
@@ -139,5 +140,86 @@ void main() {
     for (final element in cardFades.evaluate()) {
       expect((element.widget as FadeTransition).opacity.value, 1.0);
     }
+  });
+
+  testWidgets('empty to populated switch does not flash the scaffold',
+      (tester) async {
+    // Regression: entering cards used to replay their fade+slide inside the
+    // section's cross-fade, making the incoming opacity quadratic. The outgoing
+    // empty state then faded out faster than the cards appeared, so the bright
+    // scaffold showed through for a few frames — the "вспышка" on the
+    // empty↔populated switch. The swap must instead be monotone: no frame may
+    // be brighter than the empty state it starts from.
+    final key = GlobalKey();
+    tester.view.physicalSize = const Size(430, 932);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    Future<double> meanLuminance() async {
+      final boundary =
+          key.currentContext!.findRenderObject() as RenderRepaintBoundary;
+      final image = await tester.runAsync(() => boundary.toImage());
+      final data = await tester.runAsync(() => image!.toByteData());
+      final bytes = data!.buffer.asUint8List();
+      final w = image!.width, h = image.height;
+      var sum = 0, n = 0;
+      for (var y = 200; y < h - 200; y += 8) {
+        for (var x = 20; x < w - 20; x += 8) {
+          final i = (y * w + x) * 4;
+          sum += (bytes[i] * 299 + bytes[i + 1] * 587 + bytes[i + 2] * 114) ~/
+              1000;
+          n++;
+        }
+      }
+      image.dispose();
+      return sum / n;
+    }
+
+    final now = DateTime(2026, 1, 2, 10);
+    final entries = [
+      for (var i = 0; i < 8; i++)
+        JournalEntry(
+          id: 'd$i',
+          type: EntryType.dream,
+          title: 'Сон $i',
+          content: 'Текст сна $i',
+          category: EntryCategory.good,
+          createdAt: now.subtract(Duration(days: i)),
+          updatedAt: now.subtract(Duration(days: i)),
+        ),
+    ];
+    await tester.runAsync(() => StorageService().saveEntries(entries));
+    await tester.runAsync(() async {
+      await tester.pumpWidget(
+        RepaintBoundary(
+          key: key,
+          child: testApp(const HomeScreen(tulpaEnabled: false)),
+        ),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+    });
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+
+    // Filter to an empty category, let it settle, and record its brightness.
+    await tester.tap(find.text('Случайный').first);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    final emptyLuminance = await meanLuminance();
+
+    // Swap back to the populated list and watch every frame of the transition.
+    await tester.tap(find.text('Все').first);
+    var peak = emptyLuminance;
+    for (var i = 0; i < 14; i++) {
+      await tester.pump(const Duration(milliseconds: 25));
+      final l = await meanLuminance();
+      if (l > peak) peak = l;
+    }
+    expect(
+      peak,
+      lessThanOrEqualTo(emptyLuminance + 4),
+      reason: 'the empty→populated switch brightened the feed by '
+          '${(peak - emptyLuminance).toStringAsFixed(1)} — a scaffold flash',
+    );
   });
 }

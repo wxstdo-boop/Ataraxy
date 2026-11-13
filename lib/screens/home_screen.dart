@@ -15,6 +15,7 @@ import 'package:ataraxy/models/settings.dart';
 import 'package:ataraxy/providers/settings_provider.dart';
 import 'package:ataraxy/services/storage_service.dart';
 import 'package:ataraxy/theme/app_theme.dart';
+import 'package:ataraxy/theme/markdown_spacing.dart';
 import 'package:ataraxy/ai_overlay_state.dart';
 import 'package:ataraxy/screens/entry_screen.dart';
 import 'package:ataraxy/screens/entry_detail_screen.dart';
@@ -109,13 +110,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   /// character lands ("поиск дёргается").
   Timer? _searchDebounce;
 
-  /// True only during the frame a filter/sort/search swap is applied. The feed
-  /// wrapper flips it false again the following frame (via a post-frame
-  /// callback), so cards that ENTER the visible set animate in. Cards that
-  /// stay on screen are deliberately left alone (no replay) — replaying reset
-  /// their opacity to 0 for the stagger delay, which is the "вспышка".
-  bool _entranceReplay = false;
-
   // The AI assistant is a plain widget mounted in this screen's Stack (NOT
   // a root-overlay OverlayEntry — that architecture caused the grey-screen
   // crash loop on this device). Long-pressing "+" toggles it; a second
@@ -146,24 +140,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _barsCtrl.addListener(_onBarsTick);
   }
 
-  /// Applies a new visible set (category chip, sort mode, search query) and
-  /// flags the swap so cards ENTERING the set animate in. Cards that remain
-  /// visible are left untouched — they used to replay their entrance, which
-  /// reset their opacity to 0 for the stagger delay and read as a hard
-  /// "вспышка" instead of a smooth switch.
-  void _fadeThroughContent(VoidCallback swap) {
+  /// Applies a new visible set (category chip, sort mode, search query). The
+  /// section cross-fades the whole swap (see `_ListSection`), and entering
+  /// cards do NOT replay their entrance: replaying reset their opacity to 0
+  /// for the stagger delay, which combined with the section fade made the
+  /// incoming content quadratic and exposed the bright scaffold for a few
+  /// frames — the "вспышка" on empty↔populated switches.
+  void _swapContent(VoidCallback swap) {
     if (!mounted) return;
-    setState(() {
-      swap();
-      _entranceReplay = true;
-    });
-    // Flip the entering-cards flag back off after this frame is laid out; only
-    // the cards that mounted during the swap needed it.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && _entranceReplay) {
-        setState(() => _entranceReplay = false);
-      }
-    });
+    setState(swap);
   }
 
   /// Each frame of the collapse rebuilds the screen: the app bar reserves its
@@ -733,13 +718,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                       current: _category,
                                       sortMode: _sortMode,
                                       onChanged: (c) {
-                                        _fadeThroughContent(
+                                        _swapContent(
                                           () => setState(() => _category = c),
                                         );
                                       },
                                       onSort: () {
                                         HapticFeedback.selectionClick();
-                                        _fadeThroughContent(
+                                        _swapContent(
                                           () => setState(() {
                                             _sortMode = _sortMode >= 2
                                                 ? -1
@@ -818,7 +803,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                 emptyText: d.$3,
                                                 seenEntranceIds:
                                                     _seenEntranceIds,
-                                                replay: _entranceReplay,
                                               )
                                             : d.$2 == EntryType.dream ||
                                                   d.$2 == EntryType.tulpa
@@ -866,7 +850,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                 emptyText: d.$3,
                                                 seenEntranceIds:
                                                     _seenEntranceIds,
-                                                replay: _entranceReplay,
                                               )
                                             : () {
                                                 // Hide notes (general) from the
@@ -934,7 +917,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                   emptyText: d.$3,
                                                   seenEntranceIds:
                                                       _seenEntranceIds,
-                                                  replay: _entranceReplay,
                                                 );
                                               }(),
                                       )
@@ -1115,7 +1097,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                             () {
                                               if (!mounted) return;
                                               if (value == _searchQuery) return;
-                                              _fadeThroughContent(
+                                              _swapContent(
                                                 () => setState(
                                                   () => _searchQuery = value,
                                                 ),

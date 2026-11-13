@@ -105,6 +105,21 @@ class AppTheme {
   static Color _atHue(Color c, double hue) =>
       HSLColor.fromColor(c).withHue(hue % 360).toColor();
 
+  /// Daily hue swing shared by the home banner and the daily-guide header.
+  ///
+  /// Capped at ±24°: the old `(day * 17) % 360` walked the whole colour wheel,
+  /// so a lavender app could get a green banner and the light Grok header
+  /// could land on a sickly green ("блевотный отсвет"). Two steps either side
+  /// of neutral keep consecutive days distinct without leaving the palette.
+  static double dailyHueShift(int dayIndex) =>
+      (((dayIndex % 5) - 2) * 12).toDouble();
+
+  /// Rotates [c] by [delta] degrees on the wheel, preserving saturation and
+  /// lightness — used to give themed gradients a subtle per-day variation.
+  static Color shiftHue(Color c, double delta) =>
+      HSLColor.fromColor(c).withHue((HSLColor.fromColor(c).hue + delta) % 360)
+          .toColor();
+
   static ColorScheme _harmonise(ColorScheme s) {
     final dark = s.brightness == Brightness.dark;
     final hue = HSLColor.fromColor(s.primary).hue;

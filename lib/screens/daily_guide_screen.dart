@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ataraxy/l10n/strings.dart';
+import 'package:ataraxy/theme/app_theme.dart';
 import 'package:ataraxy/widgets/app_back_button.dart';
 import 'package:ataraxy/widgets/premium_header.dart';
 
@@ -180,15 +181,12 @@ class _DailyGuideScreenState extends State<DailyGuideScreen> {
     // Theme-driven gradient (primary → tertiary) with a subtle daily hue
     // rotation — the header and card always belong to the active theme yet
     // consecutive days stay visually distinct (mirrors the home banner).
-    // Capped at ±24°: the old `(day * 17) % 360` walked the whole colour
-    // wheel, so the light Grok header could land on a sickly green that read
-    // as a "блевотный отсвет" against the cool paper.
+    // The swing itself lives in [AppTheme.dailyHueShift] so the banner and
+    // this header can never drift apart.
     final dayIndex =
         DateTime.now().millisecondsSinceEpoch ~/ Duration.millisecondsPerDay;
-    final dayShift = (((dayIndex % 5) - 2) * 12).toDouble();
-    Color shiftHue(Color c) => HSLColor.fromColor(c)
-        .withHue((HSLColor.fromColor(c).hue + dayShift) % 360)
-        .toColor();
+    final dayShift = AppTheme.dailyHueShift(dayIndex);
+    Color shiftHue(Color c) => AppTheme.shiftHue(c, dayShift);
     final themeGradient = isDream
         ? [shiftHue(scheme.primary), shiftHue(scheme.tertiary)]
         : [shiftHue(scheme.secondary), shiftHue(scheme.tertiary)];

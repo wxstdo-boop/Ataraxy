@@ -207,9 +207,24 @@ release, so bump `version:` in `pubspec.yaml` before tagging.
   it is now a fixed-size `Container` under a `Transform.scale` inside a
   `RepaintBoundary`. Prefer `Transform`/opacity over animating layout.
 - Category/sort/search changes in `HomeScreen` rebuild the feed in place (the
-  scroll views keep a stable identity) and dip `_viewFade` toward 0.55 — NOT to
-  0 — so the swap reads as one continuous dissolve with no blank "вспышка". The
-  dip is re-entrancy-guarded by `_viewFadeToken`.
+  scroll views keep a stable identity). There is NO feed-wide opacity dip any
+  more (the old `_viewFade` read as a "вспышка"); instead the visible cards
+  themselves replay a one-shot staggered fade+slide via `_entranceRev` /
+  `_entranceReplay`, threaded through `_ListSection` (`home_controls.dart`) into
+  `_EntryCard` (`home_entry_card.dart`).
+- Daily hue variation for themed gradients (home banner + daily-guide header)
+  lives in `AppTheme.dailyHueShift(dayIndex)` (capped ±24°) and
+  `AppTheme.shiftHue(color, delta)`. Never reintroduce a `% 360` full-wheel
+  walk: it can land on green for a lavender app or a sickly green on light Grok.
+- The daily-guide Scaffold tints its background with `scheme.surfaceContainerHigh`
+  so the gaps between tip tiles do not read as white stripes on light themes.
+- Single-select pill rows use the shared `SelectionPill`
+  (`lib/widgets/selection_pill.dart`) — an `AnimatedContainer` that eases
+  colour/border/shadow itself, with NO `InkWell` splash (a ripple there lingered
+  as the previous selection's background when switching fast). Prefer it over
+  `ChoiceChip` for filter/category rows.
+- Screens with a back button use `AppBackButton` (no tooltip, press recoil),
+  never the implicit Material back button.
 - The app's `scrollBehavior` is `_AppScrollBehavior` (app_shell.dart): it keeps
   the rubber-band `BouncingScrollPhysics` but overrides `buildOverscrollIndicator`
   to a no-op, killing Material 3's `StretchingOverscrollIndicator` — that stretch

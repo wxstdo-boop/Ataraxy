@@ -22,6 +22,7 @@ import 'package:ataraxy/theme/app_theme.dart';
 import 'package:ataraxy/widgets/limited_context_menu.dart';
 import 'package:ataraxy/widgets/animated_snack.dart';
 import 'package:ataraxy/widgets/animated_chip.dart';
+import 'package:ataraxy/widgets/selection_pill.dart';
 import 'package:ataraxy/widgets/em_dash_formatter.dart';
 import 'package:ataraxy/widgets/premium_header.dart';
 import 'package:ataraxy/widgets/themed_time_picker.dart';
@@ -874,71 +875,13 @@ class _EntryScreenState extends State<EntryScreen> with WidgetsBindingObserver {
                 EntryCategory.bad,
                 EntryCategory.random,
               ].map((c) {
-                final selected = c == _category;
-                // Custom pill instead of ChoiceChip: the selection eases
-                // (colour + border + shadow) instead of the chip's internal
-                // controller replaying — that replay flashed the PREVIOUS
-                // category when switching fast.
-                return AnimatedContainer(
-                  duration: const Duration(milliseconds: 220),
-                  curve: Curves.easeOutCubic,
-                  decoration: BoxDecoration(
-                    color: selected
-                        ? scheme.primaryContainer
-                        : scheme.surfaceContainerHighest.withValues(
-                            alpha: 0.7,
-                          ),
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(
-                      color: selected
-                          ? scheme.primary.withValues(alpha: 0.35)
-                          : Colors.transparent,
-                      width: 1,
-                    ),
-                    boxShadow: selected
-                        ? [
-                            BoxShadow(
-                              color: scheme.primary.withValues(alpha: 0.18),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ]
-                        : null,
+                return SelectionPill(
+                  label: L.tr(
+                    context,
+                    c == EntryCategory.none ? 'catAll' : c.labelKey,
                   ),
-                  child: Material(
-                    color: Colors.transparent,
-                    // No splash/highlight: the AnimatedContainer above owns
-                    // the selected state — a ripple here lingered as the
-                    // previous category's background when switching fast.
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(18),
-                      splashColor: Colors.transparent,
-                      highlightColor: Colors.transparent,
-                      hoverColor: Colors.transparent,
-                      onTap: () => setState(() => _category = c),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 8,
-                        ),
-                        child: Text(
-                          L.tr(
-                            context,
-                            c == EntryCategory.none ? 'catAll' : c.labelKey,
-                          ),
-                          style: TextStyle(
-                            color: selected
-                                ? scheme.onPrimaryContainer
-                                : scheme.onSurface,
-                            fontWeight: selected
-                                ? FontWeight.w700
-                                : FontWeight.w500,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
+                  selected: c == _category,
+                  onTap: () => setState(() => _category = c),
                 );
               }).toList(),
             ),

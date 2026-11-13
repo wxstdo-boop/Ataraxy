@@ -30,18 +30,13 @@ class _DailyGuideBanner extends StatelessWidget {
     // Theme-driven gradient with a daily hue rotation: the banner always
     // belongs to the ACTIVE theme (primary → tertiary) yet every day shifts
     // the hue slightly, so consecutive days stay visually distinct without
-    // ever clashing with the app palette.
-    // The swing is deliberately capped at ±24°: the old `(idx * 17) % 360`
-    // walked the whole color wheel, so a lavender app could get a green
-    // banner — a palette clash rather than a daily variation.
+    // ever clashing with the app palette. The capped swing lives in
+    // [AppTheme.dailyHueShift], shared with the daily-guide header.
     final scheme = Theme.of(context).colorScheme;
-    final shift = (((idx % 5) - 2) * 12).toDouble();
-    Color shiftHue(Color c, double delta) => HSLColor.fromColor(c)
-        .withHue((HSLColor.fromColor(c).hue + delta) % 360)
-        .toColor();
+    final shift = AppTheme.dailyHueShift(idx);
     final gradient = [
-      shiftHue(scheme.primary, shift.toDouble()),
-      shiftHue(scheme.tertiary, shift.toDouble()),
+      AppTheme.shiftHue(scheme.primary, shift),
+      AppTheme.shiftHue(scheme.tertiary, shift),
     ];
 
     return Padding(

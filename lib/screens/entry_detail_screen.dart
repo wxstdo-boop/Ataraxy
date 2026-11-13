@@ -304,6 +304,10 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
                           // renders as a real break, not a collapsed space.
                           softLineBreak: true,
                           styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
+                            // Blank-line paragraph breaks must be visually
+                            // larger than the in-paragraph line leading, or
+                            // paragraphs merge ("не разделяются абзацы").
+                            blockSpacing: 14,
                             p: Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.6),
                             code: TextStyle(
                               backgroundColor: scheme.surfaceContainerHighest,

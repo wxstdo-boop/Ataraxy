@@ -1487,6 +1487,9 @@ class _BubbleState extends State<_Bubble> {
                 styleSheet: MarkdownStyleSheet.fromTheme(
                   Theme.of(context),
                 ).copyWith(
+                  // Keep paragraph breaks clearly larger than the line
+                  // leading so a blank-line break reads as a new paragraph.
+                  blockSpacing: 10,
                   p: TextStyle(
                     color: scheme.onSurface,
                     height: 1.4,

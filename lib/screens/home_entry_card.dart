@@ -14,14 +14,8 @@ class _EntryCard extends StatefulWidget {
   /// (no controller, no timers), which removes scroll/rebuild jank.
   final bool animate;
 
-  /// Parent's visible-set revision. When it changes the card replays its
-  /// staggered fade+slide, so a category/sort/search switch animates the
-  /// entries themselves (the feed no longer dips its whole opacity).
-  final int entranceRev;
-
   /// True only during the frame a filter/sort/search swap is applied, so cards
-  /// that ENTER the visible set animate in too (they are fresh elements and
-  /// never see [entranceRev] change).
+  /// that ENTER the visible set animate in too (they are fresh elements).
   final bool replay;
 
   const _EntryCard({
@@ -32,7 +26,6 @@ class _EntryCard extends StatefulWidget {
     required this.onPin,
     required this.heroTag,
     this.animate = true,
-    this.entranceRev = 0,
     this.replay = false,
   });
 
@@ -58,10 +51,13 @@ class _EntryCardState extends State<_EntryCard>
   @override
   void didUpdateWidget(covariant _EntryCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Same card, new visible set (it stayed on screen across a category/sort/
-    // search swap): replay its entrance so the feed animates the entries
-    // instead of blanking the whole list.
-    if (widget.entranceRev != oldWidget.entranceRev) _play();
+    // A card that STAYS on screen across a category/sort/search swap must not
+    // blink. It used to replay `_play()`, which resets the controller to 0 —
+    // so every surviving card dropped to full transparency for the stagger
+    // delay and then faded back, reading as a hard "вспышка" rather than a
+    // smooth switch. Only cards that ENTER the visible set animate now (they
+    // are fresh elements, handled via `replay` in initState); survivors stay
+    // put while the new cards ease in around them.
   }
 
   /// (Re)starts the fade+slide. Creates the controller lazily so cards that
@@ -569,6 +565,11 @@ class _MarkdownPreview extends StatelessWidget {
             // renders as a real line break, not a collapsed space.
             softLineBreak: true,
             styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
+              // A blank-line paragraph break must read as MORE than a line
+              // break. The library default (8px) is smaller than the line
+              // leading here, so paragraphs merged into one block
+              // ("не разделяются абзацы"). Scale the gap to the paragraph size.
+              blockSpacing: 12,
               p: theme.textTheme.bodyMedium?.copyWith(
                 color: scheme.onSurface.withValues(alpha: 0.78),
                 height: 1.4,

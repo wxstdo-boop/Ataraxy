@@ -1,5 +1,22 @@
 # Ataraxy Changelog
 
+## [1.3.25] - 2026-11-10
+### Fixed
+- Feed no longer "вспышка" when switching entries: a card that stays on screen
+  across a category/sort/search switch is left in place instead of replaying
+  its entrance (which reset its opacity to 0 for the stagger delay). Only the
+  cards that ENTER the set animate now, so the switch is a smooth dissolve.
+- Every Reminders control now recoils softly. The dialog's rows and Cancel/Save
+  buttons (and the time picker's Cancel/OK) no longer use the hard symmetric
+  snap — they match the app-wide slow-eased release.
+- Removed the near-white "белые полосы" plates: the PIN dialogs, the favorites
+  photo/text editor, the favorite-activities pinned bar + bottom sheet and the
+  streak popup now use the tinted `surfaceContainerHigh` instead of the
+  near-white `surface` (which read as a white slab on the light themes).
+- Paragraphs separate again in notes/editor/reading views: `blockSpacing` was
+  smaller than the line leading, so a blank-line paragraph break looked like an
+  ordinary line break and paragraphs merged.
+
 ## [1.3.15] - 2026-11-10
 ### Fixed
 - Splash wordmark: the letters now write themselves in **inside the splash's

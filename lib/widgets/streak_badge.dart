@@ -75,7 +75,10 @@ class _StreakBadgeState extends State<StreakBadge>
             margin: const EdgeInsets.symmetric(horizontal: 36),
             padding: const EdgeInsets.fromLTRB(22, 24, 22, 16),
             decoration: BoxDecoration(
-              color: scheme.surface,
+              // Tinted container, not near-white `surface` — matches
+              // dialogTheme/bottomSheetTheme so the modal never reads as a
+              // white slab on the light themes.
+              color: scheme.surfaceContainerHigh,
               borderRadius: BorderRadius.circular(26),
               border: Border.all(
                 color: scheme.outlineVariant.withValues(alpha: 0.5),

@@ -130,8 +130,16 @@ release, so bump `version:` in `pubspec.yaml` before tagging.
   with the harmonised Low therefore rendered as near-white slabs on a coloured
   background. Fill card-like surfaces (cardTheme, dialogTheme,
   bottomSheetTheme, `home_entry_card`, AI panel, favorites bubbles) with the
-  tinted `surfaceContainerHighest`/`High` instead. `test/app_theme_test.dart`
-  guards contrast but not this; verify by sampling rendered pixels.
+  tinted `surfaceContainerHighest`/`High` instead. The SAME trap bites bare
+  `scheme.surface` — on the light themes it is `#fbfafd`/lum≈0.95 (near-white),
+  so an `AlertDialog(backgroundColor: scheme.surface)`, a `SliverAppBar` pinned
+  bar, a bottom input sheet or a modal card filled with it reads as a white
+  plate over the tinted body (fixed in `settings_pin_dialogs`,
+  `favorites_photo_tile`, `favorite_activity_screen`, `streak_badge`).
+  `test/app_theme_test.dart` now guards card/dialog/sheet fills against the
+  near-white band (lum ≥ 0.90 while brighter than the scaffold); verify
+  component-level fills by sampling rendered pixels (see the note below on
+  the Ahem test font).
 - Dark Grok's accent (`primary`) must stay a MID grey (~`#5F666E`). It drives
   the FAB, the selected pill and filled buttons; a light "paper" accent reads
   as a blinding slab on the near-black canvas ("слепит FAB"). Because the
@@ -158,7 +166,11 @@ release, so bump `version:` in `pubspec.yaml` before tagging.
 - Press feedback is asymmetric on purpose: `PressScale`, `PressableIconButton`
   and `_PressFab` snap the dimple IN quickly (~130 ms) but ease the recoil OUT
   over ~260 ms, so a release reads as a settling spring instead of a hard pop.
-  `PressScale(symmetric: true)` restores one shared duration for tests.
+  Do NOT set `symmetric: true` on production controls — it collapses the recoil
+  back to the fast in-timing, which is exactly the "отдача резкая" jolt the user
+  rejects (the reminder-dialog rows/buttons had it and read as uneven next to
+  every other control). `symmetric: true` is only for tests that assert a
+  single scale transition.
 - `_EntryCard` decides `animate` ONCE in `initState`; never re-read
   `widget.animate` in `build`. The parent's `seenEntranceIds.add(id)` makes it
   false on every build after the first, so a rebuild mid-animation would swap
@@ -182,9 +194,24 @@ release, so bump `version:` in `pubspec.yaml` before tagging.
   (brand cursor + translucent selection). Don't drop the flag on new fields.
 - `PremiumHeader` no longer draws a white hairline along its bottom curve — on
   light themes that 1px line read as a stray stripe "снизу вылезает полоса".
+- Paragraph separation in the reading/editor/preview/ADA markdown views comes
+  from `MarkdownStyleSheet.blockSpacing`. Its default (8px) is SMALLER than the
+  line leading at the body styles used here (`height` 1.4–1.6), so a blank-line
+  paragraph break looked like an ordinary line break and paragraphs merged
+  ("не разделяются абзацы"). Every `MarkdownBody` in the app now sets an
+  explicit `blockSpacing` (10–14) larger than the line leading — keep it when
+  adding a new markdown surface.
 
 ## Performance notes
 
+- Pixel-sampling tests (`RenderRepaintBoundary.toImage`) run under the test
+  harness where the default font is Ahem: every glyph paints as a SOLID FILLED
+  BOX in the text colour. A light-on-dark header therefore scans as wide
+  "white rows" that are NOT a real bug — the earlier "white stripe at y≈275 in
+  the guide" was the header title's Ahem box, not a surface. Before trusting a
+  white-band scan, load a real font (`FontLoader` from
+  `package:flutter/services.dart` + a system `.ttf`) or sample COLORS at known
+  coordinates instead of luminance runs.
 - Never wrap a full-screen splash in a `ScaleTransition`: scaling a screen
   texture makes the GPU bilinear-resample every pixel per frame (the laggy
   splash exit). A plain `FadeTransition` inside a `RepaintBoundary` is one

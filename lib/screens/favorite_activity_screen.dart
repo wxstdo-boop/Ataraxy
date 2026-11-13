@@ -193,7 +193,9 @@ class _FavoriteActivityScreenState extends State<FavoriteActivityScreen> {
               slivers: [
                 SliverAppBar(
                   pinned: true,
-                  backgroundColor: scheme.surface,
+                  // Tinted bar, not near-white `surface`: a pinned bar in
+                  // `surface` read as a white plate over the tinted body.
+                  backgroundColor: scheme.surfaceContainerHigh,
                   surfaceTintColor: Colors.transparent,
                   foregroundColor: scheme.onSurface,
                   leading: const AppBackButton(),
@@ -826,7 +828,7 @@ class _EditActivitySheetState extends State<_EditActivitySheet> {
       padding: EdgeInsets.only(bottom: viewInsets.bottom),
       child: Container(
         decoration: BoxDecoration(
-          color: scheme.surface,
+          color: scheme.surfaceContainerHigh,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         ),
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),

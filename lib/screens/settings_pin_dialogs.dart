@@ -31,7 +31,7 @@ class _CurrentPinDialogState extends State<_CurrentPinDialog> {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return AlertDialog(
-      backgroundColor: scheme.surface,
+      backgroundColor: scheme.surfaceContainerHigh,
       title: Text(L.tr(context, 'enterCurrentPin')),
       content: TextField(
         cursorOpacityAnimates: true,
@@ -101,7 +101,7 @@ class _PinSetupDialogState extends State<_PinSetupDialog> {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return AlertDialog(
-      backgroundColor: scheme.surface,
+      backgroundColor: scheme.surfaceContainerHigh,
       title: Text(L.tr(context, 'setPin')),
       content: Column(
         mainAxisSize: MainAxisSize.min,

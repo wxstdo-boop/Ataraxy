@@ -45,6 +45,38 @@ void main() {
     }
   });
 
+  test('near-white surfaces are not used where a tinted plate is required', () {
+    // Guards the recurring "белые полосы": on the light themes `surface` and
+    // `surfaceContainerLowest` land near-neutral white while the scaffold
+    // keeps the theme tint, so anything filled with them reads as a white
+    // slab. Card/dialog/sheet-like plates must use a tinted container.
+    for (final mode in AppThemeMode.values) {
+      final theme = AppTheme.of(mode);
+      if (theme.colorScheme.brightness != Brightness.light) continue;
+      final scheme = theme.colorScheme;
+      final scaffold = theme.scaffoldBackgroundColor.computeLuminance();
+      for (final plate in <String, Color>{
+        'cardTheme': theme.cardTheme.color ?? scheme.surfaceContainerHighest,
+        'dialogTheme': theme.dialogTheme.backgroundColor ??
+            scheme.surfaceContainerHigh,
+        'bottomSheetTheme':
+            theme.bottomSheetTheme.backgroundColor ?? scheme.surfaceContainerHigh,
+      }.entries) {
+        // A plate within a hair of the tinted scaffold but far from it in
+        // luminance would be the white-slab bug; require it to stay off the
+        // near-white band (>=0.90 luminance) OR be no brighter than scaffold.
+        final lum = plate.value.computeLuminance();
+        expect(
+          lum < 0.90 || lum <= scaffold,
+          isTrue,
+          reason: '$mode ${plate.key} is a near-white slab '
+              '(lum=${lum.toStringAsFixed(3)}, scaffold='
+              '${scaffold.toStringAsFixed(3)})',
+        );
+      }
+    }
+  });
+
   test('Grok keeps its stark monochrome identity', () {
     final s = AppTheme.darkGrok().colorScheme;
     // Grok is deliberately monochrome: primary and secondary share a near

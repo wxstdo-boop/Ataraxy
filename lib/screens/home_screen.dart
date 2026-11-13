@@ -109,20 +109,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   /// character lands ("поиск дёргается").
   Timer? _searchDebounce;
 
-  /// Drives the soft "fade through" whenever the visible SET changes (category
-  /// chip, sort mode, search query).
-  ///
-  /// Bumped whenever the visible set changes (category, sort, search). Each
-  /// `_EntryCard` watches it and replays its own staggered fade+slide, so the
-  /// ENTRIES animate in/out instead of the whole feed blanking ("нахуй ты
-  /// вспышку сократил — сделай плавную анимацию появления/исчезания самих
-  /// записей").
-  int _entranceRev = 0;
-
   /// True only during the frame a filter/sort/search swap is applied. The feed
   /// wrapper flips it false again the following frame (via a post-frame
-  /// callback), so cards that ENTER the visible set animate in while already
-  /// present cards replay through [entranceRev].
+  /// callback), so cards that ENTER the visible set animate in. Cards that
+  /// stay on screen are deliberately left alone (no replay) — replaying reset
+  /// their opacity to 0 for the stagger delay, which is the "вспышка".
   bool _entranceReplay = false;
 
   // The AI assistant is a plain widget mounted in this screen's Stack (NOT
@@ -156,19 +147,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   /// Applies a new visible set (category chip, sort mode, search query) and
-  /// bumps [_entranceRev] so the entries that remain replay their own
-  /// staggered fade+slide. There is no feed-wide opacity dip any more — that
-  /// dip was the "вспышка" the user kept rejecting; the movement now lives on
-  /// the cards themselves.
+  /// flags the swap so cards ENTERING the set animate in. Cards that remain
+  /// visible are left untouched — they used to replay their entrance, which
+  /// reset their opacity to 0 for the stagger delay and read as a hard
+  /// "вспышка" instead of a smooth switch.
   void _fadeThroughContent(VoidCallback swap) {
     if (!mounted) return;
     setState(() {
       swap();
-      _entranceRev++;
       _entranceReplay = true;
     });
-    // Flip the entering-cards flag back off after this frame is laid out; the
-    // already-present cards keep replaying via their own entranceRev change.
+    // Flip the entering-cards flag back off after this frame is laid out; only
+    // the cards that mounted during the swap needed it.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && _entranceReplay) {
         setState(() => _entranceReplay = false);
@@ -828,8 +818,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                 emptyText: d.$3,
                                                 seenEntranceIds:
                                                     _seenEntranceIds,
-                                                    entranceRev: _entranceRev,
-                                                    replay: _entranceReplay,
+                                                replay: _entranceReplay,
                                               )
                                             : d.$2 == EntryType.dream ||
                                                   d.$2 == EntryType.tulpa
@@ -877,8 +866,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                 emptyText: d.$3,
                                                 seenEntranceIds:
                                                     _seenEntranceIds,
-                                                    entranceRev: _entranceRev,
-                                                    replay: _entranceReplay,
+                                                replay: _entranceReplay,
                                               )
                                             : () {
                                                 // Hide notes (general) from the
@@ -946,8 +934,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                   emptyText: d.$3,
                                                   seenEntranceIds:
                                                       _seenEntranceIds,
-                                                      entranceRev: _entranceRev,
-                                                      replay: _entranceReplay,
+                                                  replay: _entranceReplay,
                                                 );
                                               }(),
                                       )

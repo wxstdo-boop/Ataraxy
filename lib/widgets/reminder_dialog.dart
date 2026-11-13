@@ -104,7 +104,10 @@ class _ReminderDialogState extends State<ReminderDialog>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ListTile(
+            PressScale(
+              scale: 0.97,
+              duration: const Duration(milliseconds: 150),
+              child: ListTile(
               contentPadding: EdgeInsets.zero,
               title: Text(L.tr(context, 'reminders')),
               trailing: VolumetricSwitch(
@@ -118,6 +121,7 @@ class _ReminderDialogState extends State<ReminderDialog>
                 onChanged: _setEnabled,
               ),
               onTap: () => _setEnabled(!_enabled),
+            ),
             ),
             // AnimatedSize + FadeTransition дают плавное появление блока
             // (раньше он просто "впрыгивал" при включении переключателя).
@@ -140,7 +144,10 @@ class _ReminderDialogState extends State<ReminderDialog>
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          ListTile(
+                          PressScale(
+                            scale: 0.97,
+                            duration: const Duration(milliseconds: 150),
+                            child: ListTile(
                             contentPadding: EdgeInsets.zero,
                             leading: const Icon(
                               Icons.check_circle_rounded,
@@ -169,6 +176,7 @@ class _ReminderDialogState extends State<ReminderDialog>
                                 );
                               }
                             },
+                          ),
                           ),
                           // MIUI/Xiaomi/Redmi hint: autostart + battery saver
                           // cannot be granted via API — the user has to flip
@@ -277,7 +285,10 @@ class _ReminderDialogState extends State<ReminderDialog>
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    ListTile(
+                    PressScale(
+                      scale: 0.97,
+                      duration: const Duration(milliseconds: 150),
+                      child: ListTile(
                       contentPadding: EdgeInsets.zero,
                       leading: const Icon(Icons.access_time_rounded),
                       // The chosen time cross-fades when it changes, so picking
@@ -295,6 +306,7 @@ class _ReminderDialogState extends State<ReminderDialog>
                       ),
                       trailing: const Icon(Icons.edit_calendar_rounded),
                       onTap: _pickTime,
+                    ),
                     ),
                     // The chosen time may already be past for today — the daily
                     // reminder then fires first tomorrow. Say so explicitly,
@@ -353,13 +365,12 @@ class _ReminderDialogState extends State<ReminderDialog>
         ),
       ),
       actions: [
-        // Shallow, symmetric dimple: the dialog's own buttons sat at the
-        // default full-depth recoil, which read as a jolt on such a small
-        // target ("отдача плавнее").
+        // Shallow dimple on the dialog's own buttons. No `symmetric`: the
+        // soft, slower recoil is what every other control uses ("отдача
+        // плавнее"); a symmetric snap here read as a jolt on the small target.
         PressScale(
           scale: 0.97,
           duration: const Duration(milliseconds: 150),
-          symmetric: true,
           child: TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text(L.tr(context, 'cancel')),
@@ -368,7 +379,6 @@ class _ReminderDialogState extends State<ReminderDialog>
         PressScale(
           scale: 0.97,
           duration: const Duration(milliseconds: 150),
-          symmetric: true,
           child: TextButton(
             onPressed: () {
               // Turning the reminder on without a time used to silently

@@ -239,7 +239,7 @@ class _EditDialogState extends State<_EditDialog> {
     final scheme = Theme.of(context).colorScheme;
     final hasMedia = widget.message.mediaUrl != null;
     return AlertDialog(
-      backgroundColor: scheme.surface,
+      backgroundColor: scheme.surfaceContainerHigh,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       title: Text(
         hasMedia ? L.tr(context, 'editFile') : L.tr(context, 'editTextTitle'),

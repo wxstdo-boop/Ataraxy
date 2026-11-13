@@ -1283,6 +1283,9 @@ class _EntryScreenState extends State<EntryScreen> with WidgetsBindingObserver {
                               styleSheet: MarkdownStyleSheet.fromTheme(
                                 Theme.of(context),
                               ).copyWith(
+                                // Paragraph breaks must out-size the line
+                                // leading, else blank-line paragraphs merge.
+                                blockSpacing: 14,
                                 p: Theme.of(context)
                                     .textTheme
                                     .bodyLarge

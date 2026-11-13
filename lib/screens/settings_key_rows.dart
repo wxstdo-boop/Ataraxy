@@ -16,7 +16,10 @@ class _KeyPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Material(
+    return PressScale(
+      scale: 0.94,
+      haptic: true,
+      child: Material(
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(large ? 18 : 14),
@@ -58,6 +61,7 @@ class _KeyPill extends StatelessWidget {
           ),
         ),
       ),
+    ),
     );
   }
 }

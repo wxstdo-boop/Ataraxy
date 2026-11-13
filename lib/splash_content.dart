@@ -8,7 +8,6 @@ import 'widgets/animated_letters.dart';
 class SplashContent extends StatelessWidget {
   final Animation<double> opacity;
   final Animation<double> contentOpacity;
-  final bool opaque;
 
   /// When false the loading "snake" stops animating. The splash exit passes
   /// false once the fade begins so the spinner is not repainting the whole
@@ -19,54 +18,44 @@ class SplashContent extends StatelessWidget {
     super.key,
     required this.opacity,
     required this.contentOpacity,
-    this.opaque = false,
     this.spinning = true,
   });
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    // The splash follows the active theme palette instead of the old
-    // hardcoded pink/lavender. MUTILATED gets a fully opaque background
-    // (deep blood red); other themes keep the soft translucent gradient.
-    final a = opaque ? 1.0 : 0.85;
+    // Calm, premium dark splash, identical across every theme. The old
+    // treatment blended primary→secondary→tertiary at 0.85 alpha straight
+    // over the home content behind the Stack, which mixed to a muddy
+    // off-hue wash ("блевотный пиздец"). This is a fully opaque near-black
+    // base carrying a single soft glow of the theme's primary, so the splash
+    // reads as branded but never muddy.
     return Scaffold(
       body: Container(
-        decoration: BoxDecoration(
-          // Layered wash: a warm primary glow up top melting through a
-          // mid tone into the tertiary depth, with a soft radial bloom at
-          // the top so the logo tile reads as if lit from above.
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            stops: const [0.0, 0.4, 0.72, 1.0],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            stops: [0.0, 0.55, 1.0],
             colors: [
-              scheme.primary.withValues(alpha: a),
-              Color.lerp(
-                scheme.primary,
-                scheme.secondary,
-                0.4,
-              )!.withValues(alpha: a),
-              Color.lerp(
-                scheme.primary,
-                scheme.tertiary,
-                0.6,
-              )!.withValues(alpha: a),
-              scheme.tertiary.withValues(alpha: a),
+              Color(0xFF16131C),
+              Color(0xFF100E15),
+              Color(0xFF0A0910),
             ],
           ),
         ),
         child: Stack(
           children: [
-            // Soft top bloom so the logo tile reads as lit from above.
+            // Single themed glow so the splash still belongs to the palette
+            // without the three-way blend that muddied it.
             Positioned.fill(
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: RadialGradient(
                     center: const Alignment(0, -0.55),
-                    radius: 0.9,
+                    radius: 0.95,
                     colors: [
-                      Colors.white.withValues(alpha: opaque ? 0.10 : 0.14),
+                      scheme.primary.withValues(alpha: 0.22),
                       Colors.transparent,
                     ],
                   ),
@@ -82,7 +71,7 @@ class SplashContent extends StatelessWidget {
                 height: 200,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.white.withValues(alpha: 0.07),
+                  color: Colors.white.withValues(alpha: 0.05),
                 ),
               ),
             ),
@@ -94,7 +83,7 @@ class SplashContent extends StatelessWidget {
                 height: 160,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.white.withValues(alpha: 0.05),
+                  color: Colors.white.withValues(alpha: 0.035),
                 ),
               ),
             ),
@@ -106,7 +95,7 @@ class SplashContent extends StatelessWidget {
                 height: 60,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.white.withValues(alpha: 0.06),
+                  color: Colors.white.withValues(alpha: 0.04),
                 ),
               ),
             ),

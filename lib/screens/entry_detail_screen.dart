@@ -146,7 +146,10 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
           PressableIconButton(
             icon: Icon(
               entry.pinned ? Icons.push_pin_rounded : Icons.push_pin_outlined,
-              color: entry.pinned ? AppAccents.amber : null,
+              // Semi-transparent red pin, matching the home card marker.
+              color: entry.pinned
+                  ? AppAccents.danger.withValues(alpha: 0.7)
+                  : null,
             ),
             onPressed: () async {
               await widget.storage.patchEntry(
@@ -270,8 +273,11 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
                           ? Icons.star_rounded
                           : Icons.star_outline_rounded,
                       size: 18,
-                      color:
-                          active ? color : scheme.onSurface.withValues(alpha: 0.25),
+                      // Semi-transparent red mood stars, matching the home
+                      // card (were the per-type accent colour).
+                      color: active
+                          ? AppAccents.danger.withValues(alpha: 0.7)
+                          : AppAccents.danger.withValues(alpha: 0.22),
                     );
                   }),
                 ),

@@ -25,6 +25,7 @@ import 'package:ataraxy/screens/favorites_screen.dart';
 import 'package:ataraxy/screens/daily_guide_screen.dart';
 import 'package:ataraxy/widgets/reminder_dialog.dart';
 import 'package:ataraxy/widgets/animated_snack.dart';
+import 'package:ataraxy/widgets/app_back_button.dart';
 import 'package:ataraxy/widgets/app_route.dart';
 import 'package:ataraxy/services/notification_service.dart';
 import 'package:ataraxy/data/daily_prompts.dart' as dp;
@@ -109,18 +110,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Timer? _searchDebounce;
 
   /// Drives the soft "fade through" whenever the visible SET changes (category
-  /// chip, sort mode, search query). The content is rebuilt IN PLACE — the
-  /// scroll views keep their identity, so scroll offset and per-card entrance
-  /// state survive — while its opacity DIPS and eases back. Crucially the dip
-  /// is only to [_kViewFadeMin] (not to 0): the feed never blanks, so the swap
-  /// reads as one continuous dissolve instead of a flash of empty space
-  /// ("смена при поиске/категориях неплавная, вспышка").
-  late final AnimationController _viewFadeCtrl;
-  late final Animation<double> _viewFade;
-  /// Monotonic token so a superseded dip (fast typing, rapid taps) cannot
-  /// apply its stale swap on top of a newer one.
-  int _viewFadeToken = 0;
-  static const double _kViewFadeMin = 0.55;
+  /// chip, sort mode, search query).
+  ///
+  /// Bumped whenever the visible set changes (category, sort, search). Each
+  /// `_EntryCard` watches it and replays its own staggered fade+slide, so the
+  /// ENTRIES animate in/out instead of the whole feed blanking ("нахуй ты
+  /// вспышку сократил — сделай плавную анимацию появления/исчезания самих
+  /// записей").
+  int _entranceRev = 0;
+
+  /// True only during the frame a filter/sort/search swap is applied. The feed
+  /// wrapper flips it false again the following frame (via a post-frame
+  /// callback), so cards that ENTER the visible set animate in while already
+  /// present cards replay through [entranceRev].
+  bool _entranceReplay = false;
 
   // The AI assistant is a plain widget mounted in this screen's Stack (NOT
   // a root-overlay OverlayEntry — that architecture caused the grey-screen
@@ -150,37 +153,27 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       curve: Curves.easeInOutCubic,
     );
     _barsCtrl.addListener(_onBarsTick);
-    _viewFadeCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 220),
-      value: 1.0,
-    );
-    // 1.0 at rest → dips to _kViewFadeMin mid-swap → back to 1.0. The floor
-    // keeps the feed visible throughout, so there is never a blank flash.
-    _viewFade = Tween<double>(begin: _kViewFadeMin, end: 1.0).animate(
-      CurvedAnimation(parent: _viewFadeCtrl, curve: Curves.easeInOut),
-    );
   }
 
-  /// Plays a content dissolve: the feed's opacity dips toward [_kViewFadeMin],
-  /// [swap] applies the new filter mid-dip, then the opacity eases back to 1.
-  ///
-  /// It never reaches 0 and the scroll views are rebuilt in place, so the swap
-  /// reads as one soft crossfade instead of the feed blinking empty — the old
-  /// reverse-to-0/forward cycle was the "вспышка" the user kept seeing on
-  /// search and category switches.
-  ///
-  /// Re-entrant: a superseded dip (fast typing, rapid chip taps) is abandoned
-  /// by token so a stale [swap] can never land on top of a newer one.
-  Future<void> _fadeThroughContent(VoidCallback swap) async {
+  /// Applies a new visible set (category chip, sort mode, search query) and
+  /// bumps [_entranceRev] so the entries that remain replay their own
+  /// staggered fade+slide. There is no feed-wide opacity dip any more — that
+  /// dip was the "вспышка" the user kept rejecting; the movement now lives on
+  /// the cards themselves.
+  void _fadeThroughContent(VoidCallback swap) {
     if (!mounted) return;
-    final token = ++_viewFadeToken;
-    if (_viewFadeCtrl.value > _kViewFadeMin + 0.001) {
-      await _viewFadeCtrl.reverse();
-    }
-    if (!mounted || token != _viewFadeToken) return;
-    swap();
-    await _viewFadeCtrl.forward();
+    setState(() {
+      swap();
+      _entranceRev++;
+      _entranceReplay = true;
+    });
+    // Flip the entering-cards flag back off after this frame is laid out; the
+    // already-present cards keep replaying via their own entranceRev change.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _entranceReplay) {
+        setState(() => _entranceReplay = false);
+      }
+    });
   }
 
   /// Each frame of the collapse rebuilds the screen: the app bar reserves its
@@ -218,7 +211,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _fabVisible.dispose();
     _barsCtrl.removeListener(_onBarsTick);
     _barsCtrl.dispose();
-    _viewFadeCtrl.dispose();
     super.dispose();
   }
 
@@ -775,9 +767,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         Expanded(
                           child: _StableFeed(
                             rev: _contentRev,
-                            builder: (context) => FadeTransition(
-                              opacity: _viewFade,
-                              child: Stack(
+                            builder: (context) => Stack(
                               children: [
                                 TabBarView(
                                   // Edge swipes spring back with rubber-band
@@ -838,6 +828,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                 emptyText: d.$3,
                                                 seenEntranceIds:
                                                     _seenEntranceIds,
+                                                    entranceRev: _entranceRev,
+                                                    replay: _entranceReplay,
                                               )
                                             : d.$2 == EntryType.dream ||
                                                   d.$2 == EntryType.tulpa
@@ -885,6 +877,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                 emptyText: d.$3,
                                                 seenEntranceIds:
                                                     _seenEntranceIds,
+                                                    entranceRev: _entranceRev,
+                                                    replay: _entranceReplay,
                                               )
                                             : () {
                                                 // Hide notes (general) from the
@@ -952,6 +946,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                   emptyText: d.$3,
                                                   seenEntranceIds:
                                                       _seenEntranceIds,
+                                                      entranceRev: _entranceRev,
+                                                      replay: _entranceReplay,
                                                 );
                                               }(),
                                       )
@@ -1057,7 +1053,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   ),
                                 ),
                               ],
-                            ),
                             ),
                           ),
                         ),

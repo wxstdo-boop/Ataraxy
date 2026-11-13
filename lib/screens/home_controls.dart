@@ -180,6 +180,16 @@ class _ListSection extends StatelessWidget {
   /// мигает" flicker. Shared with the parent so the memory outlives the list.
   final Set<String>? seenEntranceIds;
 
+  /// Bumped by the parent whenever the visible set changes (category chip,
+  /// sort mode, search query). Each card replays its staggered fade+slide when
+  /// this changes, so the ENTRIES animate in/out instead of the feed blanking.
+  final int entranceRev;
+
+  /// True only during the frame a swap is applied — cards entering the set
+  /// animate in too (they are fresh elements and never see [entranceRev]
+  /// change).
+  final bool replay;
+
   const _ListSection({
     super.key,
     required this.entries,
@@ -191,6 +201,8 @@ class _ListSection extends StatelessWidget {
     this.header,
     this.heroPrefix = '',
     this.seenEntranceIds,
+    this.entranceRev = 0,
+    this.replay = false,
   });
 
   @override
@@ -327,6 +339,8 @@ class _ListSection extends StatelessWidget {
                 entry: entry,
                 heroTag: '$heroPrefix-${entry.id}',
                 animate: seenEntranceIds == null || seenEntranceIds!.add(entry.id),
+                entranceRev: entranceRev,
+                replay: replay,
                 onTap: () => onTap(entry),
                 onPin: () => onPin(entry),
               );

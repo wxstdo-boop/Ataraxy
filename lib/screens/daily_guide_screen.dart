@@ -180,10 +180,12 @@ class _DailyGuideScreenState extends State<DailyGuideScreen> {
     // Theme-driven gradient (primary → tertiary) with a subtle daily hue
     // rotation — the header and card always belong to the active theme yet
     // consecutive days stay visually distinct (mirrors the home banner).
-    final dayShift = (DateTime.now().millisecondsSinceEpoch ~/
-            Duration.millisecondsPerDay *
-            17) %
-        360;
+    // Capped at ±24°: the old `(day * 17) % 360` walked the whole colour
+    // wheel, so the light Grok header could land on a sickly green that read
+    // as a "блевотный отсвет" against the cool paper.
+    final dayIndex =
+        DateTime.now().millisecondsSinceEpoch ~/ Duration.millisecondsPerDay;
+    final dayShift = (((dayIndex % 5) - 2) * 12).toDouble();
     Color shiftHue(Color c) => HSLColor.fromColor(c)
         .withHue((HSLColor.fromColor(c).hue + dayShift) % 360)
         .toColor();
@@ -207,6 +209,11 @@ class _DailyGuideScreenState extends State<DailyGuideScreen> {
         ),
         flexibleSpace: PremiumHeader(colors: themeGradient),
       ),
+      // Tint the page a step below the scaffold: the tip tiles sit on
+      // `surfaceContainerHighest`, and on the light themes the scaffold's own
+      // near-white background showed through the gaps as a column of WHITE
+      // STRIPES. A slightly deeper wash keeps the tiles reading as cards.
+      backgroundColor: scheme.surfaceContainerHigh,
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
         children: [

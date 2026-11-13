@@ -4,7 +4,6 @@ import 'screens/home_screen.dart';
 import 'screens/lock_screen.dart';
 import 'splash_content.dart';
 import 'splash_state.dart';
-import 'theme/app_theme.dart';
 import 'welcome_screen.dart';
 
 class HomeContent extends StatefulWidget {
@@ -261,9 +260,6 @@ class HomeContentState extends State<HomeContent>
                 // spinner repainting every frame underneath the fading layer
                 // forces a fresh composite per frame for the whole screen.
                 spinning: _showSplash,
-                // MUTILATED: the splash background is fully opaque; other
-                // themes keep the soft translucent theme gradient.
-                opaque: _lastSettings.themeMode == AppThemeMode.mutilated,
               ),
             ),
           ),

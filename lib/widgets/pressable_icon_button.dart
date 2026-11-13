@@ -61,11 +61,12 @@ class _PressableIconButtonState extends State<PressableIconButton> {
           hoverColor: Colors.transparent,
           child: AnimatedScale(
             scale: _pressed ? 0.92 : 1.0,
-            // Fast dimple under the finger, deliberately slower eased-out
-            // recoil on release ("отдача уменьшения плавнее").
+            // Fast dimple under the finger, slower eased-out recoil on release
+            // ("отдача уменьшения плавнее"). Kept under ~300 ms so rapid taps
+            // never queue behind a still-settling release ("заедает").
             duration: _pressed
-                ? const Duration(milliseconds: 120)
-                : const Duration(milliseconds: 380),
+                ? const Duration(milliseconds: 110)
+                : const Duration(milliseconds: 280),
             curve: Curves.easeOutCubic,
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 280),

@@ -9,6 +9,7 @@ import 'package:ataraxy/theme/app_theme.dart';
 import 'package:ataraxy/widgets/limited_context_menu.dart';
 import 'package:ataraxy/widgets/em_dash_formatter.dart';
 import 'package:ataraxy/widgets/animated_snack.dart';
+import 'package:ataraxy/widgets/app_back_button.dart';
 
 class FavoriteActivityScreen extends StatefulWidget {
   const FavoriteActivityScreen({super.key});
@@ -195,6 +196,7 @@ class _FavoriteActivityScreenState extends State<FavoriteActivityScreen> {
                   backgroundColor: scheme.surface,
                   surfaceTintColor: Colors.transparent,
                   foregroundColor: scheme.onSurface,
+                  leading: const AppBackButton(),
                   title: Text(L.tr(context, 'favoriteActivities')),
                 ),
                 if (featured != null)

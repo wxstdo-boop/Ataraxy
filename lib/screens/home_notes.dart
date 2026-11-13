@@ -85,6 +85,7 @@ class _NotesListScreenState extends State<_NotesListScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        leading: const AppBackButton(),
         title: Text(L.tr(context, 'tabNotes')),
         foregroundColor: Colors.white,
         backgroundColor: Colors.transparent,

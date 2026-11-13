@@ -14,6 +14,16 @@ class _EntryCard extends StatefulWidget {
   /// (no controller, no timers), which removes scroll/rebuild jank.
   final bool animate;
 
+  /// Parent's visible-set revision. When it changes the card replays its
+  /// staggered fade+slide, so a category/sort/search switch animates the
+  /// entries themselves (the feed no longer dips its whole opacity).
+  final int entranceRev;
+
+  /// True only during the frame a filter/sort/search swap is applied, so cards
+  /// that ENTER the visible set animate in too (they are fresh elements and
+  /// never see [entranceRev] change).
+  final bool replay;
+
   const _EntryCard({
     super.key,
     required this.index,
@@ -22,6 +32,8 @@ class _EntryCard extends StatefulWidget {
     required this.onPin,
     required this.heroTag,
     this.animate = true,
+    this.entranceRev = 0,
+    this.replay = false,
   });
 
   @override
@@ -37,21 +49,34 @@ class _EntryCardState extends State<_EntryCard>
   @override
   void initState() {
     super.initState();
-    if (!widget.animate) return;
-    _ctrl = AnimationController(
+    // First list of the session: `animate` staggers the initial cascade.
+    // On a later filter/sort/search swap `replay` is true for one frame, so
+    // cards that enter the set animate in as well.
+    if (widget.animate || widget.replay) _play();
+  }
+
+  @override
+  void didUpdateWidget(covariant _EntryCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Same card, new visible set (it stayed on screen across a category/sort/
+    // search swap): replay its entrance so the feed animates the entries
+    // instead of blanking the whole list.
+    if (widget.entranceRev != oldWidget.entranceRev) _play();
+  }
+
+  /// (Re)starts the fade+slide. Creates the controller lazily so cards that
+  /// never animate keep no controller and no timers (scroll/rebuild jank).
+  void _play() {
+    _ctrl ??= AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 220),
     );
-    _opacity = CurvedAnimation(parent: _ctrl!, curve: Curves.easeOut);
-    _slide = Tween<Offset>(
+    _opacity ??= CurvedAnimation(parent: _ctrl!, curve: Curves.easeOut);
+    _slide ??= Tween<Offset>(
       begin: const Offset(0, 0.1),
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _ctrl!, curve: Curves.easeOutCubic));
-
-    // Stagger: каждая карточка запускается чуть позже предыдущей, but the
-    // whole sequence finishes well within the splash's fully-opaque hold
-    // (~770 ms), so the cards are already settled when the splash fades —
-    // no "flash" of the home screen after the transition.
+    _ctrl!.value = 0;
     // Subtle cascade: barely-there stagger so a batch of new cards (search
     // results, category switch) reads as one soft wave, not a slow parade.
     final delay = Duration(milliseconds: 8 + widget.index.clamp(0, 6) * 18);
@@ -261,8 +286,10 @@ class _EntryCardBodyState extends State<_EntryCardBody> {
                             child: Icon(
                               Icons.push_pin_rounded,
                               size: 16,
-                              // Theme-aware pin (was hardcoded orange).
-                              color: scheme.primary,
+                              // Semi-transparent red pin (was theme primary /
+                              // hardcoded orange) — reads as a quiet "pinned"
+                              // marker in every theme.
+                              color: AppAccents.danger.withValues(alpha: 0.7),
                             ),
                           ),
                         ),
@@ -368,8 +395,11 @@ class _EntryCardBodyState extends State<_EntryCardBody> {
                                 ? Icons.star_rounded
                                 : Icons.star_outline_rounded,
                             size: 16,
-                            // Theme-aware mood stars (were hardcoded amber).
-                            color: on ? scheme.primary : scheme.outlineVariant,
+                            // Semi-transparent red mood stars (were theme
+                            // primary / hardcoded amber).
+                            color: on
+                                ? AppAccents.danger.withValues(alpha: 0.7)
+                                : AppAccents.danger.withValues(alpha: 0.22),
                           ),
                         );
                       }),

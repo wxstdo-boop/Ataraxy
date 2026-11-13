@@ -713,7 +713,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         // a rounded info sheet (same style as the provider sheet).
                 Padding(
                   padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
-                  child: Material(
+                  child: PressScale(
+                    scale: 0.97,
+                    haptic: true,
+                    child: Material(
                     color: Colors.transparent,
                     borderRadius: BorderRadius.circular(16),
                     clipBehavior: Clip.antiAlias,
@@ -765,7 +768,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ),
                 ),
-                PressScale(
+                ),
+               PressScale(
                   scale: 0.98,
                   haptic: true,
                   child: ListTile(
@@ -920,13 +924,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 40),
           Center(
-            child: TextButton.icon(
+            child: PressScale(
+              scale: 0.96,
+              haptic: true,
+              child: TextButton.icon(
               icon: const Icon(Icons.developer_mode_rounded, size: 18),
               label: Text(
                 L.tr(context, 'devMode'),
                 style: TextStyle(color: scheme.onSurface.withValues(alpha: 0.4)),
               ),
               onPressed: () => _openDevMode(context),
+            ),
             ),
           ),
           const SizedBox(height: 8),
@@ -941,7 +949,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 6),
           Center(
-            child: GestureDetector(
+            child: PressScale(
+              scale: 0.94,
+              child: GestureDetector(
               onTap: () async {
                 final uri = Uri.parse('https://github.com/wxstdo-boop/Ataraxy');
                 if (await canLaunchUrl(uri)) {
@@ -956,6 +966,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   decoration: TextDecoration.underline,
                 ),
               ),
+            ),
             ),
           ),        ],
       ),

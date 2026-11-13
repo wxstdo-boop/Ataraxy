@@ -12,6 +12,7 @@ import 'package:ataraxy/services/storage_service.dart';
 import 'package:ataraxy/theme/app_theme.dart';
 import 'package:ataraxy/widgets/pressable_icon_button.dart';
 import 'package:ataraxy/widgets/animated_snack.dart';
+import 'package:ataraxy/widgets/app_back_button.dart';
 import 'package:ataraxy/widgets/skeleton.dart';
 import 'package:ataraxy/widgets/premium_header.dart';
 
@@ -382,6 +383,7 @@ class _StatisticsScreenState extends State<StatisticsScreen> {
         ),
       ),
       flexibleSpace: PremiumHeader(colors: AppTheme.headerColors(scheme)),
+      leading: const AppBackButton(),
       title: Text(L.tr(context, 'statistics')),
     );
   }

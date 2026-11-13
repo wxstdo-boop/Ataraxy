@@ -415,6 +415,25 @@ class AppTheme {
           shape: WidgetStateProperty.all(
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
           ),
+          // Smoothly cross-fade the selected segment's fill instead of
+          // snapping it: the default transition is short enough to read as a
+          // hard "jam" when tapping across Сон / Жизнь / Заметка quickly.
+          animationDuration: const Duration(milliseconds: 260),
+          backgroundColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) {
+              return scheme.secondaryContainer;
+            }
+            return scheme.surfaceContainerHighest.withValues(alpha: 0.6);
+          }),
+          foregroundColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) {
+              return scheme.onSecondaryContainer;
+            }
+            return scheme.onSurfaceVariant;
+          }),
+          side: WidgetStateProperty.all(
+            BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.5)),
+          ),
         ),
       ),
       dialogTheme: DialogThemeData(

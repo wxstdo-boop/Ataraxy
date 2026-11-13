@@ -4,6 +4,7 @@ import 'package:ataraxy/providers/settings_provider.dart';
 import 'package:ataraxy/services/notification_service.dart';
 import 'package:ataraxy/theme/app_theme.dart';
 import 'package:ataraxy/widgets/animated_snack.dart';
+import 'package:ataraxy/widgets/app_back_button.dart';
 import 'package:ataraxy/widgets/volumetric_switch.dart';
 
 class DevSettingsScreen extends StatelessWidget {
@@ -36,7 +37,10 @@ class DevSettingsScreen extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppBar(title: Text(L.tr(context, 'dev'))),
+      appBar: AppBar(
+        leading: const AppBackButton(),
+        title: Text(L.tr(context, 'dev')),
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [

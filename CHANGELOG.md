@@ -1,5 +1,26 @@
 # Ataraxy Changelog
 
+## [1.3.26] - 2026-11-14
+### Fixed
+- Feed switching is smooth again. A category / sort / search change now
+  cross-fades: the section's `AnimatedSwitcher` key used to be constant, so a
+  populated → populated switch never triggered the animation and swapped
+  instantly ("нет плавных переключений"). The incoming set now fades in over
+  the outgoing one (held opaque underneath), so the bright scaffold can never
+  show through mid-swap as a "вспышка".
+- Removed the "белые полосы" on the dream / tulpa guide screen. The tip tiles
+  were `surfaceContainerLow` — near-white on the light themes — stacked over a
+  bright page, so the gaps read as a column of white stripes. Both the page and
+  the cards now use tinted containers (no near-white anywhere), inverted for
+  the dark themes.
+- Paragraph breaks read as real paragraphs in every reading view: `blockSpacing`
+  is now derived from the paragraph style (line box × 1.25) instead of a flat
+  constant that sat below the line leading and merged blank-line paragraphs.
+
+### Changed
+- The editor's day-category pills fire the same selection haptic as the home
+  feed's category chips, so switching the day category feels identical.
+
 ## [1.3.25] - 2026-11-10
 ### Fixed
 - Feed no longer "вспышка" when switching entries: a card that stays on screen

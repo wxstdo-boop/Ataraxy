@@ -190,7 +190,23 @@ class _DailyGuideScreenState extends State<DailyGuideScreen> {
     final themeGradient = isDream
         ? [shiftHue(scheme.primary), shiftHue(scheme.tertiary)]
         : [shiftHue(scheme.secondary), shiftHue(scheme.tertiary)];
+    // Page/card contrast for the light themes, where the ramp runs
+    // white → tinted. The page takes the MOST tinted container
+    // (`surfaceContainerHighest`, #eee1dc) and the cards a lighter but
+    // still-tinted one (`surfaceContainerHigh`, #f1e7e5). The earlier
+    // attempt used `surfaceContainerLow` (#f8f4f3) for the cards — that is
+    // NEAR-WHITE (luminance 244) on the light themes, so the cards THEMSELVES
+    // read as the column of white stripes, and the scaffold wash (#fff1ec)
+    // showing through the gaps did the same. Both stops here are tinted, so
+    // no near-white remains anywhere. The dark themes invert the ramp
+    // (low is the darkest container), so the page takes the LOW stop and the
+    // cards stay the raised HIGH stop.
+    final isDark = scheme.brightness == Brightness.dark;
+    final pageColor =
+        isDark ? scheme.surfaceContainerLow : scheme.surfaceContainerHighest;
+    final cardColor = scheme.surfaceContainerHigh;
     return Scaffold(
+      backgroundColor: pageColor,
       appBar: AppBar(
         leading: const AppBackButton(),
         title: Text(title),
@@ -207,20 +223,12 @@ class _DailyGuideScreenState extends State<DailyGuideScreen> {
         ),
         flexibleSpace: PremiumHeader(colors: themeGradient),
       ),
-      // The page must sit a CLEAR step below the tip tiles, not next to them.
-      // `surfaceContainerHigh` (#f1e7e5) vs the tiles' `surfaceContainerHighest`
-      // (#eee1dc) differ by only ~8 luminance, so on the light themes the tiles
-      // dissolved into the page and the section read as a pale field of faint
-      // text — the "белые полосы" in the dream/tulpa advice. The page uses the
-      // app scaffold wash (the SAME relationship the home feed uses and the
-      // user accepted) so the tiles read as raised cards with a real edge.
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
         children: [
           _buildHeaderCard(context, lesson, isDream, scheme, themeGradient),
           const SizedBox(height: 20),
-          _buildLessonCard(context, lesson, scheme),
+          _buildLessonCard(context, lesson, scheme, cardColor),
           const SizedBox(height: 24),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -235,7 +243,7 @@ class _DailyGuideScreenState extends State<DailyGuideScreen> {
           ),
           const SizedBox(height: 12),
           ..._tips(isDream).map((tip) {
-            return _buildTipTile(context, tip, scheme);
+            return _buildTipTile(context, tip, scheme, cardColor);
           }),
         ],
       ),
@@ -313,10 +321,11 @@ class _DailyGuideScreenState extends State<DailyGuideScreen> {
     );
   }
 
-  Widget _buildLessonCard(BuildContext context, _Lesson lesson, ColorScheme scheme) {
+  Widget _buildLessonCard(
+      BuildContext context, _Lesson lesson, ColorScheme scheme, Color cardColor) {
     return Container(
       decoration: BoxDecoration(
-        color: scheme.surfaceContainerHighest,
+        color: cardColor,
         borderRadius: BorderRadius.circular(28),
         border: Border.all(
           color: scheme.outlineVariant.withValues(alpha: 0.3),
@@ -375,16 +384,15 @@ class _DailyGuideScreenState extends State<DailyGuideScreen> {
   }
 
   Widget _buildTipTile(BuildContext context, (IconData, String) tip,
-      ColorScheme scheme) {
+      ColorScheme scheme, Color cardColor) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Container(
         decoration: BoxDecoration(
-          // Was `surfaceContainerLow` — near-white on the light themes, so a
-          // column of tips read as a stack of WHITE STRIPES rather than
-          // cards. The lesson card's surface + hairline outline gives the
-          // tiles a defined edge that separates them from the scaffold.
-          color: scheme.surfaceContainerHighest,
+          // The caller passes the shared card tone (a TINTED container on
+          // every brightness) — never a near-white surface, which is what
+          // turned a column of tips into a stack of WHITE STRIPES.
+          color: cardColor,
           borderRadius: BorderRadius.circular(22),
           border: Border.all(
             color: scheme.outlineVariant.withValues(alpha: 0.3),

@@ -882,7 +882,13 @@ class _EntryScreenState extends State<EntryScreen> with WidgetsBindingObserver {
                     c == EntryCategory.none ? 'catAll' : c.labelKey,
                   ),
                   selected: c == _category,
-                  onTap: () => setState(() => _category = c),
+                  onTap: () {
+                    // Same selection tick the home feed's category chips fire,
+                    // so switching the day category feels identical to
+                    // switching the feed category.
+                    HapticFeedback.selectionClick();
+                    setState(() => _category = c);
+                  },
                 );
               }).toList(),
             ),

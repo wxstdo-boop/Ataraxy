@@ -222,4 +222,95 @@ void main() {
           '${(peak - emptyLuminance).toStringAsFixed(1)} — a scaffold flash',
     );
   });
+
+  testWidgets('category switch cross-fades without flashing the scaffold',
+      (tester) async {
+    // Regression: a populated→populated category switch used to hard-cut — the
+    // section switcher was keyed only by empty-vs-list, so the visible set
+    // changed with no animation at all ("переключения не плавные"). Keying it
+    // by the filter signature makes it cross-fade; the fade must be a
+    // fade-IN-OVER (outgoing held opaque), never a symmetric fade that lets the
+    // bright scaffold through the midpoint — that measured as a +8 luminance
+    // spike, the same "вспышка" class the user kept reporting.
+    final key = GlobalKey();
+    tester.view.physicalSize = const Size(430, 932);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    Future<double> meanLuminance() async {
+      final boundary =
+          key.currentContext!.findRenderObject() as RenderRepaintBoundary;
+      final image = await tester.runAsync(() => boundary.toImage());
+      final data = await tester.runAsync(() => image!.toByteData());
+      final bytes = data!.buffer.asUint8List();
+      final w = image!.width, h = image.height;
+      var sum = 0, n = 0;
+      for (var y = 200; y < h - 200; y += 8) {
+        for (var x = 20; x < w - 20; x += 8) {
+          final i = (y * w + x) * 4;
+          sum += (bytes[i] * 299 + bytes[i + 1] * 587 + bytes[i + 2] * 114) ~/
+              1000;
+          n++;
+        }
+      }
+      image.dispose();
+      return sum / n;
+    }
+
+    final now = DateTime(2026, 1, 2, 10);
+    final entries = [
+      for (var i = 0; i < 8; i++)
+        JournalEntry(
+          id: 'd$i',
+          type: EntryType.dream,
+          title: 'Сон $i',
+          content: 'Текст сна $i',
+          category: i.isEven ? EntryCategory.good : EntryCategory.bad,
+          createdAt: now.subtract(Duration(days: i)),
+          updatedAt: now.subtract(Duration(days: i)),
+        ),
+    ];
+    await tester.runAsync(() => StorageService().saveEntries(entries));
+    await tester.runAsync(() async {
+      await tester.pumpWidget(
+        RepaintBoundary(
+          key: key,
+          child: testApp(const HomeScreen(tulpaEnabled: false)),
+        ),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+    });
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+
+    // Settle on the populated "Хороший" filter.
+    await tester.tap(find.text('Хороший').first);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    final from = await meanLuminance();
+
+    // Switch to the other populated filter and watch every frame. The swap must
+    // animate (at least one frame differs from `from`) yet never brighten.
+    await tester.tap(find.text('Плохой').first);
+    var peak = from;
+    var moved = false;
+    for (var i = 0; i < 16; i++) {
+      await tester.pump(const Duration(milliseconds: 20));
+      final l = await meanLuminance();
+      if (l > peak) peak = l;
+      if ((l - from).abs() > 0.5) moved = true;
+    }
+    expect(
+      peak,
+      lessThanOrEqualTo(from + 4),
+      reason: 'the populated→populated switch brightened the feed by '
+          '${(peak - from).toStringAsFixed(1)} — a scaffold flash',
+    );
+    expect(
+      moved,
+      isTrue,
+      reason: 'the populated→populated switch did not animate at all '
+          '(hard cut) — every frame matched the start luminance',
+    );
+  });
 }

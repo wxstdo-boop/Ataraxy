@@ -501,6 +501,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       (L.tr(context, 'tabAll'), null, L.tr(context, 'emptyAll')),
     ];
 
+    // Filter signature threaded into every `_ListSection`. It changes on any
+    // category / sort / search change, so the section cross-fades those swaps
+    // instead of hard-cutting (see `_ListSection.contentKey`).
+    final contentKey = '${_category.name}|$_sortMode|${_searchQuery.trim()}';
+
     final showRefresh = !_loading && !_refreshing;
 
     return DefaultTabController(
@@ -803,6 +808,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                 emptyText: d.$3,
                                                 seenEntranceIds:
                                                     _seenEntranceIds,
+                                                contentKey: contentKey,
                                               )
                                             : d.$2 == EntryType.dream ||
                                                   d.$2 == EntryType.tulpa
@@ -850,6 +856,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                 emptyText: d.$3,
                                                 seenEntranceIds:
                                                     _seenEntranceIds,
+                                                contentKey: contentKey,
                                               )
                                             : () {
                                                 // Hide notes (general) from the
@@ -917,6 +924,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                   emptyText: d.$3,
                                                   seenEntranceIds:
                                                       _seenEntranceIds,
+                                                  contentKey: contentKey,
                                                 );
                                               }(),
                                       )

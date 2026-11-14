@@ -180,6 +180,14 @@ class _ListSection extends StatelessWidget {
   /// мигает" flicker. Shared with the parent so the memory outlives the list.
   final Set<String>? seenEntranceIds;
 
+  /// Signature of the active filter (category | sort | search). It keys the
+  /// cross-fade below, so ANY change to the visible set — not just an
+  /// empty↔populated flip — plays the dissolve. Without it a populated →
+  /// populated switch (category chip, sort, search) changed neither the key
+  /// nor the cards (they no longer animate), so it swapped instantly: the
+  /// "переключения не плавные" the user kept reporting.
+  final String contentKey;
+
   const _ListSection({
     super.key,
     required this.entries,
@@ -191,6 +199,7 @@ class _ListSection extends StatelessWidget {
     this.header,
     this.heroPrefix = '',
     this.seenEntranceIds,
+    this.contentKey = '',
   });
 
   @override
@@ -337,30 +346,40 @@ class _ListSection extends StatelessWidget {
       );
     }
 
-    // Smooth empty↔populated swap (search clearing to "Записей пока нет",
-    // category/day filter switches). BOTH children cross-fade — the incoming
-    // one rises from 0 while the outgoing one eases to 0 underneath it — so the
-    // surface never blinks: dropping the outgoing instantly (the old
-    // `currentChild ?? shrink` layout) revealed the bright scaffold for a few
-    // frames and read as the "вспышка" the user kept rejecting.
+    // Smooth swap between visible sets (category/day/sort/search filters and
+    // the empty↔populated flip). The key carries BOTH the empty/populated
+    // shape and the `contentKey` filter signature: the old key was just
+    // empty-vs-list, so a populated→populated switch changed nothing and
+    // swapped instantly (the "переключения не плавные" complaint).
+    //
+    // The transition is a FADE-IN-OVER, not a symmetric cross-fade: the
+    // outgoing layer stays fully OPAQUE underneath while the incoming fades in
+    // on top of it. A symmetric fade (both dropping toward 0) let the bright
+    // scaffold show through the 25% gap at the midpoint — measured as a +8
+    // luminance spike on every category switch (the recurring "вспышка"). With
+    // the outgoing pinned at opacity 1 there is always a fully opaque layer, so
+    // the scaffold never peeks through and the swap only ever eases in one
+    // direction.
     //
     // Both children are full-height scroll views (the section lives in an
     // `Expanded`), so the default Stack layout sizes to the taller one without
-    // inflating the shorter empty state — that inflation was the reason the
-    // outgoing child used to be dropped, and it does not apply here.
+    // inflating the shorter empty state.
+    final currentKey = ValueKey(
+      '${entries.isEmpty ? 'section-empty' : 'section-list'}|$contentKey',
+    );
     return RepaintBoundary(
       child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 220),
+        duration: const Duration(milliseconds: 260),
         switchInCurve: Curves.easeOutCubic,
-        switchOutCurve: Curves.easeInCubic,
-        transitionBuilder: (child, animation) => FadeTransition(
-          opacity: animation,
-          child: child,
-        ),
-        child: KeyedSubtree(
-          key: ValueKey(entries.isEmpty ? 'section-empty' : 'section-list'),
-          child: listChild,
-        ),
+        transitionBuilder: (child, animation) {
+          // Only the incoming child fades; the outgoing is held opaque so the
+          // two never multiply into a see-through gap.
+          if (child.key == currentKey) {
+            return FadeTransition(opacity: animation, child: child);
+          }
+          return child;
+        },
+        child: KeyedSubtree(key: currentKey, child: listChild),
       ),
     );
   }

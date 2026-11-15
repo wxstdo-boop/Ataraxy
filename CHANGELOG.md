@@ -1,5 +1,13 @@
 # Ataraxy Changelog
 
+## [1.3.28] - 2026-11-15
+### Fixed
+- Pinning and unpinning entries now glide to their new position in the home
+  feed and notes list.
+- Notes are consistently ordered with pinned entries first, then newest first.
+- The notes screen now offers a clear create-note action in both empty and
+  populated states.
+
 ## [1.3.27] - 2026-11-15
 ### Fixed
 - Home search and category changes now update the existing list in place,

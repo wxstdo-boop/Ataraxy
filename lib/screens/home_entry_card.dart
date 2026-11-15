@@ -1,5 +1,28 @@
 part of 'home_screen.dart';
 
+class _EntryCardPosition {
+  final Offset offset;
+  final int revision;
+
+  const _EntryCardPosition(this.offset, this.revision);
+}
+
+void _shiftEntryCardPositions(
+  Map<String, _EntryCardPosition> positions,
+  double scrollDelta, {
+  required String keyPrefix,
+}) {
+  if (scrollDelta == 0) return;
+  for (final key in positions.keys.toList()) {
+    if (!key.startsWith(keyPrefix)) continue;
+    final position = positions[key]!;
+    positions[key] = _EntryCardPosition(
+      position.offset.translate(0, -scrollDelta),
+      position.revision,
+    );
+  }
+}
+
 class _EntryCard extends StatefulWidget {
   final int index;
   final JournalEntry entry;
@@ -18,6 +41,8 @@ class _EntryCard extends StatefulWidget {
   /// state faded out faster than the cards appeared and the bright scaffold
   /// flashed through — the "вспышка" on empty↔populated switches.
   final bool animate;
+  final int movementRevision;
+  final Map<String, _EntryCardPosition> movementPositions;
 
   const _EntryCard({
     super.key,
@@ -27,6 +52,8 @@ class _EntryCard extends StatefulWidget {
     required this.onPin,
     required this.heroTag,
     this.animate = true,
+    this.movementRevision = 0,
+    required this.movementPositions,
   });
 
   @override
@@ -38,10 +65,18 @@ class _EntryCardState extends State<_EntryCard>
   AnimationController? _ctrl;
   Animation<double>? _opacity;
   Animation<Offset>? _slide;
+  AnimationController? _movementCtrl;
+  Animation<Offset>? _movement;
+  Offset? _movementOrigin;
 
   @override
   void initState() {
     super.initState();
+    final previous = widget.movementPositions[widget.heroTag];
+    if (previous != null && previous.revision != widget.movementRevision) {
+      _movementOrigin = previous.offset;
+    }
+    _schedulePositionUpdate();
     // First list of the session: `animate` staggers the initial cascade.
     if (widget.animate) _play();
   }
@@ -55,6 +90,43 @@ class _EntryCardState extends State<_EntryCard>
     // delay and then faded back, reading as a hard "вспышка" rather than a
     // smooth switch. Survivors now stay put; the section cross-fade carries
     // the swap instead.
+    if (oldWidget.movementRevision != widget.movementRevision &&
+        oldWidget.index != widget.index) {
+      _movementOrigin = _currentPosition();
+    }
+    _schedulePositionUpdate();
+  }
+
+  Offset? _currentPosition() {
+    final renderObject = context.findRenderObject();
+    if (renderObject is! RenderBox || !renderObject.hasSize) return null;
+    return renderObject.localToGlobal(Offset.zero);
+  }
+
+  void _schedulePositionUpdate() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final current = _currentPosition();
+      if (current == null) return;
+      final origin = _movementOrigin;
+      _movementOrigin = null;
+      widget.movementPositions[widget.heroTag] = _EntryCardPosition(
+        current,
+        widget.movementRevision,
+      );
+      if (origin == null) return;
+      final delta = origin - current;
+      if (delta.distance < 1) return;
+      _movementCtrl ??= AnimationController(
+        vsync: this,
+        duration: const Duration(milliseconds: 320),
+      );
+      _movementCtrl!.stop();
+      _movement = Tween<Offset>(begin: delta, end: Offset.zero).animate(
+        CurvedAnimation(parent: _movementCtrl!, curve: Curves.easeInOutCubic),
+      );
+      _movementCtrl!.forward(from: 0);
+    });
   }
 
   /// (Re)starts the fade+slide. Creates the controller lazily so cards that
@@ -81,11 +153,16 @@ class _EntryCardState extends State<_EntryCard>
   @override
   void dispose() {
     _ctrl?.dispose();
+    _movementCtrl?.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    return _buildCard(context);
+  }
+
+  Widget _buildCard(BuildContext context) {
     // NOTE: whether the card animates is decided ONCE, in initState — it must
     // NOT be re-read from `widget.animate` here. The parent computes
     // `animate` via `seenEntranceIds.add(id)`, which is false on every build
@@ -95,27 +172,38 @@ class _EntryCardState extends State<_EntryCard>
     // dropped and the card POPPED to full opacity. That snap, on top of the
     // entrance that had just started, is the "дёргает записи по двойному".
     final ctrl = _ctrl;
+    final Widget card;
     if (ctrl == null) {
-      return _EntryCardBody(
+      card = _EntryCardBody(
         entry: widget.entry,
         index: widget.index,
         heroTag: widget.heroTag,
         onTap: widget.onTap,
         onPin: widget.onPin,
       );
-    }
-    return FadeTransition(
-      opacity: _opacity!,
-      child: SlideTransition(
-        position: _slide!,
-        child: _EntryCardBody(
-          entry: widget.entry,
-          index: widget.index,
-          heroTag: widget.heroTag,
-          onTap: widget.onTap,
-          onPin: widget.onPin,
+    } else {
+      card = FadeTransition(
+        opacity: _opacity!,
+        child: SlideTransition(
+          position: _slide!,
+          child: _EntryCardBody(
+            entry: widget.entry,
+            index: widget.index,
+            heroTag: widget.heroTag,
+            onTap: widget.onTap,
+            onPin: widget.onPin,
+          ),
         ),
-      ),
+      );
+    }
+    final movement = _movement;
+    final movementCtrl = _movementCtrl;
+    if (movement == null || movementCtrl == null) return card;
+    return AnimatedBuilder(
+      animation: movementCtrl,
+      child: card,
+      builder: (context, child) =>
+          Transform.translate(offset: movement.value, child: child),
     );
   }
 }
@@ -154,257 +242,265 @@ class _EntryCardBodyState extends State<_EntryCardBody> {
       // A held card dips in slightly (and springs back) so a press is felt,
       // not just seen via the brightening surface.
       child: AnimatedScale(
-      scale: _pressed ? 0.98 : 1.0,
-      duration: const Duration(milliseconds: 200),
-      curve: Curves.easeOutCubic,
-      child: AnimatedContainer(
-      duration: const Duration(milliseconds: 260),
-      curve: Curves.easeOutCubic,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: _pressed
-              ? scheme.primary.withValues(alpha: 0.45)
-              : Colors.transparent,
-          width: 1.6,
-        ),
-      ),
-      child: Card(
-        clipBehavior: Clip.antiAlias,
-        // No elevation: a blurred shadow on every card is the #1 FPS killer
-        // in a scrolling list on low-end GPUs (Redmi). The border + gradient
-        // carry the depth instead — zero shadow cost.
-        elevation: 0,
-        color: Colors.transparent,
-        surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(24),
-          side: BorderSide(
-            color: scheme.outlineVariant.withValues(alpha: 0.5),
-            width: 1,
-          ),
-        ),
-        child: InkWell(
-          onTap: () {
-            HapticFeedback.lightImpact();
-            widget.onTap();
-          },
-          onLongPress: widget.onPin,
-          onHighlightChanged: (v) {
-            if (mounted && v != _pressed) {
-              setState(() => _pressed = v);
-            }
-          },
-          borderRadius: BorderRadius.circular(24),
-          // The raw grey splash/highlight is muted out; the animated border
-          // + surface brighten (both 260ms) are the smooth replacement.
-          splashColor: Colors.transparent,
-          highlightColor: Colors.transparent,
-          hoverColor: Colors.transparent,
-          // Frosted-glass card: a single translucent surface layer so the
-          // ambient wash behind the feed shows through. One layer (not a
-          // two-stop gradient) — cheaper to composite on low-end GPUs.
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(24),
-              // Press highlight: the surface brightens softly (same 260ms
-              // ease-out as the border) instead of the raw grey InkWell
-              // block flashing in.
-              //
-              // surfaceContainerHighest, NOT Low: Low is near-neutral white on
-              // the light themes while the scaffold keeps the theme tint, so a
-              // column of cards read as WHITE STRIPES over the coloured feed.
-              // Highest carries the tint and still separates from the wash.
-              color: scheme.surfaceContainerHighest
-                  .withValues(alpha: _pressed ? 0.98 : 0.85),
+        scale: _pressed ? 0.98 : 1.0,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOutCubic,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 260),
+          curve: Curves.easeOutCubic,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: _pressed
+                  ? scheme.primary.withValues(alpha: 0.45)
+                  : Colors.transparent,
+              width: 1.6,
             ),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+          ),
+          child: Card(
+            clipBehavior: Clip.antiAlias,
+            // No elevation: a blurred shadow on every card is the #1 FPS killer
+            // in a scrolling list on low-end GPUs (Redmi). The border + gradient
+            // carry the depth instead — zero shadow cost.
+            elevation: 0,
+            color: Colors.transparent,
+            surfaceTintColor: Colors.transparent,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+              side: BorderSide(
+                color: scheme.outlineVariant.withValues(alpha: 0.5),
+                width: 1,
+              ),
+            ),
+            child: InkWell(
+              onTap: () {
+                HapticFeedback.lightImpact();
+                widget.onTap();
+              },
+              onLongPress: widget.onPin,
+              onHighlightChanged: (v) {
+                if (mounted && v != _pressed) {
+                  setState(() => _pressed = v);
+                }
+              },
+              borderRadius: BorderRadius.circular(24),
+              // The raw grey splash/highlight is muted out; the animated border
+              // + surface brighten (both 260ms) are the smooth replacement.
+              splashColor: Colors.transparent,
+              highlightColor: Colors.transparent,
+              hoverColor: Colors.transparent,
+              // Frosted-glass card: a single translucent surface layer so the
+              // ambient wash behind the feed shows through. One layer (not a
+              // two-stop gradient) — cheaper to composite on low-end GPUs.
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(24),
+                  // Press highlight: the surface brightens softly (same 260ms
+                  // ease-out as the border) instead of the raw grey InkWell
+                  // block flashing in.
+                  //
+                  // surfaceContainerHighest, NOT Low: Low is near-neutral white on
+                  // the light themes while the scaffold keeps the theme tint, so a
+                  // column of cards read as WHITE STRIPES over the coloured feed.
+                  // Highest carries the tint and still separates from the wash.
+                  color: scheme.surfaceContainerHighest.withValues(
+                    alpha: _pressed ? 0.98 : 0.85,
+                  ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Flexible(child: _TypeBadge(type: widget.entry.type)),
-                      if (widget.entry.type == EntryType.dream &&
-                          widget.entry.isLucid != null) ...[
-                        const SizedBox(width: 6),
-                        Flexible(
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 3,
-                            ),
-                            decoration: BoxDecoration(
-                              color: widget.entry.isLucid!
-                                  ? scheme.tertiaryContainer
-                                  : scheme.surfaceContainerHighest,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Text(
-                              widget.entry.isLucid!
-                                  ? L.tr(context, 'dreamLucid')
-                                  : L.tr(context, 'dreamNormal'),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                // Theme containers instead of hardcoded amber:
-                                // a saturated yellow chip on a pastel palette
-                                // was the harshest element on the card.
-                                color: widget.entry.isLucid!
-                                    ? scheme.onTertiaryContainer
-                                    : scheme.onSurfaceVariant,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                      const Spacer(),
-                      // Pin badge: fades + scales in/out in place instead of
-                      // popping when the entry is pinned/unpinned. The slot is
-                      // always reserved (fixed-width SizedBox) so the date to
-                      // its right never shifts sideways mid-animation.
-                      SizedBox(
-                        width: 20,
-                        child: AnimatedScale(
-                          scale: widget.entry.pinned ? 1.0 : 0.4,
-                          duration: const Duration(milliseconds: 260),
-                          curve: Curves.easeOutBack,
-                          child: AnimatedOpacity(
-                            opacity: widget.entry.pinned ? 1.0 : 0.0,
-                            duration: const Duration(milliseconds: 200),
-                            curve: Curves.easeOut,
-                            child: Icon(
-                              Icons.push_pin_rounded,
-                              size: 16,
-                              // Semi-transparent red pin (was theme primary /
-                              // hardcoded orange) — reads as a quiet "pinned"
-                              // marker in every theme.
-                              color: AppAccents.danger.withValues(alpha: 0.7),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      if (widget.entry.category != EntryCategory.none) ...[
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            color: _categoryColor(
-                              widget.entry.category,
-                            ).withValues(alpha: 0.07),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            L.tr(context, widget.entry.category.labelKey),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: _categoryColor(widget.entry.category),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                      ],
-                      Flexible(
-                        child: Text(
-                          widget.entry.formattedDate,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.labelSmall
-                              ?.copyWith(
-                                color: scheme.onSurface.withValues(alpha: 0.5),
-                              ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Hero(
-                    tag: 'entry-title-${widget.heroTag}',
-                    child: Material(
-                      type: MaterialType.transparency,
-                      child: Text(
-                        widget.entry.title.isEmpty
-                            ? L.tr(context, 'withoutTitle')
-                            : widget.entry.title,
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleMedium
-                            ?.copyWith(fontWeight: FontWeight.w600),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  _MarkdownPreview(text: widget.entry.content, scheme: scheme),
-                  if (widget.entry.tags.isNotEmpty) ...[
-                    const SizedBox(height: 10),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      children: widget.entry.tags
-                          .map(
-                            (t) => Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: scheme.primary.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Text(
-                                '#$t',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: scheme.primary,
+                      Row(
+                        children: [
+                          Flexible(child: _TypeBadge(type: widget.entry.type)),
+                          if (widget.entry.type == EntryType.dream &&
+                              widget.entry.isLucid != null) ...[
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: widget.entry.isLucid!
+                                      ? scheme.tertiaryContainer
+                                      : scheme.surfaceContainerHighest,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  widget.entry.isLucid!
+                                      ? L.tr(context, 'dreamLucid')
+                                      : L.tr(context, 'dreamNormal'),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    // Theme containers instead of hardcoded amber:
+                                    // a saturated yellow chip on a pastel palette
+                                    // was the harshest element on the card.
+                                    color: widget.entry.isLucid!
+                                        ? scheme.onTertiaryContainer
+                                        : scheme.onSurfaceVariant,
+                                  ),
                                 ),
                               ),
                             ),
-                          )
-                          .toList(),
-                    ),
-                  ],
-                  // Mood indicator — small filled stars matching the entry mood.
-                  if (widget.entry.mood > 0) ...[
-                    const SizedBox(height: 10),
-                    Row(
-                      children: List.generate(5, (i) {
-                        final on = i < widget.entry.mood;
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 3),
-                          child: Icon(
-                            on
-                                ? Icons.star_rounded
-                                : Icons.star_outline_rounded,
-                            size: 16,
-                            // Semi-transparent red mood stars (were theme
-                            // primary / hardcoded amber).
-                            color: on
-                                ? AppAccents.danger.withValues(alpha: 0.7)
-                                : AppAccents.danger.withValues(alpha: 0.22),
+                          ],
+                          const Spacer(),
+                          // Pin badge: fades + scales in/out in place instead of
+                          // popping when the entry is pinned/unpinned. The slot is
+                          // always reserved (fixed-width SizedBox) so the date to
+                          // its right never shifts sideways mid-animation.
+                          SizedBox(
+                            width: 20,
+                            child: AnimatedScale(
+                              scale: widget.entry.pinned ? 1.0 : 0.4,
+                              duration: const Duration(milliseconds: 260),
+                              curve: Curves.easeOutBack,
+                              child: AnimatedOpacity(
+                                opacity: widget.entry.pinned ? 1.0 : 0.0,
+                                duration: const Duration(milliseconds: 200),
+                                curve: Curves.easeOut,
+                                child: Icon(
+                                  Icons.push_pin_rounded,
+                                  size: 16,
+                                  // Semi-transparent red pin (was theme primary /
+                                  // hardcoded orange) — reads as a quiet "pinned"
+                                  // marker in every theme.
+                                  color: AppAccents.danger.withValues(
+                                    alpha: 0.7,
+                                  ),
+                                ),
+                              ),
+                            ),
                           ),
-                        );
-                      }),
-                    ),
-                  ],
-                ],
+                          const SizedBox(width: 4),
+                          if (widget.entry.category != EntryCategory.none) ...[
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: _categoryColor(
+                                  widget.entry.category,
+                                ).withValues(alpha: 0.07),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                L.tr(context, widget.entry.category.labelKey),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: _categoryColor(widget.entry.category),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                          ],
+                          Flexible(
+                            child: Text(
+                              widget.entry.formattedDate,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.labelSmall
+                                  ?.copyWith(
+                                    color: scheme.onSurface.withValues(
+                                      alpha: 0.5,
+                                    ),
+                                  ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Hero(
+                        tag: 'entry-title-${widget.heroTag}',
+                        child: Material(
+                          type: MaterialType.transparency,
+                          child: Text(
+                            widget.entry.title.isEmpty
+                                ? L.tr(context, 'withoutTitle')
+                                : widget.entry.title,
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w600),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      _MarkdownPreview(
+                        text: widget.entry.content,
+                        scheme: scheme,
+                      ),
+                      if (widget.entry.tags.isNotEmpty) ...[
+                        const SizedBox(height: 10),
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 6,
+                          children: widget.entry.tags
+                              .map(
+                                (t) => Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: scheme.primary.withValues(
+                                      alpha: 0.1,
+                                    ),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Text(
+                                    '#$t',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: scheme.primary,
+                                    ),
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                        ),
+                      ],
+                      // Mood indicator — small filled stars matching the entry mood.
+                      if (widget.entry.mood > 0) ...[
+                        const SizedBox(height: 10),
+                        Row(
+                          children: List.generate(5, (i) {
+                            final on = i < widget.entry.mood;
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 3),
+                              child: Icon(
+                                on
+                                    ? Icons.star_rounded
+                                    : Icons.star_outline_rounded,
+                                size: 16,
+                                // Semi-transparent red mood stars (were theme
+                                // primary / hardcoded amber).
+                                color: on
+                                    ? AppAccents.danger.withValues(alpha: 0.7)
+                                    : AppAccents.danger.withValues(alpha: 0.22),
+                              ),
+                            );
+                          }),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
         ),
-      ),
-      ),
       ),
     );
   }
@@ -433,21 +529,21 @@ class _TypeBadge extends StatelessWidget {
     // badge always belongs to the active palette instead of hardcoded hues.
     final (List<Color> colors, IconData icon) = switch (type) {
       EntryType.dream => (
-          [scheme.primary, scheme.tertiary],
-          Icons.nights_stay_rounded,
-        ),
+        [scheme.primary, scheme.tertiary],
+        Icons.nights_stay_rounded,
+      ),
       EntryType.life => (
-          [scheme.secondary, scheme.primary],
-          Icons.self_improvement_rounded,
-        ),
+        [scheme.secondary, scheme.primary],
+        Icons.self_improvement_rounded,
+      ),
       EntryType.general => (
-          [scheme.primary, scheme.primaryContainer],
-          Icons.edit_note_rounded,
-        ),
+        [scheme.primary, scheme.primaryContainer],
+        Icons.edit_note_rounded,
+      ),
       EntryType.tulpa => (
-          [scheme.tertiary, scheme.secondary],
-          Icons.psychology_rounded,
-        ),
+        [scheme.tertiary, scheme.secondary],
+        Icons.psychology_rounded,
+      ),
     };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -541,8 +637,9 @@ class _MarkdownPreview extends StatelessWidget {
     // EVERY rebuild (scroll, theme, tab) made lists crawl on low-end GPUs.
     // Truncating to a few KB keeps the parse near-instant — the preview
     // never shows more than that anyway.
-    final previewText =
-        display.length > 4000 ? display.substring(0, 4000) : display;
+    final previewText = display.length > 4000
+        ? display.substring(0, 4000)
+        : display;
     return RepaintBoundary(
       child: ClipRect(
         child: ConstrainedBox(

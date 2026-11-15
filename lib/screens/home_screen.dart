@@ -1,4 +1,4 @@
-﻿import 'dart:async' show Timer, unawaited;
+import 'dart:async' show Timer, unawaited;
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
@@ -67,6 +67,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final StorageService _storage = StorageService();
   static const String _blurPrefKey = 'title_blurred';
   List<JournalEntry> _entries = [];
+
   /// Days in a row the user wrote at least one entry (ends today, or
   /// yesterday while today is still empty so the streak isn't "broken"
   /// before the day is over). Shown in the header StreakBadge.
@@ -94,12 +95,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   // the collapse updates the app-bar's bottom height (preferredSize).
   late final AnimationController _barsCtrl;
   late final Animation<double> _barsAnim;
+
   /// 1 = bars fully expanded, 0 = fully retracted.
   double get _barsT => _barsAnim.value;
+
   /// Bumped by every rebuild that changes the feed. Bar-collapse ticks go
   /// through [_onBarsTick] and leave it alone — that is what lets [_StableFeed]
   /// hand back its cached widget while the pills retract.
   int _contentRev = 0;
+
   /// Entries whose card entrance animation already played this session. The
   /// lazy feed disposes off-screen cards, so this is what stops a card from
   /// re-animating (the "дёргает и мигает" flicker) every time it scrolls back.
@@ -118,7 +122,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   // The AI assistant lives at the AppShell level (above the Navigator) so
   // it floats over every section; the FAB long-press just flips the shared
   // visibility notifier.
-
 
   @override
   void initState() {
@@ -285,7 +288,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       final entries = await _storage.loadEntries();
       final order = await _storage.loadManualOrder();
       if (!mounted) return;
+      final oldPinned = {for (final entry in _entries) entry.id: entry.pinned};
+      final pinChanged = entries.any(
+        (entry) =>
+            oldPinned.containsKey(entry.id) &&
+            oldPinned[entry.id] != entry.pinned,
+      );
       setState(() {
+        if (pinChanged) _pinMovementRevision++;
         _entries = _applyManualOrder(entries, order);
         _searchTextCache.clear();
         _streak = _computeStreak(entries);
@@ -352,6 +362,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   /// that to one pass per type instead of three.
   final Map<EntryType?, List<JournalEntry>> _filteredCache = {};
   final Map<String, String> _searchTextCache = {};
+  int _pinMovementRevision = 0;
+  final Map<String, _EntryCardPosition> _entryCardPositions = {};
 
   List<JournalEntry> _filtered(EntryType? type) {
     return _filteredCache.putIfAbsent(type, () {
@@ -366,8 +378,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         list = list.where((e) {
           final searchableText = _searchTextCache.putIfAbsent(
             e.id,
-            () => '${e.title}\n${e.content}\n${e.tags.join('\n')}'
-                .toLowerCase(),
+            () =>
+                '${e.title}\n${e.content}\n${e.tags.join('\n')}'.toLowerCase(),
           );
           return searchableText.contains(query);
         }).toList();
@@ -429,9 +441,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     // Only the id sequence is persisted. Rewriting every entry from memory
     // (the old saveEntries call) raced the editor's autosave and pushed
     // stale bodies back to the box — the "my words disappeared" bug.
-    unawaited(
-      _storage.saveManualOrder(_entries.map((e) => e.id).toList()),
-    );
+    unawaited(_storage.saveManualOrder(_entries.map((e) => e.id).toList()));
     setState(() {});
   }
 
@@ -439,9 +449,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     if (!mounted) return;
     // Short, smooth fade (280ms) instead of the stock page route — the editor
     // appears without the extra beat of room the default transition waits for.
-    Navigator.of(
-      context,
-    ).push(fadeRoute(const EntryScreen())).then((_) {
+    Navigator.of(context).push(fadeRoute(const EntryScreen())).then((_) {
       if (mounted) _load();
     });
   }
@@ -555,32 +563,32 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       scale: 0.86,
                       haptic: true,
                       child: IconButton(
-                      key: const ValueKey('refresh'),
-                      icon: const Icon(Icons.refresh_rounded),
-                      onPressed: showRefresh
-                          ? () {
-                              // Reload the entries from storage — the
-                              // button previously just waited 2.5s and
-                              // locked the screen, which was wrong.
-                              _load(showCover: true).then((_) {
-                                if (!mounted || !context.mounted) return;
-                                // Debounce: rapid taps on refresh must not
-                                // stack a "Записи обновлены" snackbar per tap.
-                                final now = DateTime.now();
-                                if (now.difference(_lastRefreshSnackAt) <
-                                    const Duration(seconds: 2)) {
-                                  return;
-                                }
-                                _lastRefreshSnackAt = now;
-                                AnimatedSnack.show(
-                                  context,
-                                  L.tr(context, 'entriesUpdated'),
-                                  type: SnackType.success,
-                                );
-                              });
-                            }
-                          : null,
-                    ),
+                        key: const ValueKey('refresh'),
+                        icon: const Icon(Icons.refresh_rounded),
+                        onPressed: showRefresh
+                            ? () {
+                                // Reload the entries from storage — the
+                                // button previously just waited 2.5s and
+                                // locked the screen, which was wrong.
+                                _load(showCover: true).then((_) {
+                                  if (!mounted || !context.mounted) return;
+                                  // Debounce: rapid taps on refresh must not
+                                  // stack a "Записи обновлены" snackbar per tap.
+                                  final now = DateTime.now();
+                                  if (now.difference(_lastRefreshSnackAt) <
+                                      const Duration(seconds: 2)) {
+                                    return;
+                                  }
+                                  _lastRefreshSnackAt = now;
+                                  AnimatedSnack.show(
+                                    context,
+                                    L.tr(context, 'entriesUpdated'),
+                                    type: SnackType.success,
+                                  );
+                                });
+                              }
+                            : null,
+                      ),
                     ),
             ),
           ),
@@ -611,30 +619,30 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                    // The wordmark stands clean — the winter beanie now sits
-                    // on the streak badge (it belongs to the celebration,
-                    // not to the static logo).
-                    const Text(
-                      'Ataraxy',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                        // Explicitly opt OUT of the theme's italic
-                        // display font (Cormorant) — the brand wordmark
-                        // keeps its original system-sans look.
-                        fontFamily: 'sans-serif',
-                        fontStyle: FontStyle.normal,
+                      // The wordmark stands clean — the winter beanie now sits
+                      // on the streak badge (it belongs to the celebration,
+                      // not to the static logo).
+                      const Text(
+                        'Ataraxy',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                          // Explicitly opt OUT of the theme's italic
+                          // display font (Cormorant) — the brand wordmark
+                          // keeps its original system-sans look.
+                          fontFamily: 'sans-serif',
+                          fontStyle: FontStyle.normal,
+                        ),
                       ),
-                    ),
-                    // A tight gap keeps the badge hugging the wordmark (it
-                    // read as floating too far right), and the small negative
-                    // nudge pulls it a hair further left — "стрик ближе левее".
-                    const SizedBox(width: 3),
-                    Transform.translate(
-                      offset: const Offset(-1, 0),
-                      child: StreakBadge(streak: _streak),
-                    ),
+                      // A tight gap keeps the badge hugging the wordmark (it
+                      // read as floating too far right), and the small negative
+                      // nudge pulls it a hair further left — "стрик ближе левее".
+                      const SizedBox(width: 3),
+                      Transform.translate(
+                        offset: const Offset(-1, 0),
+                        child: StreakBadge(streak: _streak),
+                      ),
                     ],
                   ),
                 ),
@@ -656,9 +664,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               icon: const Icon(Icons.insights_rounded),
               onPressed: () {
                 _searchFocus.unfocus();
-                Navigator.of(
-                  context,
-                ).push(fadeRoute(const StatisticsScreen()));
+                Navigator.of(context).push(fadeRoute(const StatisticsScreen()));
               },
             ),
             PressableIconButton(
@@ -770,165 +776,50 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                         (d) => Builder(
                                           builder: (context) =>
                                               d.$2 == EntryType.life
-                                            ? _ListSection(
-                                                key: ValueKey(
-                                                  d.$2?.name ?? 'all',
-                                                ),
-                                                // Favorites banners scroll
-                                                // WITH the entries now.
-                                                header: Column(
-                                                  children: [
-                                                    _FavoriteActivitiesBanner(
-                                                      onTap: () {
-                                                        Navigator.of(
-                                                          context,
-                                                        ).push(
-                                                          fadeRoute(
-                                                            const FavoriteActivityScreen(),
-                                                          ),
-                                                        );
-                                                      },
-                                                    ),
-                                                    _FavoritesBanner(
-                                                      onTap: () {
-                                                        Navigator.of(
-                                                          context,
-                                                        ).push(
-                                                          fadeRoute(
-                                                            const FavoritesScreen(),
-                                                          ),
-                                                        );
-                                                      },
-                                                    ),
-                                                  ],
-                                                ),
-                                                entries: _filtered(d.$2),
-                                                onTap: (e) => _openDetail(
-                                                  e,
-                                                  heroPrefix:
-                                                      d.$2?.name ?? 'all',
-                                                ),
-                                                onPin: _togglePin,
-                                                onRefresh: () => _load(showCover: true),
-                                                onReorder: (oldIdx, newIdx) =>
-                                                    _onReorder(
-                                                      _filtered(d.$2),
-                                                      oldIdx,
-                                                      newIdx,
-                                                    ),
-                                                emptyText: d.$3,
-                                                seenEntranceIds:
-                                                    _seenEntranceIds,
-                                                contentKey: contentKey,
-                                              )
-                                            : d.$2 == EntryType.dream ||
-                                                  d.$2 == EntryType.tulpa
-                                            ? _ListSection(
-                                                key: ValueKey(
-                                                  d.$2?.name ?? 'all',
-                                                ),
-                                                header: _DailyGuideBanner(
-                                                  topic: d.$2 == EntryType.dream
-                                                      ? DailyGuideTopic
-                                                            .lucidDreams
-                                                      : DailyGuideTopic.tulpa,
-                                                  onTap: () =>
-                                                      Navigator.of(
-                                                        context,
-                                                      ).push(
-                                                        fadeRoute(
-                                                          DailyGuideScreen(
-                                                            topic:
-                                                                d.$2 ==
-                                                                    EntryType
-                                                                        .dream
-                                                                ? DailyGuideTopic
-                                                                      .lucidDreams
-                                                                : DailyGuideTopic
-                                                                      .tulpa,
-                                                          ),
-                                                        ),
-                                                      ),
-                                                ),
-                                                entries: _filtered(d.$2),
-                                                onTap: (e) => _openDetail(
-                                                  e,
-                                                  heroPrefix:
-                                                      d.$2?.name ?? 'all',
-                                                ),
-                                                onPin: _togglePin,
-                                                onRefresh: () => _load(showCover: true),
-                                                onReorder: (oldIdx, newIdx) =>
-                                                    _onReorder(
-                                                      _filtered(d.$2),
-                                                      oldIdx,
-                                                      newIdx,
-                                                    ),
-                                                emptyText: d.$3,
-                                                seenEntranceIds:
-                                                    _seenEntranceIds,
-                                                contentKey: contentKey,
-                                              )
-                                            : () {
-                                                // Hide notes (general) from the
-                                                // "ВСЕ" tab list — they're only
-                                                // reachable via the banner.
-                                                final itemsNoNotes =
-                                                    _filtered(d.$2)
-                                                        .where(
-                                                          (e) =>
-                                                              e.type !=
-                                                              EntryType.general,
-                                                        )
-                                                        .toList();
-                                                return _ListSection(
+                                              ? _ListSection(
                                                   key: ValueKey(
                                                     d.$2?.name ?? 'all',
                                                   ),
-                                                  header: _AllBanner(
-                                                    // NOT `_filtered(...)`: the
-                                                    // banner hides itself when
-                                                    // there are no notes, so a
-                                                    // category filter that
-                                                    // happens to drop every note
-                                                    // used to collapse the header
-                                                    // and shift the whole section.
-                                                    entries: _entries,
-                                                    onTap: () {
-                                                      final notes = _entries
-                                                          .where(
-                                                            (e) =>
-                                                                e.type ==
-                                                                EntryType
-                                                                    .general,
-                                                          )
-                                                          .toList();
-                                                      Navigator.of(
-                                                        context,
-                                                      ).push(
-                                                        fadeRoute(
-                                                          _NotesListScreen(
-                                                            notes: notes,
-                                                            storage: _storage,
-                                                            onChanged: _load,
-                                                          ),
-                                                        ),
-                                                      );
-                                                    },
+                                                  // Favorites banners scroll
+                                                  // WITH the entries now.
+                                                  header: Column(
+                                                    children: [
+                                                      _FavoriteActivitiesBanner(
+                                                        onTap: () {
+                                                          Navigator.of(
+                                                            context,
+                                                          ).push(
+                                                            fadeRoute(
+                                                              const FavoriteActivityScreen(),
+                                                            ),
+                                                          );
+                                                        },
+                                                      ),
+                                                      _FavoritesBanner(
+                                                        onTap: () {
+                                                          Navigator.of(
+                                                            context,
+                                                          ).push(
+                                                            fadeRoute(
+                                                              const FavoritesScreen(),
+                                                            ),
+                                                          );
+                                                        },
+                                                      ),
+                                                    ],
                                                   ),
-                                                  heroPrefix:
-                                                      d.$2?.name ?? 'all',
-                                                  entries: itemsNoNotes,
+                                                  entries: _filtered(d.$2),
                                                   onTap: (e) => _openDetail(
                                                     e,
                                                     heroPrefix:
                                                         d.$2?.name ?? 'all',
                                                   ),
                                                   onPin: _togglePin,
-                                                  onRefresh: () => _load(showCover: true),
+                                                  onRefresh: () =>
+                                                      _load(showCover: true),
                                                   onReorder: (oldIdx, newIdx) =>
                                                       _onReorder(
-                                                        itemsNoNotes,
+                                                        _filtered(d.$2),
                                                         oldIdx,
                                                         newIdx,
                                                       ),
@@ -936,8 +827,141 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                   seenEntranceIds:
                                                       _seenEntranceIds,
                                                   contentKey: contentKey,
-                                                );
-                                              }(),
+                                                  movementRevision:
+                                                      _pinMovementRevision,
+                                                  movementPositions:
+                                                      _entryCardPositions,
+                                                )
+                                              : d.$2 == EntryType.dream ||
+                                                    d.$2 == EntryType.tulpa
+                                              ? _ListSection(
+                                                  key: ValueKey(
+                                                    d.$2?.name ?? 'all',
+                                                  ),
+                                                  header: _DailyGuideBanner(
+                                                    topic:
+                                                        d.$2 == EntryType.dream
+                                                        ? DailyGuideTopic
+                                                              .lucidDreams
+                                                        : DailyGuideTopic.tulpa,
+                                                    onTap: () =>
+                                                        Navigator.of(
+                                                          context,
+                                                        ).push(
+                                                          fadeRoute(
+                                                            DailyGuideScreen(
+                                                              topic:
+                                                                  d.$2 ==
+                                                                      EntryType
+                                                                          .dream
+                                                                  ? DailyGuideTopic
+                                                                        .lucidDreams
+                                                                  : DailyGuideTopic
+                                                                        .tulpa,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                  ),
+                                                  entries: _filtered(d.$2),
+                                                  onTap: (e) => _openDetail(
+                                                    e,
+                                                    heroPrefix:
+                                                        d.$2?.name ?? 'all',
+                                                  ),
+                                                  onPin: _togglePin,
+                                                  onRefresh: () =>
+                                                      _load(showCover: true),
+                                                  onReorder: (oldIdx, newIdx) =>
+                                                      _onReorder(
+                                                        _filtered(d.$2),
+                                                        oldIdx,
+                                                        newIdx,
+                                                      ),
+                                                  emptyText: d.$3,
+                                                  seenEntranceIds:
+                                                      _seenEntranceIds,
+                                                  contentKey: contentKey,
+                                                  movementRevision:
+                                                      _pinMovementRevision,
+                                                  movementPositions:
+                                                      _entryCardPositions,
+                                                )
+                                              : () {
+                                                  // Hide notes (general) from the
+                                                  // "ВСЕ" tab list — they're only
+                                                  // reachable via the banner.
+                                                  final itemsNoNotes =
+                                                      _filtered(d.$2)
+                                                          .where(
+                                                            (e) =>
+                                                                e.type !=
+                                                                EntryType
+                                                                    .general,
+                                                          )
+                                                          .toList();
+                                                  return _ListSection(
+                                                    key: ValueKey(
+                                                      d.$2?.name ?? 'all',
+                                                    ),
+                                                    header: _AllBanner(
+                                                      // NOT `_filtered(...)`: the
+                                                      // banner hides itself when
+                                                      // there are no notes, so a
+                                                      // category filter that
+                                                      // happens to drop every note
+                                                      // used to collapse the header
+                                                      // and shift the whole section.
+                                                      entries: _entries,
+                                                      onTap: () {
+                                                        final notes = _entries
+                                                            .where(
+                                                              (e) =>
+                                                                  e.type ==
+                                                                  EntryType
+                                                                      .general,
+                                                            )
+                                                            .toList();
+                                                        Navigator.of(
+                                                          context,
+                                                        ).push(
+                                                          fadeRoute(
+                                                            _NotesListScreen(
+                                                              notes: notes,
+                                                              storage: _storage,
+                                                              onChanged: _load,
+                                                            ),
+                                                          ),
+                                                        );
+                                                      },
+                                                    ),
+                                                    heroPrefix:
+                                                        d.$2?.name ?? 'all',
+                                                    entries: itemsNoNotes,
+                                                    onTap: (e) => _openDetail(
+                                                      e,
+                                                      heroPrefix:
+                                                          d.$2?.name ?? 'all',
+                                                    ),
+                                                    onPin: _togglePin,
+                                                    onRefresh: () =>
+                                                        _load(showCover: true),
+                                                    onReorder:
+                                                        (oldIdx, newIdx) =>
+                                                            _onReorder(
+                                                              itemsNoNotes,
+                                                              oldIdx,
+                                                              newIdx,
+                                                            ),
+                                                    emptyText: d.$3,
+                                                    seenEntranceIds:
+                                                        _seenEntranceIds,
+                                                    contentKey: contentKey,
+                                                    movementRevision:
+                                                        _pinMovementRevision,
+                                                    movementPositions:
+                                                        _entryCardPositions,
+                                                  );
+                                                }(),
                                         ),
                                       )
                                       .toList(),
@@ -1076,76 +1100,88 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                     alpha: 0.25,
                                   ),
                                   child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 4,
-                                  vertical: 4,
-                                ),
-                                child: Row(
-                                  children: [
-                                    const SizedBox(width: 12),
-                                    Icon(
-                                      Icons.search_rounded,
-                                      color: scheme.primary,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 4,
+                                      vertical: 4,
                                     ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: TextField(
-                                        cursorOpacityAnimates: true,
-                                        magnifierConfiguration:
-                                            TextMagnifierConfiguration.disabled,
-                                        contextMenuBuilder: (ctx, state) =>
-                                            buildLimitedContextMenu(ctx, state),
-                                        focusNode: _searchFocus,
-                                        controller: _searchController,
-                                        // Убран autofocus: поле фокусируется только при явном открытии поиска
-                                        maxLength: 50,
-                                        buildCounter: animatedFieldCounter,
-                                        inputFormatters: const [
-                                          EmDashInputFormatter(),
-                                        ],
-                                        onChanged: (value) {
-                                          // Debounced: apply the query once
-                                          // typing pauses, so the result set
-                                          // swaps ONCE, through the same
-                                          // fade-through as the category
-                                          // filter — no flash mid-typing.
-                                          _searchDebounce?.cancel();
-                                          _searchDebounce = Timer(
-                                            const Duration(
-                                              milliseconds: 200,
-                                            ),
-                                            () {
-                                              if (!mounted) return;
-                                              if (value == _searchQuery) return;
-                                              _swapContent(
-                                                () => setState(
-                                                  () => _searchQuery = value,
+                                    child: Row(
+                                      children: [
+                                        const SizedBox(width: 12),
+                                        Icon(
+                                          Icons.search_rounded,
+                                          color: scheme.primary,
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: TextField(
+                                            cursorOpacityAnimates: true,
+                                            magnifierConfiguration:
+                                                TextMagnifierConfiguration
+                                                    .disabled,
+                                            contextMenuBuilder: (ctx, state) =>
+                                                buildLimitedContextMenu(
+                                                  ctx,
+                                                  state,
                                                 ),
+                                            focusNode: _searchFocus,
+                                            controller: _searchController,
+                                            // Убран autofocus: поле фокусируется только при явном открытии поиска
+                                            maxLength: 50,
+                                            buildCounter: animatedFieldCounter,
+                                            inputFormatters: const [
+                                              EmDashInputFormatter(),
+                                            ],
+                                            onChanged: (value) {
+                                              // Debounced: apply the query once
+                                              // typing pauses, so the result set
+                                              // swaps ONCE, through the same
+                                              // fade-through as the category
+                                              // filter — no flash mid-typing.
+                                              _searchDebounce?.cancel();
+                                              _searchDebounce = Timer(
+                                                const Duration(
+                                                  milliseconds: 200,
+                                                ),
+                                                () {
+                                                  if (!mounted) return;
+                                                  if (value == _searchQuery) {
+                                                    return;
+                                                  }
+                                                  _swapContent(
+                                                    () => setState(
+                                                      () =>
+                                                          _searchQuery = value,
+                                                    ),
+                                                  );
+                                                },
                                               );
                                             },
-                                          );
-                                        },
-                                        autocorrect: false,
-                                        enableSuggestions: false,
-                                        style: TextStyle(
-                                          color: scheme.onSurface,
-                                          fontSize: 16,
-                                        ),
-                                        decoration: InputDecoration(
-                                          hintText: L.tr(context, 'searchHint'),
-                                          hintStyle: TextStyle(
-                                            color: scheme.onSurfaceVariant,
-                                          ),
-                                          border: InputBorder.none,
-                                          isDense: true,
-                                          contentPadding:
-                                              const EdgeInsets.symmetric(
-                                                vertical: 12,
+                                            autocorrect: false,
+                                            enableSuggestions: false,
+                                            style: TextStyle(
+                                              color: scheme.onSurface,
+                                              fontSize: 16,
+                                            ),
+                                            decoration: InputDecoration(
+                                              hintText: L.tr(
+                                                context,
+                                                'searchHint',
                                               ),
+                                              hintStyle: TextStyle(
+                                                color: scheme.onSurfaceVariant,
+                                              ),
+                                              border: InputBorder.none,
+                                              isDense: true,
+                                              contentPadding:
+                                                  const EdgeInsets.symmetric(
+                                                    vertical: 12,
+                                                  ),
+                                            ),
+                                          ),
                                         ),
-                                      ),
+                                      ],
                                     ),
-                                  ],
+                                  ),
                                 ),
                               ),
                             ),
@@ -1153,8 +1189,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         ),
                       ),
                     ),
-                  ),
-                ),
                     Positioned(
                       left: 16,
                       bottom: 16,
@@ -1194,10 +1228,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           valueListenable: _fabVisible,
           builder: (context, fabVisible, _) => _FadeSlideFab(
             visible: fabVisible,
-            child: _PressFab(
-              onTap: _openEditor,
-              onLongPress: _openAiAssistant,
-            ),
+            child: _PressFab(onTap: _openEditor, onLongPress: _openAiAssistant),
           ),
         ),
       ),

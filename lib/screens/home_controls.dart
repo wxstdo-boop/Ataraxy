@@ -184,6 +184,8 @@ class _ListSection extends StatelessWidget {
   /// scrollable stays mounted when this changes; [_FilterSwapTransition]
   /// animates its contents in place instead of stacking two full lists.
   final String contentKey;
+  final int movementRevision;
+  final Map<String, _EntryCardPosition> movementPositions;
 
   const _ListSection({
     super.key,
@@ -197,6 +199,8 @@ class _ListSection extends StatelessWidget {
     this.heroPrefix = '',
     this.seenEntranceIds,
     this.contentKey = '',
+    this.movementRevision = 0,
+    required this.movementPositions,
   });
 
   @override
@@ -254,48 +258,62 @@ class _ListSection extends StatelessWidget {
 
     // Isolate list repaints from the rest of the screen.
     return RepaintBoundary(
-      child: _FilterSwapTransition(
-        contentKey: contentKey,
-        child: RefreshIndicator(
-          onRefresh: onRefresh,
-          child: ReorderableListView.builder(
-            scrollCacheExtent: const ScrollCacheExtent.pixels(900),
+      child: NotificationListener<ScrollUpdateNotification>(
+        onNotification: (notification) {
+          if (notification.metrics.axis == Axis.vertical) {
+            _shiftEntryCardPositions(
+              movementPositions,
+              notification.scrollDelta ?? 0,
+              keyPrefix: '$heroPrefix-',
+            );
+          }
+          return false;
+        },
+        child: _FilterSwapTransition(
+          contentKey: contentKey,
+          child: RefreshIndicator(
+            onRefresh: onRefresh,
+            child: ReorderableListView.builder(
+              scrollCacheExtent: const ScrollCacheExtent.pixels(900),
               // Keep the pills and first card close together.
-            padding: const EdgeInsets.fromLTRB(16, 6, 16, 16),
-            header: listHeader,
-            onReorderItem: onReorder ?? (_, _) {},
-            buildDefaultDragHandles: false,
-            proxyDecorator: (child, index, animation) {
+              padding: const EdgeInsets.fromLTRB(16, 6, 16, 16),
+              header: listHeader,
+              onReorderItem: onReorder ?? (_, _) {},
+              buildDefaultDragHandles: false,
+              proxyDecorator: (child, index, animation) {
                 // Preserve the card's rounded shape while it is dragged.
-              return Material(
-                elevation: 8,
-                color: Colors.transparent,
-                shadowColor: scheme.primary.withValues(alpha: 0.30),
-                borderRadius: BorderRadius.circular(20),
-                child: ClipRRect(
+                return Material(
+                  elevation: 8,
+                  color: Colors.transparent,
+                  shadowColor: scheme.primary.withValues(alpha: 0.30),
                   borderRadius: BorderRadius.circular(20),
-                  child: child,
-                ),
-              );
-            },
-            itemCount: entries.length,
-            // Build cards lazily; their entrance animation is one-shot per ID.
-            itemBuilder: (context, i) {
-              final entry = entries[i];
-              return _EntryCard(
-                key: ValueKey(entry.id),
-                index: i,
-                entry: entry,
-                heroTag: '$heroPrefix-${entry.id}',
-                animate:
-                    seenEntranceIds == null || seenEntranceIds!.add(entry.id),
-                onTap: () => onTap(entry),
-                onPin: () => onPin(entry),
-              );
-            },
-            footer: entries.isEmpty
-                ? null
-                : const _MadeWithLove(key: ValueKey('footer')),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
+                    child: child,
+                  ),
+                );
+              },
+              itemCount: entries.length,
+              // Build cards lazily; their entrance animation is one-shot per ID.
+              itemBuilder: (context, i) {
+                final entry = entries[i];
+                return _EntryCard(
+                  key: ValueKey(entry.id),
+                  index: i,
+                  entry: entry,
+                  heroTag: '$heroPrefix-${entry.id}',
+                  animate:
+                      seenEntranceIds == null || seenEntranceIds!.add(entry.id),
+                  movementRevision: movementRevision,
+                  movementPositions: movementPositions,
+                  onTap: () => onTap(entry),
+                  onPin: () => onPin(entry),
+                );
+              },
+              footer: entries.isEmpty
+                  ? null
+                  : const _MadeWithLove(key: ValueKey('footer')),
+            ),
           ),
         ),
       ),
@@ -307,10 +325,7 @@ class _FilterSwapTransition extends StatefulWidget {
   final String contentKey;
   final Widget child;
 
-  const _FilterSwapTransition({
-    required this.contentKey,
-    required this.child,
-  });
+  const _FilterSwapTransition({required this.contentKey, required this.child});
 
   @override
   State<_FilterSwapTransition> createState() => _FilterSwapTransitionState();
@@ -331,10 +346,7 @@ class _FilterSwapTransitionState extends State<_FilterSwapTransition>
       duration: const Duration(milliseconds: 200),
       value: 1,
     );
-    _curve = CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeOutCubic,
-    );
+    _curve = CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic);
     _opacity = Tween<double>(begin: 0.9, end: 1).animate(_curve);
     _offset = Tween<Offset>(
       begin: const Offset(0, 0.012),
@@ -364,10 +376,7 @@ class _FilterSwapTransitionState extends State<_FilterSwapTransition>
       child: widget.child,
       builder: (context, child) => FadeTransition(
         opacity: _opacity,
-        child: SlideTransition(
-          position: _offset,
-          child: child,
-        ),
+        child: SlideTransition(position: _offset, child: child),
       ),
     );
   }

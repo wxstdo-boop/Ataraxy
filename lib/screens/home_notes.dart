@@ -18,11 +18,48 @@ class _NotesListScreen extends StatefulWidget {
 
 class _NotesListScreenState extends State<_NotesListScreen> {
   late List<JournalEntry> _notes;
+  int _pinMovementRevision = 0;
+  final Map<String, _EntryCardPosition> _movementPositions = {};
+
+  List<JournalEntry> _sortNotes(Iterable<JournalEntry> entries) {
+    return entries.where((e) => e.type == EntryType.general).toList()
+      ..sort((a, b) {
+        if (a.pinned != b.pinned) return a.pinned ? -1 : 1;
+        return b.updatedAt.compareTo(a.updatedAt);
+      });
+  }
+
+  void _updateNotes(Iterable<JournalEntry> entries) {
+    final notes = _sortNotes(entries);
+    final oldPinned = {for (final note in _notes) note.id: note.pinned};
+    final pinChanged = notes.any(
+      (note) =>
+          oldPinned.containsKey(note.id) && oldPinned[note.id] != note.pinned,
+    );
+    setState(() {
+      if (pinChanged) _pinMovementRevision++;
+      _notes = notes;
+    });
+  }
 
   @override
   void initState() {
     super.initState();
-    _notes = List.from(widget.notes);
+    _notes = _sortNotes(widget.notes);
+  }
+
+  Future<void> _reloadNotes() async {
+    final entries = await widget.storage.loadEntries();
+    if (mounted) _updateNotes(entries);
+  }
+
+  Future<void> _createNote() async {
+    await Navigator.of(
+      context,
+    ).push<void>(fadeRoute(const EntryScreen(defaultType: EntryType.general)));
+    if (!mounted) return;
+    widget.onChanged();
+    await _reloadNotes();
   }
 
   Future<void> _openDetail(JournalEntry entry) async {
@@ -36,11 +73,7 @@ class _NotesListScreenState extends State<_NotesListScreen> {
             widget.onChanged();
             widget.storage.loadEntries().then((entries) {
               if (mounted) {
-                setState(() {
-                  _notes = entries
-                      .where((e) => e.type == EntryType.general)
-                      .toList();
-                });
+                _updateNotes(entries);
               }
             });
           },
@@ -49,13 +82,7 @@ class _NotesListScreenState extends State<_NotesListScreen> {
     );
     if (changed == true && mounted) {
       widget.onChanged();
-      // Reload notes
-      final entries = await widget.storage.loadEntries();
-      if (mounted) {
-        setState(() {
-          _notes = entries.where((e) => e.type == EntryType.general).toList();
-        });
-      }
+      await _reloadNotes();
     }
   }
 
@@ -64,9 +91,7 @@ class _NotesListScreenState extends State<_NotesListScreen> {
     widget.onChanged();
     final entries = await widget.storage.loadEntries();
     if (mounted) {
-      setState(() {
-        _notes = entries.where((e) => e.type == EntryType.general).toList();
-      });
+      _updateNotes(entries);
     }
   }
 
@@ -93,11 +118,35 @@ class _NotesListScreenState extends State<_NotesListScreen> {
       ),
       body: _notes.isEmpty
           ? Center(
-              child: Text(
-                L.tr(context, 'emptyNotes'),
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurface
-                      .withValues(alpha: 0.6),
+              child: Padding(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.edit_note_rounded,
+                      size: 44,
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurfaceVariant.withValues(alpha: 0.75),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      L.tr(context, 'emptyNotes'),
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withValues(alpha: 0.6),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    FilledButton.icon(
+                      onPressed: _createNote,
+                      icon: const Icon(Icons.add_rounded),
+                      label: Text(L.tr(context, 'newEntry')),
+                    ),
+                  ],
                 ),
               ),
             )
@@ -106,33 +155,56 @@ class _NotesListScreenState extends State<_NotesListScreen> {
                 widget.onChanged();
                 final entries = await widget.storage.loadEntries();
                 if (mounted) {
-                  setState(() {
-                    _notes = entries
-                        .where((e) => e.type == EntryType.general)
-                        .toList();
-                  });
+                  _updateNotes(entries);
                 }
               },
-              child: ListView.builder(
-                scrollCacheExtent: const ScrollCacheExtent.pixels(900),
-                padding: const EdgeInsets.all(16),
-                itemCount: _notes.length + 1,
-                itemBuilder: (context, i) {
-                  if (i == _notes.length) return const _MadeWithLove();
-                  return _EntryCard(
-                    key: ValueKey(_notes[i].id),
-                    index: i,
-                    entry: _notes[i],
-                    heroTag: 'note-${_notes[i].id}',
-                    onTap: () => _openDetail(_notes[i]),
-                    onPin: () => _togglePin(_notes[i]),
-                    // No entrance replay on scroll: with the default true,
-                    // every card re-animated (fade+slide) each time it
-                    // scrolled back into view — the "doubling" flicker.
-                    animate: false,
-                  );
+              child: NotificationListener<ScrollUpdateNotification>(
+                onNotification: (notification) {
+                  if (notification.metrics.axis == Axis.vertical) {
+                    _shiftEntryCardPositions(
+                      _movementPositions,
+                      notification.scrollDelta ?? 0,
+                      keyPrefix: 'note-',
+                    );
+                  }
+                  return false;
                 },
+                child: ListView.builder(
+                  scrollCacheExtent: const ScrollCacheExtent.pixels(900),
+                  padding: const EdgeInsets.all(16),
+                  itemCount: _notes.length + 1,
+                  findChildIndexCallback: (key) {
+                    if (key is! ValueKey<String>) return null;
+                    final index = _notes.indexWhere(
+                      (note) => note.id == key.value,
+                    );
+                    return index < 0 ? null : index;
+                  },
+                  itemBuilder: (context, i) {
+                    if (i == _notes.length) return const _MadeWithLove();
+                    final note = _notes[i];
+                    return _EntryCard(
+                      key: ValueKey(note.id),
+                      index: i,
+                      entry: note,
+                      heroTag: 'note-${note.id}',
+                      movementPositions: _movementPositions,
+                      onTap: () => _openDetail(note),
+                      onPin: () => _togglePin(note),
+                      movementRevision: _pinMovementRevision,
+                      // No entrance replay on scroll; only pin moves animate.
+                      animate: false,
+                    );
+                  },
+                ),
               ),
+            ),
+      floatingActionButton: _notes.isEmpty
+          ? null
+          : FloatingActionButton.extended(
+              onPressed: _createNote,
+              icon: const Icon(Icons.add_rounded),
+              label: Text(L.tr(context, 'newEntry')),
             ),
     );
   }

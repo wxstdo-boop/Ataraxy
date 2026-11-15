@@ -164,8 +164,9 @@ release, so bump `version:` in `pubspec.yaml` before tagging.
   splash holds opaque for the first half of its controller (Interval 0.5→1.0
   fade) so the whole ~1 s write-on lands inside the hold.
 - Press feedback is asymmetric on purpose: `PressScale`, `PressableIconButton`
-  and `_PressFab` snap the dimple IN quickly (~130 ms) but ease the recoil OUT
-  over ~260 ms, so a release reads as a settling spring instead of a hard pop.
+  and `_PressFab` snap the shallow dimple IN quickly (~120 ms) but ease the
+  recoil OUT over ~300 ms, so a release reads as a settling spring instead of
+  a hard pop.
   Do NOT set `symmetric: true` on production controls — it collapses the recoil
   back to the fast in-timing, which is exactly the "отдача резкая" jolt the user
   rejects (the reminder-dialog rows/buttons had it and read as uneven next to

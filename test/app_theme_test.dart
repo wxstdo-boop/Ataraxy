@@ -5,6 +5,13 @@ import 'package:ataraxy/theme/app_theme.dart';
 
 double _luminance(Color c) => c.computeLuminance();
 
+double _saturation(Color c) => HSLColor.fromColor(c).saturation;
+
+double _channelSpread(Color c) {
+  final channels = [c.r, c.g, c.b]..sort();
+  return channels.last - channels.first;
+}
+
 double _contrast(Color a, Color b) {
   final la = _luminance(a);
   final lb = _luminance(b);
@@ -42,6 +49,44 @@ void main() {
           theme.inputDecorationTheme.enabledBorder as OutlineInputBorder?;
       expect(border, isNotNull, reason: '$mode');
       expect(border!.borderSide.color.a, greaterThan(0), reason: '$mode');
+    }
+  });
+
+  test('every palette keeps accents and large surfaces low-chroma', () {
+    for (final mode in AppThemeMode.values) {
+      for (final theme in [AppTheme.of(mode), AppTheme.darkOf(mode)]) {
+        final scheme = theme.colorScheme;
+        final maxAccentSaturation =
+            scheme.brightness == Brightness.dark ? 0.43 : 0.37;
+        for (final accent in [
+          scheme.primary,
+          scheme.secondary,
+          scheme.tertiary,
+        ]) {
+          expect(
+            _saturation(accent),
+            lessThanOrEqualTo(maxAccentSaturation),
+            reason: '$mode accent is too saturated: $accent',
+          );
+        }
+        final surfaces = [
+          theme.scaffoldBackgroundColor,
+          scheme.surface,
+          scheme.surfaceContainerLow,
+          scheme.surfaceContainerHigh,
+          scheme.surfaceContainerHighest,
+        ];
+        for (var i = 0; i < surfaces.length; i++) {
+          final surface = surfaces[i];
+          expect(
+            _channelSpread(surface),
+            lessThanOrEqualTo(0.08),
+            reason:
+                '$mode ${scheme.brightness.name} surface[$i] has a strong tint: '
+                '$surface',
+          );
+        }
+      }
     }
   });
 

@@ -287,6 +287,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       if (!mounted) return;
       setState(() {
         _entries = _applyManualOrder(entries, order);
+        _searchTextCache.clear();
         _streak = _computeStreak(entries);
         _loading = false;
         _refreshing = false;
@@ -295,6 +296,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       if (!mounted) return;
       setState(() {
         _entries = [];
+        _searchTextCache.clear();
         _loading = false;
         _refreshing = false;
       });
@@ -349,6 +351,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   /// the category/search filter AND a full sort. Caching per build cuts
   /// that to one pass per type instead of three.
   final Map<EntryType?, List<JournalEntry>> _filteredCache = {};
+  final Map<String, String> _searchTextCache = {};
 
   List<JournalEntry> _filtered(EntryType? type) {
     return _filteredCache.putIfAbsent(type, () {
@@ -361,10 +364,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       final query = _searchQuery.trim().toLowerCase();
       if (query.isNotEmpty) {
         list = list.where((e) {
-          if (e.title.toLowerCase().contains(query)) return true;
-          if (e.content.toLowerCase().contains(query)) return true;
-          if (e.tags.any((t) => t.toLowerCase().contains(query))) return true;
-          return false;
+          final searchableText = _searchTextCache.putIfAbsent(
+            e.id,
+            () => '${e.title}\n${e.content}\n${e.tags.join('\n')}'
+                .toLowerCase(),
+          );
+          return searchableText.contains(query);
         }).toList();
       }
       // Sort pinned entries to the top, then apply sort mode
@@ -501,9 +506,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       (L.tr(context, 'tabAll'), null, L.tr(context, 'emptyAll')),
     ];
 
-    // Filter signature threaded into every `_ListSection`. It changes on any
-    // category / sort / search change, so the section cross-fades those swaps
-    // instead of hard-cutting (see `_ListSection.contentKey`).
+    // Filter signature is passed to the active tab pages so visible results
+    // animate without eagerly filtering and sorting every off-screen tab.
     final contentKey = '${_category.name}|$_sortMode|${_searchQuery.trim()}';
 
     final showRefresh = !_loading && !_refreshing;
@@ -758,7 +762,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   ),
                                   children: defs
                                       .map(
-                                        (d) => d.$2 == EntryType.life
+                                        // Keep filtering/sorting inside the
+                                        // page builder: TabBarView lazily
+                                        // mounts visible pages, while doing it
+                                        // in this map processed every tab on
+                                        // each search keystroke.
+                                        (d) => Builder(
+                                          builder: (context) =>
+                                              d.$2 == EntryType.life
                                             ? _ListSection(
                                                 key: ValueKey(
                                                   d.$2?.name ?? 'all',
@@ -927,6 +938,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                   contentKey: contentKey,
                                                 );
                                               }(),
+                                        ),
                                       )
                                       .toList(),
                                 ),

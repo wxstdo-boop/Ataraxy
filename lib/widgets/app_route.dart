@@ -6,12 +6,18 @@ import 'package:flutter/material.dart';
 /// surface swapping content, instead of Material's default slide-in-per-page.
 /// A slide plus a Hero flight (the card → detail transition) fought each other
 /// and made the shared element look like it was dragging the page with it.
-Route<T> fadeRoute<T>(Widget page, {Duration duration = const Duration(milliseconds: 280)}) {
+Route<T> fadeRoute<T>(
+  Widget page, {
+  Duration duration = const Duration(milliseconds: 320),
+}) {
   return PageRouteBuilder<T>(
     pageBuilder: (context, animation, secondaryAnimation) => page,
     transitionsBuilder: (context, animation, secondaryAnimation, child) {
       return FadeTransition(
-        opacity: CurvedAnimation(parent: animation, curve: Curves.easeInOut),
+        opacity: CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeInOutCubic,
+        ),
         child: child,
       );
     },

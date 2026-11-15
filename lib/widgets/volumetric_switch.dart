@@ -115,17 +115,25 @@ class VolumetricSwitch extends StatelessWidget {
                 ),
                 child: AnimatedSwitcher(
                   duration: const Duration(milliseconds: 200),
-                  transitionBuilder: (child, anim) => ScaleTransition(
-                    scale: Tween(begin: 0.6, end: 1.0).animate(
-                      CurvedAnimation(parent: anim, curve: Curves.easeOutBack),
+                  transitionBuilder: (child, anim) => FadeTransition(
+                    opacity: anim,
+                    child: ScaleTransition(
+                      scale: Tween(begin: 0.94, end: 1.0).animate(
+                        CurvedAnimation(
+                          parent: anim,
+                          curve: Curves.easeOutCubic,
+                        ),
+                      ),
+                      child: child,
                     ),
-                    child: child,
                   ),
                   child: Icon(
                     key: ValueKey(value),
                     value ? Icons.check_rounded : Icons.close_rounded,
-                    size: 16,
-                    color: value ? active.withValues(alpha: 0.8) : Colors.grey.withValues(alpha: 0.4),
+                    size: 18,
+                    color: value
+                        ? active.withValues(alpha: 0.9)
+                        : scheme.onSurfaceVariant.withValues(alpha: 0.7),
                   ),
                 ),
               ),
@@ -135,7 +143,7 @@ class VolumetricSwitch extends StatelessWidget {
       ),
     );
     return dimple
-        ? PressScale(scale: 0.9, haptic: true, child: switchBody)
+        ? PressScale(scale: 0.96, haptic: true, child: switchBody)
         : switchBody;
   }
 }

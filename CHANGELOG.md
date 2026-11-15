@@ -1,5 +1,22 @@
 # Ataraxy Changelog
 
+## [1.3.27] - 2026-11-15
+### Fixed
+- Home search and category changes now update the existing list in place,
+  preserving its scroll state instead of replacing and overlapping scrollable
+  lists.
+- Search results avoid repeated text normalization, and off-screen tab pages
+  defer filtering until they are built.
+- Dream and tulpa type badges no longer cast a pale glow below the pill; guide
+  tip icon plates use a tinted surface instead of a bright container.
+- Reminder permission and switch icons are clearer and more restrained.
+
+### Changed
+- Reduced harsh color saturation across themes and softened streak, route, and
+  button transitions. Button feedback now uses a shallow press and a smooth
+  300 ms recoil.
+- Video seek-bar updates no longer rebuild the whole player control.
+
 ## [1.3.26] - 2026-11-14
 ### Fixed
 - Feed switching is smooth again. A category / sort / search change now

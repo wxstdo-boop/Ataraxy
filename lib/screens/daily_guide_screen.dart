@@ -405,7 +405,7 @@ class _DailyGuideScreenState extends State<DailyGuideScreen> {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: scheme.primaryContainer,
+                color: scheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Icon(tip.$1, color: scheme.primary, size: 22),

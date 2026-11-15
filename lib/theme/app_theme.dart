@@ -98,7 +98,15 @@ class AppTheme {
   static Color _cap(Color c, double maxSaturation) {
     final h = HSLColor.fromColor(c);
     if (h.saturation <= maxSaturation) return c;
-    return h.withSaturation(maxSaturation).toColor();
+    var saturation = maxSaturation;
+    while (true) {
+      final capped = h.withSaturation(saturation).toColor();
+      if (HSLColor.fromColor(capped).saturation <= maxSaturation ||
+          saturation == 0) {
+        return capped;
+      }
+      saturation = (saturation - 0.02).clamp(0.0, maxSaturation);
+    }
   }
 
   /// Places [c] at [hue] on the wheel, keeping its own saturation/lightness.
@@ -124,30 +132,32 @@ class AppTheme {
     final dark = s.brightness == Brightness.dark;
     final hue = HSLColor.fromColor(s.primary).hue;
     return s.copyWith(
-      // Accents: a touch less chroma than Material's default.
-      primary: _cap(s.primary, dark ? 0.58 : 0.48),
+      // Pull bright accents and large fills farther from Material's vivid
+      // defaults. Keeping lightness preserves contrast; lower saturation
+      // removes the acidic colour cast that builds up across the interface.
+      primary: _cap(s.primary, dark ? 0.42 : 0.36),
       secondary: _cap(_atHue(s.secondary, hue + _secondaryHueOffset),
-          dark ? 0.34 : 0.30),
+          dark ? 0.27 : 0.22),
       tertiary: _cap(
-          _atHue(s.tertiary, hue + _tertiaryHueOffset), dark ? 0.45 : 0.34),
+          _atHue(s.tertiary, hue + _tertiaryHueOffset), dark ? 0.32 : 0.28),
       // Containers are the loudest surfaces in the app (tab pills, cards,
       // chips, the home header glass) — cap them hardest.
-      primaryContainer: _cap(_atHue(s.primaryContainer, hue), 0.45),
+      primaryContainer: _cap(_atHue(s.primaryContainer, hue), dark ? 0.30 : 0.25),
       secondaryContainer:
-          _cap(_atHue(s.secondaryContainer, hue + _secondaryHueOffset), 0.38),
+          _cap(_atHue(s.secondaryContainer, hue + _secondaryHueOffset), 0.24),
       tertiaryContainer:
-          _cap(_atHue(s.tertiaryContainer, hue + _tertiaryHueOffset), 0.38),
+          _cap(_atHue(s.tertiaryContainer, hue + _tertiaryHueOffset), 0.26),
       // Semantic red stays recognisable, just no longer fluorescent.
-      error: _cap(s.error, dark ? 0.75 : 0.62),
+      error: _cap(s.error, dark ? 0.52 : 0.50),
       // Backgrounds keep a hint of the theme's tint and lose the wash.
-      surface: _cap(s.surface, 0.30),
-      surfaceContainerLowest: _cap(s.surfaceContainerLowest, 0.26),
-      surfaceContainerLow: _cap(s.surfaceContainerLow, 0.28),
-      surfaceContainer: _cap(s.surfaceContainer, 0.30),
-      surfaceContainerHigh: _cap(s.surfaceContainerHigh, 0.32),
-      surfaceContainerHighest: _cap(s.surfaceContainerHighest, 0.34),
-      outline: _cap(s.outline, 0.30),
-      outlineVariant: _cap(s.outlineVariant, 0.34),
+      surface: _cap(s.surface, 0.16),
+      surfaceContainerLowest: _cap(s.surfaceContainerLowest, 0.14),
+      surfaceContainerLow: _cap(s.surfaceContainerLow, 0.15),
+      surfaceContainer: _cap(s.surfaceContainer, 0.16),
+      surfaceContainerHigh: _cap(s.surfaceContainerHigh, 0.17),
+      surfaceContainerHighest: _cap(s.surfaceContainerHighest, 0.18),
+      outline: _cap(s.outline, 0.20),
+      outlineVariant: _cap(s.outlineVariant, 0.20),
     );
   }
 
@@ -271,7 +281,10 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: scheme,
-      scaffoldBackgroundColor: scaffoldBg ?? scheme.surfaceContainerLowest,
+      scaffoldBackgroundColor: _cap(
+        scaffoldBg ?? scheme.surfaceContainerLowest,
+        0.16,
+      ),
       // The text caret: a soft rounded brand-tinted bar instead of the default
       // thin 2px line. Combined with `cursorOpacityAnimates: true` on every
       // field (point #7 — "любая буква появляется и исчезает плавно, а не

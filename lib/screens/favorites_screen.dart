@@ -1,16 +1,19 @@
-﻿import 'dart:io';
+import 'dart:io';
 import 'dart:math';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:path_provider/path_provider.dart';
+
 import 'dart:typed_data';
+
 import 'package:video_player/video_player.dart';
 import 'package:image/image.dart' as img;
 
 import 'package:ataraxy/l10n/strings.dart';
 import 'package:ataraxy/widgets/app_back_button.dart';
+import 'package:ataraxy/widgets/app_route.dart';
 import 'package:ataraxy/widgets/animated_field_counter.dart';
 import 'package:ataraxy/models/chat_message.dart';
 import 'package:ataraxy/services/chat_service.dart';
@@ -57,7 +60,6 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     _textController.dispose();
     super.dispose();
   }
-
 
   Future<void> _load() async {
     final raw = await _chatService.loadMessages();
@@ -115,7 +117,15 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     if (const ['mp4', 'mov', 'avi', 'mkv', 'webm'].contains(extension)) {
       return ChatMediaType.video;
     }
-    if (const ['mp3', 'flac', 'wav', 'ogg', 'aac', 'm4a', 'opus'].contains(extension)) {
+    if (const [
+      'mp3',
+      'flac',
+      'wav',
+      'ogg',
+      'aac',
+      'm4a',
+      'opus',
+    ].contains(extension)) {
       return ChatMediaType.audio;
     }
     return ChatMediaType.file;
@@ -147,7 +157,9 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     setState(() {
       final idx = _messages.indexWhere((m) => m.id == id);
       if (idx >= 0) {
-        _messages[idx] = _messages[idx].copyWith(pinned: !_messages[idx].pinned);
+        _messages[idx] = _messages[idx].copyWith(
+          pinned: !_messages[idx].pinned,
+        );
         nowPinned = _messages[idx].pinned;
         // Sort: pinned first (newest among pinned at top), then unpinned
         // (newest first). Previously sorted oldest-first which made the
@@ -180,16 +192,31 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
     final original = img.decodeImage(bytes);
     if (original == null) return;
     final result = await nav.push<Rect>(
-      MaterialPageRoute(
-        builder: (_) => _CropScreen(imageBytes: bytes, aspectRatio: original.width / original.height),
+      fadeRoute(
+        _CropScreen(
+          imageBytes: bytes,
+          aspectRatio: original.width / original.height,
+        ),
       ),
     );
     if (result == null || !mounted) return;
     // Convert Rect (ratio) to actual pixel coords
-    final x = (result.left * original.width).round().clamp(0, original.width - 1);
-    final y = (result.top * original.height).round().clamp(0, original.height - 1);
-    final w = (result.width * original.width).round().clamp(1, original.width - x);
-    final h = (result.height * original.height).round().clamp(1, original.height - y);
+    final x = (result.left * original.width).round().clamp(
+      0,
+      original.width - 1,
+    );
+    final y = (result.top * original.height).round().clamp(
+      0,
+      original.height - 1,
+    );
+    final w = (result.width * original.width).round().clamp(
+      1,
+      original.width - x,
+    );
+    final h = (result.height * original.height).round().clamp(
+      1,
+      original.height - y,
+    );
     final cropped = img.copyCrop(original, x: x, y: y, width: w, height: h);
 
     // Save the cropped image as a new file and update the message so the
@@ -285,7 +312,8 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
               duration: const Duration(milliseconds: 400),
               curve: Curves.easeInOut,
               builder: (context, blurValue, child) {
-                final videoFileName = msg.customName ??
+                final videoFileName =
+                    msg.customName ??
                     file.path.split(Platform.pathSeparator).last;
                 final mediaWidget = _MediaPlayerWidget(
                   file: file,
@@ -294,51 +322,11 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                   isAudio: msg.mediaType == ChatMediaType.audio,
                 );
                 return Stack(
-              children: [
-                Center(
-                  child: msg.mediaType == ChatMediaType.image
-                      ? Container(
-                          decoration: BoxDecoration(
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.35),
-                              width: 2,
-                            ),
-                            borderRadius: BorderRadius.circular(24),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.5),
-                                blurRadius: 24,
-                                spreadRadius: 2,
-                              ),
-                            ],
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(22),
-                            child: blurValue > 0
-                                ? ImageFiltered(
-                                    imageFilter: ui.ImageFilter.blur(sigmaX: blurValue, sigmaY: blurValue),
-                                    child: AspectRatio(
-                                      aspectRatio: 3 / 4,
-                                      child: Image.file(file, fit: BoxFit.cover),
-                                    ),
-                                  )
-                                : AspectRatio(
-                                    aspectRatio: 3 / 4,
-                                    child: Image.file(file, fit: BoxFit.cover),
-                                  ),
-                          ),
-                        )
-                      : msg.mediaType == ChatMediaType.video ||
-                          msg.mediaType == ChatMediaType.audio
-                      ? mediaWidget
-                      : Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              width: 200,
-                              height: 280,
+                  children: [
+                    Center(
+                      child: msg.mediaType == ChatMediaType.image
+                          ? Container(
                               decoration: BoxDecoration(
-                                color: Colors.black26,
                                 border: Border.all(
                                   color: Colors.white.withValues(alpha: 0.35),
                                   width: 2,
@@ -354,81 +342,162 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                               ),
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(22),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(Icons.insert_drive_file_rounded, size: 64, color: Colors.white70),
-                                    const SizedBox(height: 12),
-                                    Text(
-                                      msg.customName ?? file.path.split(Platform.pathSeparator).last,
-                                      style: const TextStyle(color: Colors.white, fontSize: 14),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                  ],
-                                ),
+                                child: blurValue > 0
+                                    ? ImageFiltered(
+                                        imageFilter: ui.ImageFilter.blur(
+                                          sigmaX: blurValue,
+                                          sigmaY: blurValue,
+                                        ),
+                                        child: AspectRatio(
+                                          aspectRatio: 3 / 4,
+                                          child: Image.file(
+                                            file,
+                                            fit: BoxFit.cover,
+                                          ),
+                                        ),
+                                      )
+                                    : AspectRatio(
+                                        aspectRatio: 3 / 4,
+                                        child: Image.file(
+                                          file,
+                                          fit: BoxFit.cover,
+                                        ),
+                                      ),
                               ),
+                            )
+                          : msg.mediaType == ChatMediaType.video ||
+                                msg.mediaType == ChatMediaType.audio
+                          ? mediaWidget
+                          : Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 200,
+                                  height: 280,
+                                  decoration: BoxDecoration(
+                                    color: Colors.black26,
+                                    border: Border.all(
+                                      color: Colors.white.withValues(
+                                        alpha: 0.35,
+                                      ),
+                                      width: 2,
+                                    ),
+                                    borderRadius: BorderRadius.circular(24),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(
+                                          alpha: 0.5,
+                                        ),
+                                        blurRadius: 24,
+                                        spreadRadius: 2,
+                                      ),
+                                    ],
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(22),
+                                    child: Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.insert_drive_file_rounded,
+                                          size: 64,
+                                          color: Colors.white70,
+                                        ),
+                                        const SizedBox(height: 12),
+                                        Text(
+                                          msg.customName ??
+                                              file.path
+                                                  .split(Platform.pathSeparator)
+                                                  .last,
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 14,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                          ],
+                    ),
+                    Positioned(
+                      top: 40,
+                      right: 16,
+                      child: IconButton(
+                        icon: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.black54,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: const Icon(
+                            Icons.close_rounded,
+                            color: Colors.white,
+                          ),
                         ),
-                ),
-                Positioned(
-                  top: 40,
-                  right: 16,
-                  child: IconButton(
-                    icon: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.black54,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: const Icon(Icons.close_rounded, color: Colors.white),
-                    ),
-                    onPressed: () => Navigator.pop(ctx),
-                  ),
-                ),
-                Positioned(
-                  top: 40,
-                  left: 16,
-                  child: IconButton(
-                    icon: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.black54,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: const Icon(Icons.blur_on_rounded, color: Colors.white),
-                    ),
-                    onPressed: () {
-                      setDialogState(() => _blurTarget = _blurTarget >= 10 ? 0 : _blurTarget + 2);
-                    },
-                    onLongPress: () {
-                      setDialogState(() => _blurTarget = _blurTarget >= 10 ? 0 : _blurTarget + 1);
-                    },
-                  ),
-                ),
-                if (msg.mediaType == ChatMediaType.image) Positioned(
-                  top: 40,
-                  left: 72,
-                  child: IconButton(
-                    icon: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.black54,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Icon(
-                        isPinned ? Icons.push_pin_rounded : Icons.push_pin_outlined,
-                        color: isPinned ? AppAccents.amber : Colors.white,
+                        onPressed: () => Navigator.pop(ctx),
                       ),
                     ),
-                    onPressed: () async {
-                      isPinned = await _togglePin(msg.id);
-                      setDialogState(() {});
-                    },
-                  ),
-                ),
-              ],
-            );
+                    Positioned(
+                      top: 40,
+                      left: 16,
+                      child: IconButton(
+                        icon: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.black54,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: const Icon(
+                            Icons.blur_on_rounded,
+                            color: Colors.white,
+                          ),
+                        ),
+                        onPressed: () {
+                          setDialogState(
+                            () => _blurTarget = _blurTarget >= 10
+                                ? 0
+                                : _blurTarget + 2,
+                          );
+                        },
+                        onLongPress: () {
+                          setDialogState(
+                            () => _blurTarget = _blurTarget >= 10
+                                ? 0
+                                : _blurTarget + 1,
+                          );
+                        },
+                      ),
+                    ),
+                    if (msg.mediaType == ChatMediaType.image)
+                      Positioned(
+                        top: 40,
+                        left: 72,
+                        child: IconButton(
+                          icon: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.black54,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Icon(
+                              isPinned
+                                  ? Icons.push_pin_rounded
+                                  : Icons.push_pin_outlined,
+                              color: isPinned ? AppAccents.amber : Colors.white,
+                            ),
+                          ),
+                          onPressed: () async {
+                            isPinned = await _togglePin(msg.id);
+                            setDialogState(() {});
+                          },
+                        ),
+                      ),
+                  ],
+                );
               },
             ),
           );
@@ -474,10 +543,7 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
             const SizedBox(width: 10),
             Text(
               L.tr(context, 'favoritesTitle'),
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: headerFg,
-              ),
+              style: TextStyle(fontWeight: FontWeight.bold, color: headerFg),
             ),
           ],
         ),
@@ -500,7 +566,8 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                               child: Dismissible(
                                 key: ValueKey(_messages[i].id),
                                 confirmDismiss: (direction) async {
-                                  if (direction == DismissDirection.endToStart) {
+                                  if (direction ==
+                                      DismissDirection.endToStart) {
                                     return true; // delete on right→left swipe
                                   }
                                   // left→right swipe → edit
@@ -515,7 +582,10 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                                     color: AppAccents.danger,
                                     borderRadius: BorderRadius.circular(20),
                                   ),
-                                  child: const Icon(Icons.delete_rounded, color: Colors.white),
+                                  child: const Icon(
+                                    Icons.delete_rounded,
+                                    color: Colors.white,
+                                  ),
                                 ),
                                 background: Container(
                                   alignment: Alignment.centerLeft,
@@ -525,10 +595,14 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                                     color: AppAccents.sky,
                                     borderRadius: BorderRadius.circular(20),
                                   ),
-                                  child: const Icon(Icons.edit_rounded, color: Colors.white),
+                                  child: const Icon(
+                                    Icons.edit_rounded,
+                                    color: Colors.white,
+                                  ),
                                 ),
                                 onDismissed: (direction) {
-                                  if (direction == DismissDirection.endToStart) {
+                                  if (direction ==
+                                      DismissDirection.endToStart) {
                                     _deleteMessage(_messages[i].id);
                                   }
                                 },
@@ -536,7 +610,8 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
                                   message: _messages[i],
                                   onEdit: () => _editMessage(_messages[i]),
                                   onOpen: () => _onMediaTap(_messages[i]),
-                                  onLongPress: () => _onMediaLongPress(_messages[i]),
+                                  onLongPress: () =>
+                                      _onMediaLongPress(_messages[i]),
                                 ),
                               ),
                             );
@@ -577,8 +652,8 @@ class _FavoritesScreenState extends State<FavoritesScreen> {
             ),
             Expanded(
               child: TextField(
-        cursorOpacityAnimates: true,
-        magnifierConfiguration: TextMagnifierConfiguration.disabled,
+                cursorOpacityAnimates: true,
+                magnifierConfiguration: TextMagnifierConfiguration.disabled,
                 contextMenuBuilder: (ctx, state) =>
                     buildLimitedContextMenu(ctx, state),
                 controller: _textController,

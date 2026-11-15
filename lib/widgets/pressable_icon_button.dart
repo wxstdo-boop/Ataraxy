@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 
 /// Icon button with a soft, tactile press: while the finger is held the icon
 /// gently scales down into a faint halo (a "dimple"), releasing springs it
-/// back in 220ms. Replaces the raw InkWell splash — which flashed a hard grey
+/// back in 300ms. Replaces the raw InkWell splash — which flashed a hard grey
 /// block on low-end GPUs — with a smooth, expensive-feeling press. Long-press
 /// supported.
 class PressableIconButton extends StatefulWidget {
@@ -60,13 +60,13 @@ class _PressableIconButtonState extends State<PressableIconButton> {
           highlightColor: Colors.transparent,
           hoverColor: Colors.transparent,
           child: AnimatedScale(
-            scale: _pressed ? 0.92 : 1.0,
+            scale: _pressed ? 0.96 : 1.0,
             // Fast dimple under the finger, slower eased-out recoil on release
             // ("отдача уменьшения плавнее"). Kept under ~300 ms so rapid taps
             // never queue behind a still-settling release ("заедает").
             duration: _pressed
-                ? const Duration(milliseconds: 110)
-                : const Duration(milliseconds: 280),
+                ? const Duration(milliseconds: 120)
+                : const Duration(milliseconds: 300),
             curve: Curves.easeOutCubic,
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 280),

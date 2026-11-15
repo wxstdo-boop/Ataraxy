@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 
 import 'package:ataraxy/l10n/strings.dart';
 import 'package:ataraxy/models/settings.dart';
-import 'package:ataraxy/theme/app_theme.dart';
 import 'package:ataraxy/widgets/animated_snack.dart';
 import 'package:ataraxy/services/notification_service.dart';
 import 'package:ataraxy/widgets/volumetric_switch.dart';
@@ -92,6 +91,7 @@ class _ReminderDialogState extends State<ReminderDialog>
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return AlertDialog(
       title: Text(L.tr(context, 'reminders')),
       // Fixed-width content (maxFinite) so the dialog never widens/narrows as
@@ -149,13 +149,25 @@ class _ReminderDialogState extends State<ReminderDialog>
                             duration: const Duration(milliseconds: 150),
                             child: ListTile(
                             contentPadding: EdgeInsets.zero,
-                            leading: const Icon(
-                              Icons.check_circle_rounded,
-                              color: AppAccents.sage,
+                            leading: Container(
+                              width: 38,
+                              height: 38,
+                              decoration: BoxDecoration(
+                                color: scheme.surfaceContainerHighest,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Icon(
+                                Icons.check_rounded,
+                                color: scheme.onSurfaceVariant,
+                                size: 20,
+                              ),
                             ),
                             title: Text(L.tr(context, 'permissions')),
                             subtitle: Text(L.tr(context, 'checkPermissionsAction')),
-                            trailing: const Icon(Icons.chevron_right_rounded),
+                            trailing: Icon(
+                              Icons.chevron_right_rounded,
+                              color: scheme.onSurfaceVariant,
+                            ),
                             onTap: () async {
                               final result =
                                   await NotificationService

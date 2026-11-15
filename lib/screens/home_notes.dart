@@ -27,35 +27,24 @@ class _NotesListScreenState extends State<_NotesListScreen> {
 
   Future<void> _openDetail(JournalEntry entry) async {
     final changed = await Navigator.of(context).push<bool>(
-      PageRouteBuilder<bool>(
-        pageBuilder: (context, animation, secondaryAnimation) =>
-            EntryDetailScreen(
-              entry: entry,
-              storage: widget.storage,
-              heroPrefix: 'notes',
-              onRestored: () {
-                widget.onChanged();
-                widget.storage.loadEntries().then((entries) {
-                  if (mounted) {
-                    setState(() {
-                      _notes = entries
-                          .where((e) => e.type == EntryType.general)
-                          .toList();
-                    });
-                  }
+      fadeRoute(
+        EntryDetailScreen(
+          entry: entry,
+          storage: widget.storage,
+          heroPrefix: 'notes',
+          onRestored: () {
+            widget.onChanged();
+            widget.storage.loadEntries().then((entries) {
+              if (mounted) {
+                setState(() {
+                  _notes = entries
+                      .where((e) => e.type == EntryType.general)
+                      .toList();
                 });
-              },
-            ),
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          return FadeTransition(
-            opacity: CurvedAnimation(
-              parent: animation,
-              curve: Curves.easeInOut,
-            ),
-            child: child,
-          );
-        },
-        transitionDuration: const Duration(milliseconds: 280),
+              }
+            });
+          },
+        ),
       ),
     );
     if (changed == true && mounted) {
@@ -107,9 +96,8 @@ class _NotesListScreenState extends State<_NotesListScreen> {
               child: Text(
                 L.tr(context, 'emptyNotes'),
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.onSurface.withValues(alpha: 0.6),
+                  color: Theme.of(context).colorScheme.onSurface
+                      .withValues(alpha: 0.6),
                 ),
               ),
             )

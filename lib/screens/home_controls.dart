@@ -32,7 +32,7 @@ class _SearchToggleButtonState extends State<_SearchToggleButton> {
       // Clean cross-fade between the search glass and the X. The earlier
       // rotation + easeOutBack version overshot the icon scale and flashed
       // a big blurry block on low-end GPUs — a plain fade is smooth on all
-      // devices. The press itself is the soft "dimple" (scale 0.86 + halo).
+      // devices. The press itself is a soft, shallow dimple with a faint halo.
       icon: AnimatedSwitcher(
         duration: const Duration(milliseconds: 280),
         switchInCurve: Curves.easeOut,
@@ -78,8 +78,8 @@ class _FadeSlideFab extends StatelessWidget {
 }
 
 /// The circular "＋" button. A StatefulWidget so the press gives a tactile
-/// *dimple* — the whole disc dips to 0.92 with a soft halo while the finger
-/// is down, and springs back on release. Way smoother than the stock
+/// *dimple* — the whole disc dips to 0.96 with a soft halo while the finger
+/// is down, and glides back over 300ms on release. Way smoother than the stock
 /// InkWell highlight, and the haptics are only fired once per press.
 class _PressFab extends StatefulWidget {
   final VoidCallback onTap;
@@ -121,12 +121,12 @@ class _PressFabState extends State<_PressFab> {
         widget.onLongPress();
       },
       child: AnimatedScale(
-        scale: _pressed ? 0.93 : 1.0,
+        scale: _pressed ? 0.96 : 1.0,
         // Fast dimple, slower eased-out recoil (see PressScale) — the release
         // should feel like a spring settling, not a snap.
         duration: _pressed
-            ? const Duration(milliseconds: 130)
-            : const Duration(milliseconds: 260),
+            ? const Duration(milliseconds: 120)
+            : const Duration(milliseconds: 300),
         curve: Curves.easeOutCubic,
         child: Material(
           color: scheme.primary,
@@ -180,12 +180,9 @@ class _ListSection extends StatelessWidget {
   /// мигает" flicker. Shared with the parent so the memory outlives the list.
   final Set<String>? seenEntranceIds;
 
-  /// Signature of the active filter (category | sort | search). It keys the
-  /// cross-fade below, so ANY change to the visible set — not just an
-  /// empty↔populated flip — plays the dissolve. Without it a populated →
-  /// populated switch (category chip, sort, search) changed neither the key
-  /// nor the cards (they no longer animate), so it swapped instantly: the
-  /// "переключения не плавные" the user kept reporting.
+  /// Signature of the active filter (category | sort | search). The same
+  /// scrollable stays mounted when this changes; [_FilterSwapTransition]
+  /// animates its contents in place instead of stacking two full lists.
   final String contentKey;
 
   const _ListSection({
@@ -205,112 +202,71 @@ class _ListSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    // Cards animate whenever they are NEW to the list (per-entry keys make
-    // this precise); see the class-level comment above the file's header.
-    // NOTE: the scroll views deliberately keep a STABLE key. They used to be
-    // keyed by a content signature, which remounted the list on every tab /
-    // category switch — that reset the scroll offset and replayed every card's
-    // entrance at once, which is what read as a "jump".
-
-    final Widget listChild;
-    if (entries.isEmpty) {
-      // The empty↔populated swap is animated by the outer AnimatedSwitcher
-      // below. Its layoutBuilder sizes the transition to the INCOMING child
-      // and fades the outgoing one out clipped behind it — so the old
-      // (taller) list never inflates the shorter empty state mid-flight
-      // (the "banner grows" bug that forced an instant swap before).
-      listChild = RepaintBoundary(
-        child: RefreshIndicator(
-          key: const ValueKey('empty'),
-          onRefresh: onRefresh,
-          child: ListView(
-            scrollCacheExtent: const ScrollCacheExtent.pixels(600),
-            // Same horizontal padding as the populated list, so the
-            // practice-of-the-day header keeps the EXACT same width (and
-            // height) whether the category has entries or not. Without it
-            // the header rendered full-bleed (504px vs 472px) and its text
-            // re-wrapped — the banner visually "grew" on empty categories.
-            padding: const EdgeInsets.fromLTRB(16, 6, 16, 16),
-            children: [
-              ?header,
-              // Compact empty state — a fixed, modest height instead of
-              // 60% of the screen. The old giant block made the section
-              // "grow" when switching to an empty category (e.g. Random
-              // with no matches) — the practice-of-the-day card seemed to
-              // inflate because a 500px empty well appeared beneath it.
-              SizedBox(
-                height: 220,
-                child: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        width: 72,
-                        height: 72,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [scheme.primary, scheme.tertiary],
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: scheme.primary.withValues(alpha: 0.28),
-                              blurRadius: 20,
-                              offset: const Offset(0, 8),
-                            ),
-                          ],
-                        ),
-                        child: const Icon(
-                          Icons.auto_stories_rounded,
-                          size: 32,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      Text(
-                        emptyText,
-                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: scheme.onSurface.withValues(alpha: 0.6),
-                        ),
-                      ),
-                    ],
-                  ),
+    // Keep the empty state inside the same list/header layout as populated
+    // results so switching filters never replaces the scrollable.
+    final emptyState = SizedBox(
+      height: 220,
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [scheme.primary, scheme.tertiary],
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: scheme.primary.withValues(alpha: 0.28),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
               ),
-            ],
-          ),
+              child: const Icon(
+                Icons.auto_stories_rounded,
+                size: 32,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 14),
+            Text(
+              emptyText,
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                color: scheme.onSurface.withValues(alpha: 0.6),
+              ),
+            ),
+          ],
         ),
-      );
-    } else {
-      // Wrap with RepaintBoundary to isolate list repaints from the rest
-      // of the UI.
-      listChild = RepaintBoundary(
+      ),
+    );
+    final listHeader = entries.isEmpty
+        ? Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [?header, emptyState],
+          )
+        : header;
+
+    // Isolate list repaints from the rest of the screen.
+    return RepaintBoundary(
+      child: _FilterSwapTransition(
+        contentKey: contentKey,
         child: RefreshIndicator(
-          key: const ValueKey('populated'),
           onRefresh: onRefresh,
           child: ReorderableListView.builder(
             scrollCacheExtent: const ScrollCacheExtent.pixels(900),
-            // Top padding kept minimal so the pills and the first card sit
-            // close together (the pills row already provides its own 4px).
+              // Keep the pills and first card close together.
             padding: const EdgeInsets.fromLTRB(16, 6, 16, 16),
-            header: header,
+            header: listHeader,
             onReorderItem: onReorder ?? (_, _) {},
             buildDefaultDragHandles: false,
-            // Keep the dragged item visually rounded. Without this proxyDecorator,
-            // Flutter lifts each child on a rectangular Material that erases the
-            // card's rounded corners — the floating "ghost" looked like a sharp
-            // rectangle slid over a round list. Here we re-wrap the child in a
-            // rounded Material that scales subtly as the drag engages.
             proxyDecorator: (child, index, animation) {
-              // Wrap the dragged child in a rounded Material + ClipRRect so
-              // the active list card retains rounded corners during the lift
-              // (without this the dragged "ghost" was a sharp rectangle that
-              // visibly erased the card's radius). Elevation 8 + tinted
-              // shadow do the lifting; no Transform.scale — scaling would
-              // smear the elevation halo and look detached from the list.
-              final scheme = Theme.of(context).colorScheme;
+                // Preserve the card's rounded shape while it is dragged.
               return Material(
                 elevation: 8,
                 color: Colors.transparent,
@@ -323,11 +279,7 @@ class _ListSection extends StatelessWidget {
               );
             },
             itemCount: entries.length,
-            // Lazy item builder — cards (and their markdown previews) are only
-            // built for what's actually visible, instead of eagerly building
-            // every entry on every list build. `seenEntranceIds` makes the
-            // fade+slide a one-shot per entry, so a card scrolled back into
-            // view does not replay it (the "мигает" flicker).
+            // Build cards lazily; their entrance animation is one-shot per ID.
             itemBuilder: (context, i) {
               final entry = entries[i];
               return _EntryCard(
@@ -335,51 +287,87 @@ class _ListSection extends StatelessWidget {
                 index: i,
                 entry: entry,
                 heroTag: '$heroPrefix-${entry.id}',
-                animate: seenEntranceIds == null || seenEntranceIds!.add(entry.id),
+                animate:
+                    seenEntranceIds == null || seenEntranceIds!.add(entry.id),
                 onTap: () => onTap(entry),
                 onPin: () => onPin(entry),
               );
             },
-            footer: const _MadeWithLove(key: ValueKey('footer')),
+            footer: entries.isEmpty
+                ? null
+                : const _MadeWithLove(key: ValueKey('footer')),
           ),
         ),
-      );
-    }
-
-    // Smooth swap between visible sets (category/day/sort/search filters and
-    // the empty↔populated flip). The key carries BOTH the empty/populated
-    // shape and the `contentKey` filter signature: the old key was just
-    // empty-vs-list, so a populated→populated switch changed nothing and
-    // swapped instantly (the "переключения не плавные" complaint).
-    //
-    // The transition is a FADE-IN-OVER, not a symmetric cross-fade: the
-    // outgoing layer stays fully OPAQUE underneath while the incoming fades in
-    // on top of it. A symmetric fade (both dropping toward 0) let the bright
-    // scaffold show through the 25% gap at the midpoint — measured as a +8
-    // luminance spike on every category switch (the recurring "вспышка"). With
-    // the outgoing pinned at opacity 1 there is always a fully opaque layer, so
-    // the scaffold never peeks through and the swap only ever eases in one
-    // direction.
-    //
-    // Both children are full-height scroll views (the section lives in an
-    // `Expanded`), so the default Stack layout sizes to the taller one without
-    // inflating the shorter empty state.
-    final currentKey = ValueKey(
-      '${entries.isEmpty ? 'section-empty' : 'section-list'}|$contentKey',
+      ),
     );
-    return RepaintBoundary(
-      child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 260),
-        switchInCurve: Curves.easeOutCubic,
-        transitionBuilder: (child, animation) {
-          // Only the incoming child fades; the outgoing is held opaque so the
-          // two never multiply into a see-through gap.
-          if (child.key == currentKey) {
-            return FadeTransition(opacity: animation, child: child);
-          }
-          return child;
-        },
-        child: KeyedSubtree(key: currentKey, child: listChild),
+  }
+}
+
+class _FilterSwapTransition extends StatefulWidget {
+  final String contentKey;
+  final Widget child;
+
+  const _FilterSwapTransition({
+    required this.contentKey,
+    required this.child,
+  });
+
+  @override
+  State<_FilterSwapTransition> createState() => _FilterSwapTransitionState();
+}
+
+class _FilterSwapTransitionState extends State<_FilterSwapTransition>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final CurvedAnimation _curve;
+  late final Animation<double> _opacity;
+  late final Animation<Offset> _offset;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 200),
+      value: 1,
+    );
+    _curve = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeOutCubic,
+    );
+    _opacity = Tween<double>(begin: 0.9, end: 1).animate(_curve);
+    _offset = Tween<Offset>(
+      begin: const Offset(0, 0.012),
+      end: Offset.zero,
+    ).animate(_curve);
+  }
+
+  @override
+  void didUpdateWidget(covariant _FilterSwapTransition oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.contentKey != widget.contentKey) {
+      _controller.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _curve.dispose();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      child: widget.child,
+      builder: (context, child) => FadeTransition(
+        opacity: _opacity,
+        child: SlideTransition(
+          position: _offset,
+          child: child,
+        ),
       ),
     );
   }

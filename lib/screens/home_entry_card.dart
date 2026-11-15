@@ -458,13 +458,6 @@ class _TypeBadge extends StatelessWidget {
           colors: colors,
         ),
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: colors.first.withValues(alpha: 0.32),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

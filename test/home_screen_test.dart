@@ -223,15 +223,10 @@ void main() {
     );
   });
 
-  testWidgets('category switch cross-fades without flashing the scaffold',
+  testWidgets('category switch animates in place without flashing the scaffold',
       (tester) async {
-    // Regression: a populated→populated category switch used to hard-cut — the
-    // section switcher was keyed only by empty-vs-list, so the visible set
-    // changed with no animation at all ("переключения не плавные"). Keying it
-    // by the filter signature makes it cross-fade; the fade must be a
-    // fade-IN-OVER (outgoing held opaque), never a symmetric fade that lets the
-    // bright scaffold through the midpoint — that measured as a +8 luminance
-    // spike, the same "вспышка" class the user kept reporting.
+    // The filter animation must not replace the Scrollable: doing so reset its
+    // offset and stacked two full lists, which made category changes jerk.
     final key = GlobalKey();
     tester.view.physicalSize = const Size(430, 932);
     tester.view.devicePixelRatio = 1.0;
@@ -283,11 +278,19 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 600));
 
+    ScrollableState listState() {
+      final list = find.byType(ReorderableListView).first;
+      return tester.state<ScrollableState>(
+        find.descendant(of: list, matching: find.byType(Scrollable)).first,
+      );
+    }
+
     // Settle on the populated "Хороший" filter.
     await tester.tap(find.text('Хороший').first);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
     final from = await meanLuminance();
+    final beforeSwitch = listState();
 
     // Switch to the other populated filter and watch every frame. The swap must
     // animate (at least one frame differs from `from`) yet never brighten.
@@ -309,8 +312,59 @@ void main() {
     expect(
       moved,
       isTrue,
-      reason: 'the populated→populated switch did not animate at all '
-          '(hard cut) — every frame matched the start luminance',
+      reason: 'the populated→populated switch did not animate',
     );
+    expect(
+      listState(),
+      same(beforeSwitch),
+      reason: 'filtering replaced the list and reset its scroll state',
+    );
+  });
+
+  testWidgets('search settles on the latest matching entries', (tester) async {
+    final now = DateTime(2026, 1, 2, 10);
+    await pumpHome(tester, entries: [
+      JournalEntry(
+        id: 'sea',
+        type: EntryType.dream,
+        title: 'Тихое море',
+        content: 'Волны у берега',
+        createdAt: now,
+        updatedAt: now,
+      ),
+      JournalEntry(
+        id: 'city',
+        type: EntryType.dream,
+        title: 'Ночной город',
+        content: 'Огни и улицы',
+        createdAt: now.subtract(const Duration(days: 1)),
+        updatedAt: now.subtract(const Duration(days: 1)),
+      ),
+    ]);
+
+    await tester.tap(
+      find.descendant(
+        of: find.byType(AppBar),
+        matching: find.byIcon(Icons.search_rounded),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.byType(TextField), findsOneWidget);
+    final searchField = find.byType(TextField).first;
+    await tester.enterText(searchField, 'мо');
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.enterText(searchField, 'море');
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pump(const Duration(milliseconds: 220));
+
+    expect(find.text('Тихое море'), findsOneWidget);
+    expect(find.text('Ночной город'), findsNothing);
+
+    await tester.enterText(searchField, 'город');
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pump(const Duration(milliseconds: 220));
+    expect(find.text('Ночной город'), findsOneWidget);
+    expect(find.text('Тихое море'), findsNothing);
   });
 }

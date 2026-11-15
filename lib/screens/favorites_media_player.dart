@@ -329,7 +329,6 @@ class _VideoSeekBarState extends State<_VideoSeekBar>
   }
 
   void _onControllerUpdate() {
-    if (!_dragging && mounted) setState(() {});
     _syncPulseWithPlayback();
   }
 
@@ -367,137 +366,147 @@ class _VideoSeekBarState extends State<_VideoSeekBar>
 
   @override
   Widget build(BuildContext context) {
-    final duration = widget.controller.value.duration;
-    final position = widget.controller.value.position;
-    final buffered = widget.controller.value.buffered.isNotEmpty
-        ? widget.controller.value.buffered.last.end.inMilliseconds / duration.inMilliseconds
-        : 0.0;
-    final displayProgress = _dragging ? _dragValue : _progress;
-
     return SizedBox(
       width: 280,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           // Track
-          GestureDetector(
-            onHorizontalDragStart: (_) => setState(() => _dragging = true),
-            onHorizontalDragUpdate: (d) {
-              final box = context.findRenderObject() as RenderBox;
-              final localX = d.localPosition.dx.clamp(0.0, box.size.width);
-              setState(() => _dragValue = localX / box.size.width);
-            },
-            onHorizontalDragEnd: (d) {
-              setState(() => _dragging = false);
-              if (duration != Duration.zero) {
-                widget.controller.seekTo(Duration(
-                  milliseconds: (duration.inMilliseconds * _dragValue).round(),
-                ));
-              }
-            },
-            onTapDown: (d) {
-              final box = context.findRenderObject() as RenderBox;
-              final ratio = (d.localPosition.dx / box.size.width).clamp(0.0, 1.0);
-              if (duration != Duration.zero) {
-                widget.controller.seekTo(Duration(
-                  milliseconds: (duration.inMilliseconds * ratio).round(),
-                ));
-              }
-            },
-            child: Container(
-              height: 40,
-              alignment: Alignment.center,
-              child: Stack(
-                alignment: Alignment.centerLeft,
-                children: [
-                  // Background track — voluminous, rounded, with depth.
-                  Container(
-                    height: 10,
-                    decoration: BoxDecoration(
-                      color: Colors.white12,
-                      borderRadius: BorderRadius.circular(5),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.35),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                  ),
-                  // Buffered
-                  FractionallySizedBox(
-                    widthFactor: buffered.clamp(0.0, 1.0),
-                    child: Container(
-                      height: 10,
-                      decoration: BoxDecoration(
-                        color: Colors.white24,
-                        borderRadius: BorderRadius.circular(5),
-                      ),
-                    ),
-                  ),
-                  // Played — rich gradient with inner glow.
-                  FractionallySizedBox(
-                    widthFactor: displayProgress.clamp(0.0, 1.0),
-                    child: Container(
-                      height: 10,
-                      decoration: BoxDecoration(
-                        // Muted rose ramp instead of the neon
-                        // #FF6B9D → #FF9FB6 → #FFC3D9 gradient.
-                        gradient: const LinearGradient(
-                          colors: [
-                            AppAccents.rose,
-                            AppAccents.roseLight,
-                            AppAccents.rosePale,
+          ValueListenableBuilder<VideoPlayerValue>(
+            valueListenable: widget.controller,
+            builder: (context, value, _) {
+              final duration = value.duration;
+              final buffered = value.buffered.isNotEmpty &&
+                      duration != Duration.zero
+                  ? value.buffered.last.end.inMilliseconds /
+                      duration.inMilliseconds
+                  : 0.0;
+              final displayProgress = _dragging ? _dragValue : _progress;
+
+              return GestureDetector(
+                onHorizontalDragStart: (_) => setState(() => _dragging = true),
+                onHorizontalDragUpdate: (d) {
+                  final box = context.findRenderObject() as RenderBox;
+                  final localX = d.localPosition.dx.clamp(0.0, box.size.width);
+                  setState(() => _dragValue = localX / box.size.width);
+                },
+                onHorizontalDragEnd: (d) {
+                  setState(() => _dragging = false);
+                  if (duration != Duration.zero) {
+                    widget.controller.seekTo(Duration(
+                      milliseconds: (duration.inMilliseconds * _dragValue)
+                          .round(),
+                    ));
+                  }
+                },
+                onTapDown: (d) {
+                  final box = context.findRenderObject() as RenderBox;
+                  final ratio =
+                      (d.localPosition.dx / box.size.width).clamp(0.0, 1.0);
+                  if (duration != Duration.zero) {
+                    widget.controller.seekTo(Duration(
+                      milliseconds:
+                          (duration.inMilliseconds * ratio).round(),
+                    ));
+                  }
+                },
+                child: Container(
+                  height: 40,
+                  alignment: Alignment.center,
+                  child: Stack(
+                    alignment: Alignment.centerLeft,
+                    children: [
+                      // Background track — voluminous, rounded, with depth.
+                      Container(
+                        height: 10,
+                        decoration: BoxDecoration(
+                          color: Colors.white12,
+                          borderRadius: BorderRadius.circular(5),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.35),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
                           ],
                         ),
-                        borderRadius: BorderRadius.circular(5),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppAccents.rose.withValues(alpha: 0.35),
-                            blurRadius: 8,
-                            spreadRadius: 1,
-                          ),
-                        ],
                       ),
-                    ),
-                  ),
-                  // Thumb — larger, with a soft outer halo and 3D-ish border.
-                  Positioned(
-                    left: () {
-                      final thumbW = _dragging ? 22.0 : 18.0;
-                      return (displayProgress * (280 - thumbW))
-                          .clamp(0.0, 280 - thumbW);
-                    }(),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 100),
-                      width: _dragging ? 22 : 18,
-                      height: _dragging ? 22 : 18,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Colors.white,
-                        border: Border.all(
-                          color: AppAccents.rose,
-                          width: 2.5,
+                      // Buffered
+                      FractionallySizedBox(
+                        widthFactor: buffered.clamp(0.0, 1.0),
+                        child: Container(
+                          height: 10,
+                          decoration: BoxDecoration(
+                            color: Colors.white24,
+                            borderRadius: BorderRadius.circular(5),
+                          ),
                         ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppAccents.rose.withValues(alpha: 0.35),
-                            blurRadius: 10,
-                            spreadRadius: 2,
-                          ),
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.25),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
                       ),
-                    ),
+                      // Played — rich gradient with inner glow.
+                      FractionallySizedBox(
+                        widthFactor: displayProgress.clamp(0.0, 1.0),
+                        child: Container(
+                          height: 10,
+                          decoration: BoxDecoration(
+                            // Muted rose ramp instead of the neon
+                            // #FF6B9D → #FF9FB6 → #FFC3D9 gradient.
+                            gradient: const LinearGradient(
+                              colors: [
+                                AppAccents.rose,
+                                AppAccents.roseLight,
+                                AppAccents.rosePale,
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(5),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppAccents.rose.withValues(alpha: 0.35),
+                                blurRadius: 8,
+                                spreadRadius: 1,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      // Thumb — larger, with a soft outer halo and 3D-ish border.
+                      Positioned(
+                        left: () {
+                          final thumbW = _dragging ? 22.0 : 18.0;
+                          return (displayProgress * (280 - thumbW))
+                              .clamp(0.0, 280 - thumbW);
+                        }(),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 100),
+                          width: _dragging ? 22 : 18,
+                          height: _dragging ? 22 : 18,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white,
+                            border: Border.all(
+                              color: AppAccents.rose,
+                              width: 2.5,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color:
+                                    AppAccents.rose.withValues(alpha: 0.35),
+                                blurRadius: 10,
+                                spreadRadius: 2,
+                              ),
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.25),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ),
+                ),
+              );
+            },
           ),
           // Time labels — wrapped in a heartbeat pulse (scale + glow) so the
           // row visibly "curves" like a heartbeat, in continuous rhythm.
@@ -529,30 +538,33 @@ class _VideoSeekBarState extends State<_VideoSeekBar>
                 ),
               );
             },
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    _formatDuration(position),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.5,
+            child: ValueListenableBuilder<VideoPlayerValue>(
+              valueListenable: widget.controller,
+              builder: (context, value, _) => Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      _formatDuration(value.position),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.5,
+                      ),
                     ),
-                  ),
-                  Text(
-                    _formatDuration(duration),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.5,
+                    Text(
+                      _formatDuration(value.duration),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.5,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),

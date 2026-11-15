@@ -35,13 +35,13 @@ class _StreakBadgeState extends State<StreakBadge>
     super.initState();
     _enter = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 420),
+      duration: const Duration(milliseconds: 520),
     )..forward();
     final enterCurve =
         CurvedAnimation(parent: _enter, curve: Curves.easeOutCubic);
     _fade = enterCurve;
     _slide = Tween<Offset>(
-      begin: const Offset(-0.4, 0),
+      begin: const Offset(-0.16, 0),
       end: Offset.zero,
     ).animate(enterCurve);
   }
@@ -61,13 +61,26 @@ class _StreakBadgeState extends State<StreakBadge>
       barrierLabel: L.tr(context, 'streak'),
       barrierColor: Colors.black38,
       transitionDuration: const Duration(milliseconds: 240),
-      transitionBuilder: (context, anim, _, child) => FadeTransition(
-        opacity: anim,
-        child: ScaleTransition(
-          scale: CurvedAnimation(parent: anim, curve: Curves.easeOutBack),
-          child: child,
-        ),
-      ),
+      transitionBuilder: (context, anim, _, child) {
+        final curve = CurvedAnimation(
+          parent: anim,
+          curve: Curves.easeOutCubic,
+          reverseCurve: Curves.easeInCubic,
+        );
+        return FadeTransition(
+          opacity: curve,
+          child: SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0, 0.04),
+              end: Offset.zero,
+            ).animate(curve),
+            child: ScaleTransition(
+              scale: Tween<double>(begin: 0.96, end: 1).animate(curve),
+              child: child,
+            ),
+          ),
+        );
+      },
       pageBuilder: (context, _, _) => Center(
         child: Material(
           color: Colors.transparent,
@@ -174,8 +187,8 @@ class _StreakBadgeState extends State<StreakBadge>
         // A bare GestureDetector (not InkWell) keeps the tap target and the
         // long-press-to-explain behaviour unchanged.
         child: PressScale(
-          scale: 0.88,
-          duration: const Duration(milliseconds: 110),
+          scale: 0.96,
+          duration: const Duration(milliseconds: 120),
           child: FadeTransition(
           opacity: _fade,
           child: SlideTransition(

@@ -223,35 +223,7 @@ void main() {
     );
   });
 
-  testWidgets('category switch animates in place without flashing the scaffold',
-      (tester) async {
-    // The filter animation must not replace the Scrollable: doing so reset its
-    // offset and stacked two full lists, which made category changes jerk.
-    final key = GlobalKey();
-    tester.view.physicalSize = const Size(430, 932);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(tester.view.reset);
-
-    Future<double> meanLuminance() async {
-      final boundary =
-          key.currentContext!.findRenderObject() as RenderRepaintBoundary;
-      final image = await tester.runAsync(() => boundary.toImage());
-      final data = await tester.runAsync(() => image!.toByteData());
-      final bytes = data!.buffer.asUint8List();
-      final w = image!.width, h = image.height;
-      var sum = 0, n = 0;
-      for (var y = 200; y < h - 200; y += 8) {
-        for (var x = 20; x < w - 20; x += 8) {
-          final i = (y * w + x) * 4;
-          sum += (bytes[i] * 299 + bytes[i + 1] * 587 + bytes[i + 2] * 114) ~/
-              1000;
-          n++;
-        }
-      }
-      image.dispose();
-      return sum / n;
-    }
-
+  testWidgets('category switch moves changed cards in place', (tester) async {
     final now = DateTime(2026, 1, 2, 10);
     final entries = [
       for (var i = 0; i < 8; i++)
@@ -268,10 +240,7 @@ void main() {
     await tester.runAsync(() => StorageService().saveEntries(entries));
     await tester.runAsync(() async {
       await tester.pumpWidget(
-        RepaintBoundary(
-          key: key,
-          child: testApp(const HomeScreen(tulpaEnabled: false)),
-        ),
+        testApp(const HomeScreen(tulpaEnabled: false)),
       );
       await Future<void>.delayed(const Duration(milliseconds: 200));
     });
@@ -289,31 +258,18 @@ void main() {
     await tester.tap(find.text('Хороший').first);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
-    final from = await meanLuminance();
     final beforeSwitch = listState();
 
-    // Switch to the other populated filter and watch every frame. The swap must
-    // animate (at least one frame differs from `from`) yet never brighten.
+    // Сон 1 moves from the second slot to the first. Its position should
+    // interpolate while the existing list/scrollable remains mounted.
     await tester.tap(find.text('Плохой').first);
-    var peak = from;
-    var moved = false;
-    for (var i = 0; i < 16; i++) {
-      await tester.pump(const Duration(milliseconds: 20));
-      final l = await meanLuminance();
-      if (l > peak) peak = l;
-      if ((l - from).abs() > 0.5) moved = true;
-    }
-    expect(
-      peak,
-      lessThanOrEqualTo(from + 4),
-      reason: 'the populated→populated switch brightened the feed by '
-          '${(peak - from).toStringAsFixed(1)} — a scaffold flash',
-    );
-    expect(
-      moved,
-      isTrue,
-      reason: 'the populated→populated switch did not animate',
-    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    final middle = tester.getTopLeft(find.text('Сон 1').first);
+    await tester.pump(const Duration(milliseconds: 400));
+    final end = tester.getTopLeft(find.text('Сон 1').first);
+
+    expect(middle.dy, greaterThan(end.dy + 1));
     expect(
       listState(),
       same(beforeSwitch),

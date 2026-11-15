@@ -19,6 +19,8 @@ class _NotesListScreen extends StatefulWidget {
 class _NotesListScreenState extends State<_NotesListScreen> {
   late List<JournalEntry> _notes;
   int _pinMovementRevision = 0;
+  final ValueNotifier<bool> _fabVisible = ValueNotifier(true);
+  double _lastScrollOffset = 0;
   final Map<String, _EntryCardPosition> _movementPositions = {};
 
   List<JournalEntry> _sortNotes(Iterable<JournalEntry> entries) {
@@ -46,6 +48,12 @@ class _NotesListScreenState extends State<_NotesListScreen> {
   void initState() {
     super.initState();
     _notes = _sortNotes(widget.notes);
+  }
+
+  @override
+  void dispose() {
+    _fabVisible.dispose();
+    super.dispose();
   }
 
   Future<void> _reloadNotes() async {
@@ -141,11 +149,6 @@ class _NotesListScreenState extends State<_NotesListScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    FilledButton.icon(
-                      onPressed: _createNote,
-                      icon: const Icon(Icons.add_rounded),
-                      label: Text(L.tr(context, 'newEntry')),
-                    ),
                   ],
                 ),
               ),
@@ -166,6 +169,14 @@ class _NotesListScreenState extends State<_NotesListScreen> {
                       notification.scrollDelta ?? 0,
                       keyPrefix: 'note-',
                     );
+                    final offset = notification.metrics.pixels;
+                    if (offset <= 0) {
+                      _fabVisible.value = true;
+                    } else if (notification.dragDetails != null &&
+                        (offset - _lastScrollOffset).abs() >= 2) {
+                      _fabVisible.value = offset < _lastScrollOffset;
+                    }
+                    _lastScrollOffset = offset;
                   }
                   return false;
                 },
@@ -199,13 +210,13 @@ class _NotesListScreenState extends State<_NotesListScreen> {
                 ),
               ),
             ),
-      floatingActionButton: _notes.isEmpty
-          ? null
-          : FloatingActionButton.extended(
-              onPressed: _createNote,
-              icon: const Icon(Icons.add_rounded),
-              label: Text(L.tr(context, 'newEntry')),
-            ),
+      floatingActionButton: ValueListenableBuilder<bool>(
+        valueListenable: _fabVisible,
+        builder: (context, visible, _) => _FadeSlideFab(
+          visible: visible,
+          child: _PressFab(onTap: _createNote),
+        ),
+      ),
     );
   }
 }

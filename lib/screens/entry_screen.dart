@@ -1306,33 +1306,38 @@ class _EntryScreenState extends State<EntryScreen> with WidgetsBindingObserver {
                               ),
                             ),
                     )
-                  : TextField(
-        cursorOpacityAnimates: true,
-        magnifierConfiguration: TextMagnifierConfiguration.disabled,
-                      key: const ValueKey('editor'),
-                      controller: _contentController,
-                      inputFormatters: const [EmDashInputFormatter()],
-                      contextMenuBuilder: (ctx, state) =>
-                          buildLimitedContextMenu(ctx, state),
-                      maxLength: 800000,
-                      decoration: InputDecoration(
-                        hintText: L.tr(context, 'contentHint'),
-                        filled: true,
-                        fillColor: scheme.surfaceContainerHighest,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(18),
-                          borderSide: BorderSide.none,
+                  : AnimatedSize(
+                      key: const ValueKey('entry-content-size'),
+                      alignment: Alignment.topCenter,
+                      duration: const Duration(milliseconds: 220),
+                      curve: Curves.easeInOutCubic,
+                      child: TextField(
+                        cursorOpacityAnimates: true,
+                        magnifierConfiguration:
+                            TextMagnifierConfiguration.disabled,
+                        key: const ValueKey('editor'),
+                        controller: _contentController,
+                        inputFormatters: const [EmDashInputFormatter()],
+                        contextMenuBuilder: (ctx, state) =>
+                            buildLimitedContextMenu(ctx, state),
+                        maxLength: 800000,
+                        decoration: InputDecoration(
+                          hintText: L.tr(context, 'contentHint'),
+                          filled: true,
+                          fillColor: scheme.surfaceContainerHighest,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(18),
+                            borderSide: BorderSide.none,
+                          ),
+                          contentPadding: const EdgeInsets.all(16),
+                          counterText: '',
                         ),
-                        contentPadding: const EdgeInsets.all(16),
-                        counterText: '',
+                        // Keep the content as one growing field so the outer
+                        // page scrolls as a unit. AnimatedSize eases both
+                        // growth and shrinkage as lines are added or removed.
+                        maxLines: null,
+                        minLines: 5,
                       ),
-                      // No maxLines: the field grows with the text so the
-                      // whole page scrolls as ONE unit. A capped field (e.g.
-                      // maxLines: 10) scrolls internally, which made long
-                      // entries feel like they were "split" into per-paragraph
-                      // swipes instead of the page gliding as a whole.
-                      maxLines: null,
-                      minLines: 5,
                     ),
             ),
             const SizedBox(height: 20),

@@ -149,9 +149,13 @@ class _StreakBadgeState extends State<StreakBadge>
                       ),
                 ),
                 const SizedBox(height: 12),
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: Text(L.tr(context, 'ok')),
+                PressScale(
+                  scale: 0.96,
+                  duration: const Duration(milliseconds: 120),
+                  child: TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: Text(L.tr(context, 'ok')),
+                  ),
                 ),
               ],
             ),

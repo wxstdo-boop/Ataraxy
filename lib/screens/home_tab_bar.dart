@@ -8,6 +8,7 @@ class _SmoothTabPills extends StatelessWidget implements PreferredSizeWidget {
   final List<String> labels;
   final Color headerColor;
   final ValueChanged<int>? onTap;
+
   /// 1 = fully expanded, 0 = fully retracted while scrolling down. Driven by
   /// the home screen's scroll controller so the app-bar's bottom slot
   /// (preferredSize) collapses together with the bar itself.
@@ -70,105 +71,103 @@ class _SmoothTabPills extends StatelessWidget implements PreferredSizeWidget {
                       borderRadius: BorderRadius.circular(30),
                       color: glass,
                       border: Border.all(
-                        color:
-                            scheme.outlineVariant.withValues(alpha: 0.35),
+                        color: scheme.outlineVariant.withValues(alpha: 0.35),
                       ),
                     ),
                     child: AnimatedBuilder(
-                        animation:
-                            controller.animation ??
-                            const AlwaysStoppedAnimation(0.0),
-                        builder: (context, _) {
-                          final value =
-                              (controller.animation?.value ?? 0).clamp(
-                                0.0,
-                                count - 1.0,
-                              );
-                          final index = controller.index;
-                          return LayoutBuilder(
-                            builder: (context, constraints) {
-                              final segW = constraints.maxWidth / count;
-                              // Gentle gel stretch while the pill travels
-                              // between segments — subtle, not a rubber band.
-                              final mid =
-                                  (value - value.roundToDouble()).abs();
-                              final extra = segW * 0.45 * mid;
-                              return Stack(
-                                children: [
-                                  // A single monotone pill glides between
-                                  // segments: no per-section tint, no bloom.
-                                  Positioned(
-                                    left: value * segW - extra / 2,
-                                    width: segW + extra,
-                                    top: 0,
-                                    bottom: 0,
-                                    child: Container(
-                                      margin: const EdgeInsets.all(4),
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(
-                                          26,
-                                        ),
-                                        // A subtle top-lit gradient + rim
-                                        // give the accent pill volume so it
-                                        // reads as a raised key, not a flat
-                                        // block of colour.
-                                        gradient: LinearGradient(
-                                          begin: Alignment.topCenter,
-                                          end: Alignment.bottomCenter,
-                                          colors: [
-                                            Color.lerp(scheme.primary,
-                                                Colors.white, 0.16)!,
-                                            scheme.primary,
-                                          ],
-                                        ),
-                                        border: Border.all(
-                                          color: scheme.onPrimary
-                                              .withValues(alpha: 0.14),
-                                        ),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: scheme.primary.withValues(
-                                              alpha: 0.28,
-                                            ),
-                                            blurRadius: 12,
-                                            offset: const Offset(0, 3),
+                      animation:
+                          controller.animation ??
+                          const AlwaysStoppedAnimation(0.0),
+                      builder: (context, _) {
+                        final value = (controller.animation?.value ?? 0).clamp(
+                          0.0,
+                          count - 1.0,
+                        );
+                        final index = controller.index;
+                        return LayoutBuilder(
+                          builder: (context, constraints) {
+                            final segW = constraints.maxWidth / count;
+                            // Gentle gel stretch while the pill travels
+                            // between segments — subtle, not a rubber band.
+                            final mid = (value - value.roundToDouble()).abs();
+                            final extra = segW * 0.45 * mid;
+                            return Stack(
+                              children: [
+                                // A single monotone pill glides between
+                                // segments: no per-section tint, no bloom.
+                                Positioned(
+                                  left: value * segW - extra / 2,
+                                  width: segW + extra,
+                                  top: 0,
+                                  bottom: 0,
+                                  child: Container(
+                                    margin: const EdgeInsets.all(4),
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(26),
+                                      // A subtle top-lit gradient + rim
+                                      // give the accent pill volume so it
+                                      // reads as a raised key, not a flat
+                                      // block of colour.
+                                      gradient: LinearGradient(
+                                        begin: Alignment.topCenter,
+                                        end: Alignment.bottomCenter,
+                                        colors: [
+                                          AppAccents.danger.withValues(
+                                            alpha: 0.42,
+                                          ),
+                                          AppAccents.danger.withValues(
+                                            alpha: 0.52,
                                           ),
                                         ],
                                       ),
+                                      border: Border.all(
+                                        color: scheme.onPrimary.withValues(
+                                          alpha: 0.14,
+                                        ),
+                                      ),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: scheme.primary.withValues(
+                                            alpha: 0.28,
+                                          ),
+                                          blurRadius: 12,
+                                          offset: const Offset(0, 3),
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                  Row(
-                                    children: [
-                                      for (var i = 0; i < count; i++)
-                                        Expanded(
-                                          child: _TabSegment(
-                                            label: labels[i],
-                                            selected: i == index,
-                                            scheme: scheme,
-                                            // Animate from inside the
-                                            // controller scope: calling
-                                            // DefaultTabController.of() from
-                                            // the home screen's own context
-                                            // (above the controller) would
-                                            // silently hit the fallback and
-                                            // never switch tabs.
-                                            onTap: () => controller.animateTo(
-                                              i,
-                                              duration: const Duration(
-                                                milliseconds: 520,
-                                              ),
-                                              curve: Curves.easeInOutCubic,
+                                ),
+                                Row(
+                                  children: [
+                                    for (var i = 0; i < count; i++)
+                                      Expanded(
+                                        child: _TabSegment(
+                                          label: labels[i],
+                                          selected: i == index,
+                                          scheme: scheme,
+                                          // Animate from inside the
+                                          // controller scope: calling
+                                          // DefaultTabController.of() from
+                                          // the home screen's own context
+                                          // (above the controller) would
+                                          // silently hit the fallback and
+                                          // never switch tabs.
+                                          onTap: () => controller.animateTo(
+                                            i,
+                                            duration: const Duration(
+                                              milliseconds: 680,
                                             ),
+                                            curve: Curves.easeInOutCubic,
                                           ),
                                         ),
-                                    ],
-                                  ),
-                                ],
-                              );
-                            },
-                          );
-                        },
-                      ),
+                                      ),
+                                  ],
+                                ),
+                              ],
+                            );
+                          },
+                        );
+                      },
                     ),
                   ),
                 ),
@@ -176,6 +175,7 @@ class _SmoothTabPills extends StatelessWidget implements PreferredSizeWidget {
             ),
           ),
         ),
+      ),
     );
   }
 }
@@ -220,36 +220,40 @@ class _TabSegmentState extends State<_TabSegment> {
         highlightColor: Colors.transparent,
         hoverColor: Colors.transparent,
         child: AnimatedScale(
-          scale: _pressed ? 0.945 : 1.0,
-          duration: const Duration(milliseconds: 220),
+          scale: _pressed ? 0.97 : 1.0,
+          duration: _pressed
+              ? const Duration(milliseconds: 120)
+              : const Duration(milliseconds: 320),
           curve: Curves.easeOutCubic,
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 340),
-            curve: Curves.easeOutCubic,
+            duration: const Duration(milliseconds: 420),
+            curve: Curves.easeInOutCubic,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(26),
-              color: scheme.onPrimary.withValues(alpha: _pressed ? 0.16 : 0.0),
+              color: AppAccents.danger.withValues(alpha: _pressed ? 0.42 : 0.0),
             ),
             child: Center(
               child: AnimatedDefaultTextStyle(
-              duration: const Duration(milliseconds: 400),
-              curve: Curves.easeOutCubic,
-              style: TextStyle(
-                // Unselected labels are deliberately translucent so the
-                // capsule stays calm; the selected label keeps full contrast.
-                color: widget.selected
-                    ? scheme.onPrimary
-                    : scheme.onSurfaceVariant.withValues(alpha: 0.62),
-                fontWeight: widget.selected ? FontWeight.w700 : FontWeight.w500,
-                fontSize: 14,
-                letterSpacing: 0.2,
+                duration: const Duration(milliseconds: 480),
+                curve: Curves.easeOutCubic,
+                style: TextStyle(
+                  // Unselected labels are deliberately translucent so the
+                  // capsule stays calm; the selected label keeps full contrast.
+                  color: widget.selected
+                      ? scheme.onSurface
+                      : scheme.onSurfaceVariant.withValues(alpha: 0.62),
+                  fontWeight: widget.selected
+                      ? FontWeight.w700
+                      : FontWeight.w500,
+                  fontSize: 14,
+                  letterSpacing: 0.2,
+                ),
+                child: Text(widget.label),
               ),
-              child: Text(widget.label),
             ),
-          ),
-        ), // AnimatedContainer
-      ), // AnimatedScale
-    ), // InkWell
+          ), // AnimatedContainer
+        ), // AnimatedScale
+      ), // InkWell
     ); // Material
   }
 }
@@ -294,147 +298,150 @@ class _CategoryChips extends StatelessWidget {
             color: scheme.surfaceContainerHighest,
           ),
           child: Row(
-        children: [
-          Expanded(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final idx = cats.indexOf(current);
-                final segW = constraints.maxWidth / cats.length;
-                return Stack(
-                  children: [
-                    // Sliding highlight: an AnimatedPositioned fill that
-                    // always travels the SHORTEST path between segments —
-                    // no alignment-fraction math to get wrong, so it can
-                    // never fly off in the wrong direction.
-                    AnimatedPositioned(
-                      duration: const Duration(milliseconds: 380),
-                      curve: Curves.easeOutCubic,
-                      left: (idx < 0 ? 0 : idx) * segW,
-                      top: 0,
-                      bottom: 0,
-                      width: segW,
-                      child: AnimatedOpacity(
-                        duration: const Duration(milliseconds: 200),
-                        opacity: idx < 0 ? 0.0 : 1.0,
-                        child: Container(
-                          margin: const EdgeInsets.all(3),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [
-                                scheme.primary.withValues(alpha: 0.88),
-                                scheme.primary,
-                              ],
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: scheme.primary.withValues(alpha: 0.32),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
+            children: [
+              Expanded(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final idx = cats.indexOf(current);
+                    final segW = constraints.maxWidth / cats.length;
+                    return Stack(
+                      children: [
+                        // Sliding highlight: an AnimatedPositioned fill that
+                        // always travels the SHORTEST path between segments —
+                        // no alignment-fraction math to get wrong, so it can
+                        // never fly off in the wrong direction.
+                        AnimatedPositioned(
+                          duration: const Duration(milliseconds: 480),
+                          curve: Curves.easeOutCubic,
+                          left: (idx < 0 ? 0 : idx) * segW,
+                          top: 0,
+                          bottom: 0,
+                          width: segW,
+                          child: AnimatedOpacity(
+                            duration: const Duration(milliseconds: 200),
+                            opacity: idx < 0 ? 0.0 : 1.0,
+                            child: Container(
+                              margin: const EdgeInsets.all(3),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(12),
+                                color: AppAccents.danger.withValues(
+                                  alpha: 0.48,
+                                ),
+                                border: Border.all(
+                                  color: AppAccents.danger.withValues(
+                                    alpha: 0.72,
+                                  ),
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppAccents.danger.withValues(
+                                      alpha: 0.18,
+                                    ),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 3),
+                                  ),
+                                ],
                               ),
-                            ],
+                            ),
                           ),
                         ),
-                      ),
-                    ),
-                    Row(
-                      children: [
-                        for (final c in cats)
-                          Expanded(
-                            child: _ChipSegment(
-                              label: L.tr(
-                                context,
-                                c == EntryCategory.none ? 'catAll' : c.labelKey,
+                        Row(
+                          children: [
+                            for (final c in cats)
+                              Expanded(
+                                child: _ChipSegment(
+                                  label: L.tr(
+                                    context,
+                                    c == EntryCategory.none
+                                        ? 'catAll'
+                                        : c.labelKey,
+                                  ),
+                                  selected: c == current,
+                                  scheme: scheme,
+                                  onTap: () {
+                                    HapticFeedback.selectionClick();
+                                    onChanged(c);
+                                  },
+                                ),
                               ),
-                              selected: c == current,
-                              scheme: scheme,
-                              onTap: () {
-                                HapticFeedback.selectionClick();
-                                onChanged(c);
-                              },
-                            ),
-                          ),
+                          ],
+                        ),
                       ],
-                    ),
-                  ],
-                );
-              },
-            ),
-          ),
-          // Thin divider then the sort control — still part of the same
-          // pill-bar, no separate background.
-          // Soft gradient hairline instead of the old flat grey strip —
-          // the separator melts into the glass bar instead of reading as
-          // cheap tape across the pill.
-          Container(
-            width: 1.5,
-            height: 18,
-            margin: const EdgeInsets.symmetric(horizontal: 3),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(1),
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  scheme.outlineVariant.withValues(alpha: 0.0),
-                  scheme.outlineVariant.withValues(alpha: 0.6),
-                  scheme.outlineVariant.withValues(alpha: 0.0),
-                ],
+                    );
+                  },
+                ),
               ),
-            ),
-          ),
-          PressScale(
-            scale: 0.88,
-            child: IconButton(
-              icon: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 280),
-              switchInCurve: Curves.easeOutCubic,
-              switchOutCurve: Curves.easeInCubic,
-              transitionBuilder: (child, animation) =>
-                  RotationTransition(
-                    turns: Tween(begin: 0.75, end: 1.0).animate(
-                      CurvedAnimation(
-                        parent: animation,
-                        curve: Curves.easeOutCubic,
+              // Thin divider then the sort control — still part of the same
+              // pill-bar, no separate background.
+              // Soft gradient hairline instead of the old flat grey strip —
+              // the separator melts into the glass bar instead of reading as
+              // cheap tape across the pill.
+              Container(
+                width: 1.5,
+                height: 18,
+                margin: const EdgeInsets.symmetric(horizontal: 3),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(1),
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      scheme.outlineVariant.withValues(alpha: 0.0),
+                      scheme.outlineVariant.withValues(alpha: 0.6),
+                      scheme.outlineVariant.withValues(alpha: 0.0),
+                    ],
+                  ),
+                ),
+              ),
+              PressScale(
+                scale: 0.88,
+                child: IconButton(
+                  icon: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 280),
+                    switchInCurve: Curves.easeOutCubic,
+                    switchOutCurve: Curves.easeInCubic,
+                    transitionBuilder: (child, animation) => RotationTransition(
+                      turns: Tween(begin: 0.75, end: 1.0).animate(
+                        CurvedAnimation(
+                          parent: animation,
+                          curve: Curves.easeOutCubic,
+                        ),
+                      ),
+                      child: FadeTransition(
+                        opacity: CurvedAnimation(
+                          parent: animation,
+                          curve: Curves.easeOut,
+                        ),
+                        child: child,
                       ),
                     ),
-                    child: FadeTransition(
-                      opacity: CurvedAnimation(
-                        parent: animation,
-                        curve: Curves.easeOut,
-                      ),
-                      child: child,
+                    child: Icon(
+                      key: ValueKey(sortMode),
+                      sortMode == -1
+                          ? Icons.drag_handle_rounded
+                          : sortMode == 0
+                          ? Icons.sort_rounded
+                          : sortMode == 1
+                          ? Icons.arrow_upward_rounded
+                          : Icons.sort_by_alpha_rounded,
                     ),
                   ),
-              child: Icon(
-                key: ValueKey(sortMode),
-                sortMode == -1
-                    ? Icons.drag_handle_rounded
-                    : sortMode == 0
-                    ? Icons.sort_rounded
-                    : sortMode == 1
-                    ? Icons.arrow_upward_rounded
-                    : Icons.sort_by_alpha_rounded,
+                  onPressed: onSort,
+                  style: IconButton.styleFrom(
+                    minimumSize: const Size(34, 30),
+                    maximumSize: const Size(38, 30),
+                    padding: const EdgeInsets.symmetric(horizontal: 2),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(13),
+                    ),
+                  ),
+                ),
               ),
-            ),
-            onPressed: onSort,
-            style: IconButton.styleFrom(
-              minimumSize: const Size(34, 30),
-              maximumSize: const Size(38, 30),
-              padding: const EdgeInsets.symmetric(horizontal: 2),
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(13),
-              ),
-            ),
-            ),
+            ],
           ),
-        ],
+        ),
       ),
-    ),
-  ),
     );
   }
 }
@@ -477,9 +484,11 @@ class _ChipSegmentState extends State<_ChipSegment> {
         if (mounted) setState(() => _pressed = false);
       },
       child: AnimatedScale(
-        scale: _pressed ? 0.92 : 1.0,
-        duration: const Duration(milliseconds: 180),
-        curve: Curves.easeOut,
+        scale: _pressed ? 0.97 : 1.0,
+        duration: _pressed
+            ? const Duration(milliseconds: 120)
+            : const Duration(milliseconds: 320),
+        curve: Curves.easeOutCubic,
         child: Center(
           child: FittedBox(
             fit: BoxFit.scaleDown,
@@ -488,10 +497,9 @@ class _ChipSegmentState extends State<_ChipSegment> {
               curve: Curves.easeOutCubic,
               style: TextStyle(
                 fontSize: 11.5,
-                fontWeight:
-                    widget.selected ? FontWeight.w700 : FontWeight.w500,
+                fontWeight: widget.selected ? FontWeight.w700 : FontWeight.w500,
                 color: widget.selected
-                    ? widget.scheme.onPrimary
+                    ? widget.scheme.onSurface
                     : widget.scheme.onSurfaceVariant.withValues(alpha: 0.62),
                 letterSpacing: 0.2,
               ),

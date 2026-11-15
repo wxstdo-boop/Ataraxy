@@ -103,6 +103,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   /// through [_onBarsTick] and leave it alone — that is what lets [_StableFeed]
   /// hand back its cached widget while the pills retract.
   int _contentRev = 0;
+  int _filterRevision = 0;
 
   /// Entries whose card entrance animation already played this session. The
   /// lazy feed disposes off-screen cards, so this is what stops a card from
@@ -143,15 +144,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _barsCtrl.addListener(_onBarsTick);
   }
 
-  /// Applies a new visible set (category chip, sort mode, search query). The
-  /// section cross-fades the whole swap (see `_ListSection`), and entering
-  /// cards do NOT replay their entrance: replaying reset their opacity to 0
-  /// for the stagger delay, which combined with the section fade made the
-  /// incoming content quadratic and exposed the bright scaffold for a few
-  /// frames — the "вспышка" on empty↔populated switches.
+  /// Applies a new visible set (category chip, sort mode, search query).
+  /// Individual cards and the empty state animate in place without moving or
+  /// fading the whole list.
   void _swapContent(VoidCallback swap) {
     if (!mounted) return;
-    setState(swap);
+    setState(() {
+      _filterRevision++;
+      swap();
+    });
   }
 
   /// Each frame of the collapse rebuilds the screen: the app bar reserves its
@@ -304,9 +305,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       });
     } catch (e) {
       if (!mounted) return;
+      debugPrint('[Home] Failed to reload entries: $e');
       setState(() {
-        _entries = [];
-        _searchTextCache.clear();
         _loading = false;
         _refreshing = false;
       });
@@ -516,8 +516,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
     // Filter signature is passed to the active tab pages so visible results
     // animate without eagerly filtering and sorting every off-screen tab.
-    final contentKey = '${_category.name}|$_sortMode|${_searchQuery.trim()}';
-
     final showRefresh = !_loading && !_refreshing;
 
     return DefaultTabController(
@@ -826,9 +824,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                   emptyText: d.$3,
                                                   seenEntranceIds:
                                                       _seenEntranceIds,
-                                                  contentKey: contentKey,
                                                   movementRevision:
                                                       _pinMovementRevision,
+                                                  filterRevision:
+                                                      _filterRevision,
                                                   movementPositions:
                                                       _entryCardPositions,
                                                 )
@@ -880,9 +879,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                   emptyText: d.$3,
                                                   seenEntranceIds:
                                                       _seenEntranceIds,
-                                                  contentKey: contentKey,
                                                   movementRevision:
                                                       _pinMovementRevision,
+                                                  filterRevision:
+                                                      _filterRevision,
                                                   movementPositions:
                                                       _entryCardPositions,
                                                 )
@@ -955,9 +955,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                                     emptyText: d.$3,
                                                     seenEntranceIds:
                                                         _seenEntranceIds,
-                                                    contentKey: contentKey,
                                                     movementRevision:
                                                         _pinMovementRevision,
+                                                    filterRevision:
+                                                        _filterRevision,
                                                     movementPositions:
                                                         _entryCardPositions,
                                                   );

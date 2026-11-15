@@ -5,8 +5,33 @@ import 'package:ataraxy/splash_content.dart';
 import 'package:ataraxy/theme/app_theme.dart';
 import 'package:ataraxy/widgets/animated_letters.dart';
 import 'package:ataraxy/widgets/press_scale.dart';
+import 'package:ataraxy/widgets/streak_badge.dart';
+
+import 'helpers.dart';
 
 void main() {
+  testWidgets('streak OK button has a soft press recoil', (tester) async {
+    await tester.pumpWidget(
+      testApp(const Scaffold(body: StreakBadge(streak: 3))),
+    );
+    await tester.longPress(find.byType(StreakBadge));
+    await tester.pumpAndSettle();
+
+    final okButton = find.widgetWithText(TextButton, 'OK');
+    final pressScale = find.ancestor(
+      of: okButton,
+      matching: find.byType(PressScale),
+    );
+    expect(pressScale, findsOneWidget);
+    final feedback = tester.widget<PressScale>(pressScale);
+    expect(feedback.scale, 0.96);
+    expect(feedback.duration, const Duration(milliseconds: 120));
+
+    await tester.tap(okButton);
+    await tester.pumpAndSettle();
+    expect(okButton, findsNothing);
+  });
+
   testWidgets('AnimatedLetters renders one widget per glyph and settles', (
     tester,
   ) async {

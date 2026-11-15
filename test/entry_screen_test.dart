@@ -68,6 +68,39 @@ void main() {
     expect(find.text('Старый сон'), findsOneWidget);
   });
 
+  testWidgets('content field grows and shrinks smoothly with its text',
+      (tester) async {
+    await pumpEntry(tester);
+
+    final editor = find.byKey(const ValueKey('editor'));
+    final animatedSize = find.byKey(const ValueKey('entry-content-size'));
+    final initialHeight = tester.getSize(animatedSize).height;
+    await tester.enterText(
+      editor,
+      List.generate(12, (i) => 'Строка ${i + 1}').join('\n'),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    final growingHeight = tester.getSize(animatedSize).height;
+    await tester.pump(const Duration(milliseconds: 300));
+    final expandedHeight = tester.getSize(animatedSize).height;
+
+    expect(expandedHeight, greaterThan(initialHeight));
+    expect(growingHeight, greaterThan(initialHeight));
+    expect(growingHeight, lessThan(expandedHeight));
+
+    await tester.enterText(editor, 'Одна строка');
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    final shrinkingHeight = tester.getSize(animatedSize).height;
+    await tester.pump(const Duration(milliseconds: 300));
+    final collapsedHeight = tester.getSize(animatedSize).height;
+
+    expect(collapsedHeight, lessThan(expandedHeight));
+    expect(shrinkingHeight, lessThan(expandedHeight));
+    expect(shrinkingHeight, greaterThan(collapsedHeight));
+  });
+
   testWidgets('switching entry type reveals the dream-only controls',
       (tester) async {
     await pumpEntry(tester);

@@ -286,47 +286,61 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
             ),
             _dreamSigns(context, entry, color),
             const SizedBox(height: 20),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(18),
-              decoration: BoxDecoration(
-                color: scheme.surfaceContainerHighest.withValues(alpha: 0.4),
-                borderRadius: BorderRadius.circular(18),
-              ),
-              child: entry.content.isEmpty
-                      ? Text(
-                          L.tr(context, 'noText'),
-                          style: Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.5),
-                        )
-                      : MarkdownBody(
-                          data: emDash(entry.content),
-                          selectable: true,
-                          // Keep the user's own line breaks: a single \n
-                          // renders as a real break, not a collapsed space.
-                          softLineBreak: true,
-                          styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context)).copyWith(
-                            // A blank-line paragraph break must read as MORE
-                            // than a line break; derive the gap from the line
-                            // leading (a flat constant reads as merged).
-                            blockSpacing: markdownBlockSpacing(
-                              Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.6),
-                            ),
-                            p: Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.6),
-                            code: TextStyle(
-                              backgroundColor: scheme.surfaceContainerHighest,
-                              fontFamily: 'monospace',
-                              fontSize: 13,
-                            ),
-                            codeblockDecoration: BoxDecoration(
-                              color: scheme.surfaceContainerHighest,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            blockquoteDecoration: BoxDecoration(
-                              border: Border(left: BorderSide(color: scheme.primary, width: 3)),
-                            ),
-                            listBullet: TextStyle(color: scheme.primary),
+            AnimatedSize(
+              key: const ValueKey('entry-content-size'),
+              alignment: Alignment.topCenter,
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeInOutCubic,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: scheme.surfaceContainerHighest.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: entry.content.isEmpty
+                    ? Text(
+                        L.tr(context, 'noText'),
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodyLarge
+                            ?.copyWith(height: 1.5),
+                      )
+                    : MarkdownBody(
+                        data: emDash(entry.content),
+                        selectable: false,
+                        softLineBreak: true,
+                        styleSheet:
+                            MarkdownStyleSheet.fromTheme(Theme.of(context))
+                                .copyWith(
+                          blockSpacing: markdownBlockSpacing(
+                            Theme.of(context)
+                                .textTheme
+                                .bodyLarge
+                                ?.copyWith(height: 1.6),
                           ),
+                          p: Theme.of(context)
+                              .textTheme
+                              .bodyLarge
+                              ?.copyWith(height: 1.6),
+                          code: TextStyle(
+                            backgroundColor: scheme.surfaceContainerHighest,
+                            fontFamily: 'monospace',
+                            fontSize: 13,
+                          ),
+                          codeblockDecoration: BoxDecoration(
+                            color: scheme.surfaceContainerHighest,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          blockquoteDecoration: BoxDecoration(
+                            border: Border(
+                              left: BorderSide(color: scheme.primary, width: 3),
+                            ),
+                          ),
+                          listBullet: TextStyle(color: scheme.primary),
                         ),
+                      ),
+              ),
             ),
             if (entry.tags.isNotEmpty) ...[
               const SizedBox(height: 16),

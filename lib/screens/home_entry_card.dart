@@ -3,8 +3,15 @@ part of 'home_screen.dart';
 class _EntryCardPosition {
   final Offset offset;
   final int revision;
+  final int filterRevision;
+  final int index;
 
-  const _EntryCardPosition(this.offset, this.revision);
+  const _EntryCardPosition(
+    this.offset,
+    this.revision,
+    this.filterRevision,
+    this.index,
+  );
 }
 
 void _shiftEntryCardPositions(
@@ -19,6 +26,8 @@ void _shiftEntryCardPositions(
     positions[key] = _EntryCardPosition(
       position.offset.translate(0, -scrollDelta),
       position.revision,
+      position.filterRevision,
+      position.index,
     );
   }
 }
@@ -34,14 +43,11 @@ class _EntryCard extends StatefulWidget {
 
   /// Whether this card should play the fade+slide entrance. True only for the
   /// first list of the session (so the initial cascade plays once); later cards
-  /// render statically (no controller, no timers), which removes scroll/rebuild
-  /// jank. Cards that ENTER the visible set on a filter/sort/search swap do NOT
-  /// animate: replaying their entrance inside the section cross-fade made the
-  /// incoming opacity quadratic (switcher × card fade), so the outgoing empty
-  /// state faded out faster than the cards appeared and the bright scaffold
-  /// flashed through — the "вспышка" on empty↔populated switches.
+  /// render statically. Filter transitions move cards from their prior
+  /// positions when possible.
   final bool animate;
   final int movementRevision;
+  final int filterRevision;
   final Map<String, _EntryCardPosition> movementPositions;
 
   const _EntryCard({
@@ -53,6 +59,7 @@ class _EntryCard extends StatefulWidget {
     required this.heroTag,
     this.animate = true,
     this.movementRevision = 0,
+    this.filterRevision = 0,
     required this.movementPositions,
   });
 
@@ -60,21 +67,34 @@ class _EntryCard extends StatefulWidget {
   State<_EntryCard> createState() => _EntryCardState();
 }
 
-class _EntryCardState extends State<_EntryCard>
-    with SingleTickerProviderStateMixin {
+class _EntryCardState extends State<_EntryCard> with TickerProviderStateMixin {
   AnimationController? _ctrl;
   Animation<double>? _opacity;
   Animation<Offset>? _slide;
   AnimationController? _movementCtrl;
   Animation<Offset>? _movement;
+  AnimationController? _filterCtrl;
+  Animation<double>? _filterOpacity;
   Offset? _movementOrigin;
 
   @override
   void initState() {
     super.initState();
     final previous = widget.movementPositions[widget.heroTag];
-    if (previous != null && previous.revision != widget.movementRevision) {
+    if (previous != null &&
+        previous.revision != widget.movementRevision &&
+        previous.filterRevision == widget.filterRevision) {
       _movementOrigin = previous.offset;
+    }
+    if (previous != null &&
+        previous.filterRevision != widget.filterRevision &&
+        previous.index != widget.index) {
+      _movementOrigin = previous.offset;
+    } else if (!widget.animate &&
+        widget.filterRevision > 0 &&
+        (previous == null ||
+            previous.filterRevision != widget.filterRevision)) {
+      _playFilterTransition();
     }
     _schedulePositionUpdate();
     // First list of the session: `animate` staggers the initial cascade.
@@ -84,15 +104,15 @@ class _EntryCardState extends State<_EntryCard>
   @override
   void didUpdateWidget(covariant _EntryCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // A card that STAYS on screen across a category/sort/search swap must not
-    // blink. It used to replay `_play()`, which resets the controller to 0 —
-    // so every surviving card dropped to full transparency for the stagger
-    // delay and then faded back, reading as a hard "вспышка" rather than a
-    // smooth switch. Survivors now stay put; the section cross-fade carries
-    // the swap instead.
+    // Keep surviving cards visible; animate only the ones whose list position
+    // changed rather than fading or translating the entire feed.
     if (oldWidget.movementRevision != widget.movementRevision &&
         oldWidget.index != widget.index) {
-      _movementOrigin = _currentPosition();
+      _movementOrigin = oldWidget.movementPositions[oldWidget.heroTag]?.offset;
+    }
+    if (oldWidget.filterRevision != widget.filterRevision &&
+        oldWidget.index != widget.index) {
+      _movementOrigin = oldWidget.movementPositions[oldWidget.heroTag]?.offset;
     }
     _schedulePositionUpdate();
   }
@@ -101,6 +121,17 @@ class _EntryCardState extends State<_EntryCard>
     final renderObject = context.findRenderObject();
     if (renderObject is! RenderBox || !renderObject.hasSize) return null;
     return renderObject.localToGlobal(Offset.zero);
+  }
+
+  void _playFilterTransition() {
+    _filterCtrl ??= AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 420),
+    );
+    _filterOpacity ??= Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(parent: _filterCtrl!, curve: Curves.easeOutCubic),
+    );
+    _filterCtrl!.forward(from: 0);
   }
 
   void _schedulePositionUpdate() {
@@ -113,10 +144,15 @@ class _EntryCardState extends State<_EntryCard>
       widget.movementPositions[widget.heroTag] = _EntryCardPosition(
         current,
         widget.movementRevision,
+        widget.filterRevision,
+        widget.index,
       );
       if (origin == null) return;
-      final delta = origin - current;
-      if (delta.distance < 1) return;
+      final delta = Offset(0, origin.dy - current.dy);
+      if (delta.dy.abs() < 1 ||
+          delta.dy.abs() > MediaQuery.sizeOf(context).height) {
+        return;
+      }
       _movementCtrl ??= AnimationController(
         vsync: this,
         duration: const Duration(milliseconds: 320),
@@ -125,6 +161,7 @@ class _EntryCardState extends State<_EntryCard>
       _movement = Tween<Offset>(begin: delta, end: Offset.zero).animate(
         CurvedAnimation(parent: _movementCtrl!, curve: Curves.easeInOutCubic),
       );
+      setState(() {});
       _movementCtrl!.forward(from: 0);
     });
   }
@@ -154,6 +191,7 @@ class _EntryCardState extends State<_EntryCard>
   void dispose() {
     _ctrl?.dispose();
     _movementCtrl?.dispose();
+    _filterCtrl?.dispose();
     super.dispose();
   }
 
@@ -172,7 +210,7 @@ class _EntryCardState extends State<_EntryCard>
     // dropped and the card POPPED to full opacity. That snap, on top of the
     // entrance that had just started, is the "дёргает записи по двойному".
     final ctrl = _ctrl;
-    final Widget card;
+    Widget card;
     if (ctrl == null) {
       card = _EntryCardBody(
         entry: widget.entry,
@@ -195,6 +233,11 @@ class _EntryCardState extends State<_EntryCard>
           ),
         ),
       );
+    }
+    final filterCtrl = _filterCtrl;
+    final filterOpacity = _filterOpacity;
+    if (filterCtrl != null && filterOpacity != null) {
+      card = FadeTransition(opacity: filterOpacity, child: card);
     }
     final movement = _movement;
     final movementCtrl = _movementCtrl;

@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 /// and made the shared element look like it was dragging the page with it.
 Route<T> fadeRoute<T>(
   Widget page, {
-  Duration duration = const Duration(milliseconds: 320),
+  Duration duration = const Duration(milliseconds: 420),
 }) {
   return PageRouteBuilder<T>(
     pageBuilder: (context, animation, secondaryAnimation) => page,

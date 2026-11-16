@@ -1,6 +1,6 @@
 # Ataraxy Changelog
 
-## [Unreleased]
+## [1.3.30] - 2026-11-16
 ### Security
 - Removed the bundled HuggingFace credential that was split across
   `ai_service.dart`. ADA now runs **only** on the user's own `hf_…` key

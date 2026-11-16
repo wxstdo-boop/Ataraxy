@@ -95,3 +95,25 @@ jobs:
           files: |
             Ataraxy-${{ github.ref_name }}.apk
             Ataraxy-${{ github.ref_name }}.apk.sha256
+
+      # Keep only the newest 10 releases. Each release carries a ~15 MB APK, so
+      # an unbounded history slowly eats the repo's release-asset storage. The
+      # in-app updater reads /releases/latest, so pruning older ones is safe.
+      - name: Prune old releases (keep newest 10)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # `gh release list` is newest-first, so everything past line 10 is old.
+          old_tags="$(gh release list --limit 100 --json tagName --jq '.[].tagName' \
+            | tail -n +11 || true)"
+          if [[ -z "$old_tags" ]]; then
+            echo "Nothing to prune (10 or fewer releases)."
+            exit 0
+          fi
+          while IFS= read -r tag; do
+            [[ -z "$tag" ]] && continue
+            echo "Deleting release + tag: $tag"
+            gh release delete "$tag" --cleanup-tag --yes
+          done <<< "$old_tags"

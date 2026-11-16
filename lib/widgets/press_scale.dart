@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:ataraxy/compat/material.dart';
 
 /// Extra time the recoil (release) adds on top of the press-in [PressScale.duration].
 /// The dimple lands fast under the finger; the spring back is deliberately

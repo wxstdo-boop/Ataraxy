@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:ataraxy/compat/material.dart';
 
 /// Paragraph spacing for every `MarkdownBody` in the app.
 ///

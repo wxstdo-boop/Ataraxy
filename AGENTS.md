@@ -141,6 +141,35 @@ Pushing a `v*` tag whose version matches `pubspec.yaml` triggers
 it as a GitHub release. The in-app updater (`GithubUpdateService`) reads that
 release, so bump `version:` in `pubspec.yaml` before tagging.
 
+## SDK version drift (analyze is version-dependent)
+
+- CI (`.github/workflows/release.yml`) pins **Flutter 3.47.5**; a newer local
+  SDK (e.g. 3.50.x) reports deprecations CI never sees. `flutter analyze`
+  exits non-zero even for `info`, so a "clean" CI does NOT mean a clean local
+  run — always confirm which SDK produced a report.
+- In 3.50 `package:flutter/material.dart` and
+  `package:flutter_localizations/flutter_localizations.dart` are deprecated in
+  favour of `package:material_ui/material_ui.dart` /
+  `package:cupertino_ui/cupertino_ui.dart`. Do NOT run the `dart fix`
+  migration: `material_ui` declares its OWN `ThemeData` / `MaterialApp` /
+  `ColorScheme` / `Global*Localizations` types, so `flutter_markdown_plus`,
+  `dynamic_color` and the generated l10n file stop type-checking.
+- The transition-period deprecations are isolated in `lib/compat/`:
+  `material.dart` re-exports the legacy Material library and
+  `localizations.dart` aliases the two global delegates
+  (`materialLocalizationsDelegate` / `cupertinoLocalizationsDelegate`). Import
+  these instead of the deprecated libraries. Library-level deprecation is
+  absorbed by an `export`; member-level deprecation (`Global*Localizations`)
+  is not, hence the aliases. Delete `lib/compat/` once the ecosystem migrates.
+- `lib/l10n/generated/**` is excluded from analysis: it is machine-generated
+  by `flutter gen-l10n` (re-run on every `flutter pub get`), so any hand edit
+  there is overwritten.
+- `ScrollCacheExtent` is re-exported through `material.dart` only from 3.50
+  on; `lib/screens/home_screen.dart` keeps an explicit
+  `import 'package:flutter/rendering.dart'` for it (used by the `part` files)
+  with `// ignore: unnecessary_import` so 3.47.5 still resolves the symbol.
+  Re-check that ignore when the CI SDK is raised.
+
 ## Theming pitfalls
 
 - The home body paints an ambient wash behind the feed. It must use

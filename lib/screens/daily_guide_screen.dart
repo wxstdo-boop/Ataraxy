@@ -1,9 +1,9 @@
-import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ataraxy/l10n/strings.dart';
 import 'package:ataraxy/theme/app_theme.dart';
 import 'package:ataraxy/widgets/app_back_button.dart';
 import 'package:ataraxy/widgets/premium_header.dart';
+import 'package:ataraxy/compat/material.dart';
 
 enum DailyGuideTopic { lucidDreams, tulpa }
 

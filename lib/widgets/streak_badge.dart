@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:ataraxy/compat/material.dart';
 import 'package:ataraxy/l10n/strings.dart';
 import 'package:ataraxy/widgets/press_scale.dart';
 import 'package:ataraxy/widgets/winter_hat.dart';

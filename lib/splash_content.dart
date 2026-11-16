@@ -1,6 +1,6 @@
 import 'dart:math' as math;
 
-import 'package:flutter/material.dart';
+import 'package:ataraxy/compat/material.dart';
 import 'l10n/strings.dart';
 import 'theme/app_theme.dart';
 import 'widgets/animated_letters.dart';

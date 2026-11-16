@@ -3,12 +3,12 @@ import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:ataraxy/compat/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:file_selector/file_selector.dart';
-import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:ataraxy/l10n/strings.dart';
 import 'package:ataraxy/widgets/app_back_button.dart';

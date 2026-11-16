@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
+import 'package:ataraxy/compat/material.dart';
 import 'package:hive/hive.dart';
 
 import 'package:ataraxy/models/entry.dart';

@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:ataraxy/l10n/strings.dart';
 import 'package:ataraxy/providers/settings_provider.dart';
 import 'package:ataraxy/services/notification_service.dart';
@@ -6,6 +5,7 @@ import 'package:ataraxy/theme/app_theme.dart';
 import 'package:ataraxy/widgets/animated_snack.dart';
 import 'package:ataraxy/widgets/app_back_button.dart';
 import 'package:ataraxy/widgets/volumetric_switch.dart';
+import 'package:ataraxy/compat/material.dart';
 
 class DevSettingsScreen extends StatelessWidget {
   const DevSettingsScreen({super.key});

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:ataraxy/compat/material.dart';
 
 import 'strings_data.g.dart';
 

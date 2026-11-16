@@ -1,10 +1,15 @@
 import 'dart:async' show Timer, unawaited;
 import 'dart:ui' show ImageFilter;
 
-import 'package:flutter/material.dart';
+// `ScrollCacheExtent` is used by the `part` files below. Flutter 3.50
+// re-exports it through material.dart (so the analyzer calls this import
+// redundant), but 3.47.5 — the SDK pinned in release.yml — does not, so the
+// explicit import is required there. Keep it until the CI SDK is raised.
+// ignore: unnecessary_import
 import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
+import 'package:ataraxy/compat/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ataraxy/l10n/strings.dart';
 import 'package:ataraxy/widgets/animated_field_counter.dart';

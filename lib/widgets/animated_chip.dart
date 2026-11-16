@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:ataraxy/compat/material.dart';
 
 /// A [Chip] that animates in on mount (fade + scale) and, when the user taps
 /// its delete button, animates out (fade + shrink) BEFORE [onDeleted] runs.

@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:fl_chart/fl_chart.dart';
-import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:ataraxy/l10n/strings.dart';
 import 'package:ataraxy/models/dream_signs.dart';
@@ -15,6 +14,7 @@ import 'package:ataraxy/widgets/animated_snack.dart';
 import 'package:ataraxy/widgets/app_back_button.dart';
 import 'package:ataraxy/widgets/skeleton.dart';
 import 'package:ataraxy/widgets/premium_header.dart';
+import 'package:ataraxy/compat/material.dart';
 
 class StatisticsScreen extends StatefulWidget {
   const StatisticsScreen({super.key});

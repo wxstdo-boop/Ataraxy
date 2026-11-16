@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:ataraxy/compat/material.dart';
 
 /// Icon button with a soft, tactile press: while the finger is held the icon
 /// gently scales down into a faint halo (a "dimple"), releasing springs it

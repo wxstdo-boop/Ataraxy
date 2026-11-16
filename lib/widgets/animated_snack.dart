@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'dart:ui' show ImageFilter;
 
-import 'package:flutter/material.dart';
 
 import 'package:ataraxy/theme/app_theme.dart';
+import 'package:ataraxy/compat/material.dart';
 
 /// Cached blur for the frosted snackbar surface (re-creating the engine
 /// shader on every rebuild is wasteful on low-end devices).

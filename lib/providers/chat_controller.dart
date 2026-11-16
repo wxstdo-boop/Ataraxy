@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter/material.dart';
 import 'package:ataraxy/l10n/strings.dart';
 import 'package:ataraxy/models/entry.dart';
 import 'package:ataraxy/providers/settings_provider.dart';
@@ -9,6 +8,7 @@ import 'package:ataraxy/services/ai_service.dart';
 import 'package:ataraxy/services/reply_cleaner.dart';
 import 'package:ataraxy/services/storage_service.dart';
 import 'package:ataraxy/widgets/animated_snack.dart';
+import 'package:ataraxy/compat/material.dart';
 
 /// One message bubble in the АДА chat UI.
 class AiMessageUi {

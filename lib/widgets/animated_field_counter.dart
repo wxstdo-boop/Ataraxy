@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'package:ataraxy/compat/material.dart';
 
 /// Smoothly cross-fading character counter for [TextField].
 ///

@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:ataraxy/models/settings.dart';
+import 'package:ataraxy/compat/material.dart';
 
 class SettingsProvider extends InheritedWidget {
   final AppSettings settings;

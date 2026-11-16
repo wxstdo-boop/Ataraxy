@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:ataraxy/widgets/press_scale.dart';
+import 'package:ataraxy/compat/material.dart';
 
 /// A single-select pill: the same animated container used by the entry
 /// editor's category row and other filter rows.

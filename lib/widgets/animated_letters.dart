@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:ataraxy/compat/material.dart';
 
 /// Renders [text] one glyph at a time, each fading and sliding in on a short
 /// stagger. Used for the brand wordmark so "Ataraxy" writes itself on instead

@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ataraxy/compat/material.dart';
 
 import 'package:ataraxy/widgets/app_back_button.dart';
 import 'package:ataraxy/widgets/pressable_icon_button.dart';

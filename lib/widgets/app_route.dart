@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:ataraxy/compat/material.dart';
 
 /// The app's single page transition: a soft cross-fade.
 ///

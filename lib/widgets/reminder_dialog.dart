@@ -1,7 +1,7 @@
 ﻿import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
+import 'package:ataraxy/compat/material.dart';
 
 import 'package:ataraxy/l10n/strings.dart';
 import 'package:ataraxy/models/settings.dart';

@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ataraxy/compat/material.dart';
 
 import 'package:ataraxy/models/settings.dart';
 import 'package:ataraxy/welcome_screen.dart';

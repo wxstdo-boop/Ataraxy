@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:ataraxy/compat/material.dart';
 
 /// The app's signature header backdrop: the rounded-bottom gradient panel
 /// shared by every screen's AppBar.

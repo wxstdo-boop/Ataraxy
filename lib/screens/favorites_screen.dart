@@ -2,7 +2,6 @@ import 'dart:io';
 import 'dart:math';
 import 'dart:ui' as ui;
 
-import 'package:flutter/material.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -22,6 +21,7 @@ import 'package:ataraxy/widgets/animated_snack.dart';
 import 'package:ataraxy/widgets/limited_context_menu.dart';
 import 'package:ataraxy/widgets/skeleton.dart';
 import 'package:ataraxy/widgets/premium_header.dart';
+import 'package:ataraxy/compat/material.dart';
 
 part 'favorites_photo_tile.dart';
 part 'favorites_media_player.dart';

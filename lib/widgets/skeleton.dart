@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:ataraxy/compat/material.dart';
 
 /// Wraps a subtree of [SkeletonBox]es with one shared sliding shimmer.
 ///

@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
 
 import 'package:ataraxy/widgets/press_scale.dart';
+import 'package:ataraxy/compat/material.dart';
 
 /// A volumetric toggle switch with a gradient track, rounded white thumb,
 /// and a subtle spring animation.  Drop-in replacement for Material [Switch].

@@ -1,6 +1,5 @@
 ﻿import 'dart:async';
 
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -28,6 +27,7 @@ import 'package:ataraxy/widgets/em_dash_formatter.dart';
 import 'package:ataraxy/widgets/premium_header.dart';
 import 'package:ataraxy/widgets/themed_time_picker.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
+import 'package:ataraxy/compat/material.dart';
 
 class EntryScreen extends StatefulWidget {
   final JournalEntry? entry;

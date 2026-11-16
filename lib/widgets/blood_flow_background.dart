@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:flutter/material.dart';
+import 'package:ataraxy/compat/material.dart';
 
 /// Blood for the MUTILATED theme. This layer is painted ON TOP of the app
 /// (IgnorePointer, so it never blocks touches) — soft crimson stains that

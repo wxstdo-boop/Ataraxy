@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:ataraxy/compat/material.dart';
 import 'models/settings.dart';
 import 'screens/home_screen.dart';
 import 'screens/lock_screen.dart';

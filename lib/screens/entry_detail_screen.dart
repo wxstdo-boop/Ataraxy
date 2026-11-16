@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
+import 'package:ataraxy/compat/material.dart';
 import 'package:intl/intl.dart';
 import 'package:ataraxy/l10n/strings.dart';
 import 'package:ataraxy/widgets/app_back_button.dart';

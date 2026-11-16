@@ -1,12 +1,12 @@
 ﻿import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:ataraxy/l10n/strings.dart';
 import 'package:ataraxy/providers/settings_provider.dart';
 import 'package:ataraxy/services/ai_service.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
+import 'package:ataraxy/compat/material.dart';
 import 'package:ataraxy/widgets/limited_context_menu.dart';
 import 'package:ataraxy/ai_overlay_state.dart';
 import 'package:ataraxy/widgets/em_dash_formatter.dart';

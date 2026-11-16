@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:ataraxy/compat/material.dart';
 import 'daily_prompts.dart';
 
 /// English + French translations of [tulpaPrompts]. The lists are EXACTLY

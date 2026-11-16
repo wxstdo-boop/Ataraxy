@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:ataraxy/compat/material.dart';
 
 /// The app's avatar: the actual app artwork (assets/ataraxy.png — the cream
 /// crescent moon on a pure black field) inside a volumetric gradient ring +

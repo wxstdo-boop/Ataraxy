@@ -1,6 +1,5 @@
 ﻿import 'dart:async';
 
-import 'package:flutter/material.dart';
 import 'package:ataraxy/l10n/strings.dart';
 import 'package:ataraxy/widgets/skeleton.dart';
 import 'package:ataraxy/models/favorite_activity.dart';
@@ -10,6 +9,7 @@ import 'package:ataraxy/widgets/limited_context_menu.dart';
 import 'package:ataraxy/widgets/em_dash_formatter.dart';
 import 'package:ataraxy/widgets/animated_snack.dart';
 import 'package:ataraxy/widgets/app_back_button.dart';
+import 'package:ataraxy/compat/material.dart';
 
 class FavoriteActivityScreen extends StatefulWidget {
   const FavoriteActivityScreen({super.key});

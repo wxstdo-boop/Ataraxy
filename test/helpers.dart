@@ -1,8 +1,8 @@
 import 'dart:io';
 
-import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ataraxy/compat/localizations.dart';
+import 'package:ataraxy/compat/material.dart';
 import 'package:hive/hive.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -37,9 +37,9 @@ Widget testApp(
       locale: locale,
       theme: AppTheme.lightMaterialYou(),
       localizationsDelegates: const [
-        GlobalMaterialLocalizations.delegate,
+        materialLocalizationsDelegate,
         GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
+        cupertinoLocalizationsDelegate,
       ],
       supportedLocales: const [Locale('ru'), Locale('en'), Locale('fr')],
       home: child,

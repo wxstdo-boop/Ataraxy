@@ -1,8 +1,8 @@
-import 'package:flutter/material.dart';
 
 import 'package:ataraxy/l10n/strings.dart';
 import 'package:ataraxy/splash_content.dart';
 import 'package:ataraxy/theme/app_theme.dart';
+import 'package:ataraxy/compat/material.dart';
 
 class LaunchScreen extends StatefulWidget {
   const LaunchScreen({super.key});

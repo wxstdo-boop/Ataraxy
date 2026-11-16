@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:ataraxy/compat/material.dart';
 import 'daily_prompts_dream_translations.dart';
 import 'daily_prompts_tulpa_translations.dart';
 

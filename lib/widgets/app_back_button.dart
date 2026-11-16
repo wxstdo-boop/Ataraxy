@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
 
 import 'package:ataraxy/widgets/pressable_icon_button.dart';
+import 'package:ataraxy/compat/material.dart';
 
 /// AppBar leading back button shared by every screen.
 ///

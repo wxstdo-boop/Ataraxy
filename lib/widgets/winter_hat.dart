@@ -1,6 +1,6 @@
 import 'dart:math' as math;
 
-import 'package:flutter/material.dart';
+import 'package:ataraxy/compat/material.dart';
 
 /// A small decorative knitted winter beanie (шапочка) with a fluffy pompom,
 /// drawn entirely with [CustomPainter] so it scales cleanly and needs no

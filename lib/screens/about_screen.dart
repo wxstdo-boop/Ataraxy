@@ -1,10 +1,10 @@
-import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:ataraxy/l10n/strings.dart';
 import 'package:ataraxy/widgets/app_back_button.dart';
 import 'package:ataraxy/theme/app_theme.dart';
 import 'package:ataraxy/widgets/animated_snack.dart';
 import 'package:ataraxy/widgets/app_avatar.dart';
+import 'package:ataraxy/compat/material.dart';
 
 class AboutScreen extends StatefulWidget {
   const AboutScreen({super.key});

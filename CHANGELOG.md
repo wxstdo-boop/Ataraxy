@@ -1,5 +1,14 @@
 # Ataraxy Changelog
 
+## [1.3.31] - 2026-11-16
+### Fixed
+- `flutter analyze` is clean again on the current stable Flutter (3.50): the
+  72 deprecation notices came from Material moving out of the SDK, and are now
+  isolated in `lib/compat/` instead of at every call site. The full
+  `material_ui` migration is deferred until the packages this app builds on
+  have moved too.
+- `TODOS.md` matches the in-code markers again.
+
 ## [1.3.30] - 2026-11-16
 ### Security
 - Removed the bundled HuggingFace credential that was split across

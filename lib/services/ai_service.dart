@@ -207,63 +207,6 @@ class AiService {
         (adaEndpoint, adaPublicModel),
         (adaEndpointFallback, adaModel),
       ];
-  // ---- Embedded ADA credential (split & masked) ----
-  //
-  // The HuggingFace token NEVER appears contiguously in source or in the
-  // compiled binary: it is stored as two independently-masked fragments in
-  // different encodings (base64-with-mask / masked byte list) and is
-  // reassembled lazily, only when an ADA request is actually made. The old
-  // single base64(XOR literal-key) form was reversible in one step by
-  // anyone who opened the APK; this costs materially more effort.
-  //
-  // This is HARDENING, not cryptography — a determined attacker with the
-  // APK can still recover it. The real fix: paste your own `hf_…` key in
-  // Settings (it ALWAYS overrides the embedded one — see [keyFor]), and
-  // once no old build is around, delete these fragments entirely.
-  static const String _credFragA = 'zcP60Mrs6tDJzM3NwMjM8tT/6A==';
-  static const List<int> _credFragB = [
-    117,
-    68,
-    100,
-    120,
-    86,
-    93,
-    113,
-    126,
-    95,
-    107,
-    95,
-    114,
-    80,
-    123,
-    87,
-    111,
-    95,
-    74,
-  ];
-  static const int _credMaskA = 0xA5;
-  static const int _credMaskB = 0x3C;
-
-  static String? _adaKeyCache;
-
-  /// Reassembles the embedded ADA credential. Never logged. Fails CLOSED:
-  /// if any fragment is corrupted/tampered, the integrity gate throws
-  /// instead of sending garbage (or half a token) over the network.
-  static String get adaKey {
-    final cached = _adaKeyCache;
-    if (cached != null) return cached;
-    final bytes = <int>[
-      for (final b in base64Decode(_credFragA)) b ^ _credMaskA,
-      for (final b in _credFragB) b ^ _credMaskB,
-    ];
-    // The credential is printable ASCII (`hf_…`). Anything else means the
-    // fragment was mangled — refuse to proceed.
-    if (bytes.isEmpty || !bytes.every((b) => b >= 0x21 && b <= 0x7E)) {
-      throw StateError('ADA credential integrity check failed');
-    }
-    return _adaKeyCache = String.fromCharCodes(bytes);
-  }
-
   /// Free model list (pollinations): only models the CURRENT text API
   /// actually serves. Mistral/llama/gemini were retired from the legacy
   /// endpoint (404 "Model not found ... legacy API deprecated") — keeping
@@ -279,14 +222,13 @@ class AiService {
   /// True when the given endpoint is the Laguna (poolside.ai) endpoint.
   static bool isLaguna(String endpoint) => endpoint == lagunaEndpoint;
 
-  /// The key to send for [endpoint]: the embedded ADA key for ADA (a
-  /// user-pasted `hf_…` key takes priority — rotate off the embedded one by
-  /// simply filling the Settings field), the user-configured key otherwise
-  /// (or null → pollinations, no key).
+  /// The key to send for [endpoint]: the user-pasted `hf_…` key for ADA
+  /// (the endpoint has NO bundled credential — bring your own token), the
+  /// user-configured key otherwise (or null → pollinations, no key).
   static String? keyFor(String endpoint, String? userKey) {
     final k = userKey?.trim() ?? '';
     if (isAda(endpoint)) {
-      return k.startsWith('hf_') ? k : adaKey;
+      return k.startsWith('hf_') ? k : null;
     }
     return k.isEmpty ? null : k;
   }
@@ -496,6 +438,8 @@ class AiService {
             model: next,
             apiKey: apiKey,
             stream: stream,
+            onDelta: onDelta,
+            cancelled: cancelled,
           );
         }
       }

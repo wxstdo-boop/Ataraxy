@@ -14,12 +14,14 @@
 - **Трекинг жизни**: вода, голодание, помодоро, HRT, шаги
 - **Закреплённые записи**: важное всегда сверху
 - **Автоэкспорт**: ежечасные бэкапы в Downloads/Ataraxy
-- **Экспорт/Импорт**: JSON для резервного копирования
+- **Экспорт/Импорт**: JSON, с опциональным шифрованием паролем (AES-256-GCM)
 
 ### 🤖 AI-ассистент (АДА)
 - Плавающий чат-пузырь поверх дневника
-- Поддержка **бесплатных API**: Pollinations, AI Horde, OpenRouter, FreeLLM
-- Работает с DeepSeek V4 Flash, Laguna, Gemini, Llama и другими
+- **Free-режим без ключа**: Pollinations, AI Horde, OVHcloud AI Endpoints
+- **Свой ключ** (bring your own key): HuggingFace, Groq, NVIDIA, Gemini,
+  OpenRouter, Mistral, Cerebras, Agnes, Laguna
+- Работает с DeepSeek, Laguna, Gemini, Llama и другими
 - Поддержка Markdown в ответах
 - Цепочка мышления (thinking models)
 
@@ -33,10 +35,11 @@
 ### 🔒 Приватность
 - Экран блокировки с пин-кодом
 - Все данные только на устройстве
-- Шифрование резервных копий
+- Шифрование резервных копий паролем (AES-256-GCM, PBKDF2)
 
 ### 🎨 Оформление
-- **6 тем**: системная, светлая персиковая, лавандовая, светлая Grok, тёмная персиковая, MUTILATED
+- **7 тем**: системная (Material You), светлая персиковая, лавандовая,
+  светлая Grok, тёмная Grok, тёмная персиковая, MUTILATED
 - Dynamic color (Material You) на Android 12+
 - Кастомный шрифт Cormorant
 - Анимированные переходы
@@ -56,7 +59,7 @@ Android · iOS · Web · macOS · Linux · Windows
 ## 🛠️ Сборка
 
 ### Требования
-- Flutter 3.47.0+ (Dart 3.13.0+)
+- Flutter 3.47.5+ (Dart 3.12.2+)
 - Android SDK 34+
 - Java 17+
 

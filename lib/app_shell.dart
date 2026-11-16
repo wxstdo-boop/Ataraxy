@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -68,9 +69,11 @@ class AppShellState extends State<AppShell> {
   Timer? _autoExportTimer;
   NavigatorObserver? _keyboardGuard;
 
-  ThemeData _theme(AppThemeMode mode) => AppTheme.of(mode);
+  ThemeData _theme(AppThemeMode mode, ColorScheme? dynamicLight) =>
+      AppTheme.of(mode, dynamicLight: dynamicLight);
 
-  ThemeData _darkTheme(AppThemeMode mode) => AppTheme.darkOf(mode);
+  ThemeData _darkTheme(AppThemeMode mode, ColorScheme? dynamicDark) =>
+      AppTheme.darkOf(mode, dynamicDark: dynamicDark);
 
   @override
   void initState() {
@@ -94,119 +97,126 @@ class AppShellState extends State<AppShell> {
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, _) {
-        if (didPop) return;
-        final nav = widget.navigatorKey.currentState;
-        if (nav != null && nav.canPop()) {
-          nav.pop();
-        } else if (!kIsWeb) {
-          SystemNavigator.pop();
-        }
-      },
-      child: MaterialApp(
-      title: 'Ataraxy',
-      debugShowCheckedModeBanner: false,
-      navigatorKey: widget.navigatorKey,
-      navigatorObservers: [
-        appRouteObserver,
-        ?_keyboardGuard,
-      ],
-      themeMode: switch (widget.themeMode) {
-        AppThemeMode.system => ThemeMode.system,
-        AppThemeMode.darkPeach => ThemeMode.dark,
-        AppThemeMode.lightLavender => ThemeMode.light,
-        AppThemeMode.lightGrok => ThemeMode.light,
-        AppThemeMode.darkGrok => ThemeMode.dark,
-        AppThemeMode.lightMaterialYou => ThemeMode.light,
-        AppThemeMode.mutilated => ThemeMode.light,
-      },
-      locale: widget.localeCode != null ? Locale(widget.localeCode!) : null,
-      supportedLocales: AppLocalizations.supportedLocales,
-      localizationsDelegates: const [
-        AppLocalizations.delegate,
-        GlobalMaterialLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-      ],
-      theme: _theme(widget.themeMode),
-      darkTheme: _darkTheme(widget.themeMode),
-      // Theme + language switches glide: MaterialApp wraps the tree in an
-      // AnimatedTheme that lerps every color between the old and new theme
-      // over ~380 ms — the canonical flash-free transition (no instant cut,
-      // no black/white window peek, no snapshot overlay).
-      themeAnimationDuration: const Duration(milliseconds: 380),
-      themeAnimationCurve: Curves.easeInOutCubic,
-      // Rubber-band "tension" everywhere: swiping past the FIRST tab to the
-      // left, past the LAST tab to the right (and pulling any list beyond
-      // its top/bottom edge) springs back instead of hitting a hard wall.
-      // This is the iOS-style bounce the user asked for on the tab edges +
-      // vertical overscroll in all sections.
-      //
-      // [_AppScrollBehavior] keeps that bounce but drops Material 3's default
-      // `StretchingOverscrollIndicator`, which literally stretches the scrolled
-      // content — on the reading/editor screens it smeared whole paragraphs
-      // (the "натягивается текст абзацами" jank). The bounce is the wanted
-      // feel; the content stretch is not.
-      scrollBehavior: const _AppScrollBehavior(),
-      builder: (context, child) {
-        return ListenableBuilder(
-          listenable: widget.settingsNotifier,
-          builder: (context, _) {
-            final settings = widget.settingsNotifier.value;
-            return SettingsProvider(
-              settings: settings,
-              onChanged: widget.onSettingsChanged,
-              // MUTILATED theme: a slow blood-flow layer sits behind the
-              // (slightly translucent) scaffold and seeps through the
-              // section backgrounds.
-              child: Stack(
-                children: [
-                  child!,
-                  // Blood layer ON TOP of the whole app (IgnorePointer inside
-                  // the widget): visible crimson stains drift over section
-                  // backgrounds — the old behind-the-Navigator placement
-                  // hid the blood behind translucent surfaces and looked
-                  // muddy gray. It also seeps over the splash (MUTILATED's
-                  // splash is opaque, so the stains read clearly there).
-                  if (widget.themeMode == AppThemeMode.mutilated)
-                    const Positioned.fill(
-                      child: BloodFlowBackground(),
-                    ),
-                    // Floating AI assistant on the very TOP: mounted ABOVE
-                    // the Navigator so the chat window and bubble hover over
-                    // every section (settings, stats, …) and never vanish on
-                    // navigation. Regular widget in the tree — not a root
-                    // OverlayEntry — so text selection and the keyboard
-                    // never hit the grey-screen overlay crash.
-                    ValueListenableBuilder<bool>(
-                      valueListenable: aiOverlayOpen,
-                      builder: (context, open, _) => open
-                          ? Positioned.fill(
-                              child: AiFloatingAssistant(
-                                onClose: () => aiOverlayOpen.value = false,
-                              ),
+    // DynamicColorBuilder feeds the OS "Material You" palette (Android 12+,
+    // plus macOS/Windows/Linux accent colours) into the theme builder. On
+    // devices without dynamic colour both schemes are null and every theme
+    // falls back to its hand-tuned palette — so this wrapper is a no-op
+    // there, never a regression.
+    return DynamicColorBuilder(
+      builder: (lightDynamic, darkDynamic) => PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) {
+          if (didPop) return;
+          final nav = widget.navigatorKey.currentState;
+          if (nav != null && nav.canPop()) {
+            nav.pop();
+          } else if (!kIsWeb) {
+            SystemNavigator.pop();
+          }
+        },
+        child: MaterialApp(
+          title: 'Ataraxy',
+          debugShowCheckedModeBanner: false,
+          navigatorKey: widget.navigatorKey,
+          navigatorObservers: [
+            appRouteObserver,
+            ?_keyboardGuard,
+          ],
+          themeMode: switch (widget.themeMode) {
+            AppThemeMode.system => ThemeMode.system,
+            AppThemeMode.darkPeach => ThemeMode.dark,
+            AppThemeMode.lightLavender => ThemeMode.light,
+            AppThemeMode.lightGrok => ThemeMode.light,
+            AppThemeMode.darkGrok => ThemeMode.dark,
+            AppThemeMode.lightMaterialYou => ThemeMode.light,
+            AppThemeMode.mutilated => ThemeMode.light,
+          },
+          locale: widget.localeCode != null ? Locale(widget.localeCode!) : null,
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+          ],
+          theme: _theme(widget.themeMode, lightDynamic),
+          darkTheme: _darkTheme(widget.themeMode, darkDynamic),
+          // Theme + language switches glide: MaterialApp wraps the tree in an
+          // AnimatedTheme that lerps every color between the old and new theme
+          // over ~380 ms — the canonical flash-free transition (no instant cut,
+          // no black/white window peek, no snapshot overlay).
+          themeAnimationDuration: const Duration(milliseconds: 380),
+          themeAnimationCurve: Curves.easeInOutCubic,
+          // Rubber-band "tension" everywhere: swiping past the FIRST tab to the
+          // left, past the LAST tab to the right (and pulling any list beyond
+          // its top/bottom edge) springs back instead of hitting a hard wall.
+          // This is the iOS-style bounce the user asked for on the tab edges +
+          // vertical overscroll in all sections.
+          //
+          // [_AppScrollBehavior] keeps that bounce but drops Material 3's default
+          // `StretchingOverscrollIndicator`, which literally stretches the scrolled
+          // content — on the reading/editor screens it smeared whole paragraphs
+          // (the "натягивается текст абзацами" jank). The bounce is the wanted
+          // feel; the content stretch is not.
+          scrollBehavior: const _AppScrollBehavior(),
+          builder: (context, child) {
+            return ListenableBuilder(
+              listenable: widget.settingsNotifier,
+              builder: (context, _) {
+                final settings = widget.settingsNotifier.value;
+                return SettingsProvider(
+                  settings: settings,
+                  onChanged: widget.onSettingsChanged,
+                  // MUTILATED theme: a slow blood-flow layer sits behind the
+                  // (slightly translucent) scaffold and seeps through the
+                  // section backgrounds.
+                  child: Stack(
+                    children: [
+                      child!,
+                      // Blood layer ON TOP of the whole app (IgnorePointer inside
+                      // the widget): visible crimson stains drift over section
+                      // backgrounds — the old behind-the-Navigator placement
+                      // hid the blood behind translucent surfaces and looked
+                      // muddy gray. It also seeps over the splash (MUTILATED's
+                      // splash is opaque, so the stains read clearly there).
+                      if (widget.themeMode == AppThemeMode.mutilated)
+                        const Positioned.fill(
+                          child: BloodFlowBackground(),
+                        ),
+                      // Floating AI assistant on the very TOP: mounted ABOVE
+                      // the Navigator so the chat window and bubble hover over
+                      // every section (settings, stats, …) and never vanish on
+                      // navigation. Regular widget in the tree — not a root
+                      // OverlayEntry — so text selection and the keyboard
+                      // never hit the grey-screen overlay crash.
+                      ValueListenableBuilder<bool>(
+                        valueListenable: aiOverlayOpen,
+                        builder: (context, open, _) => open
+                            ? Positioned.fill(
+                                child: AiFloatingAssistant(
+                                  onClose: () => aiOverlayOpen.value = false,
+                                ),
                             )
-                          : const SizedBox.shrink(),
-                    ),
-                  ],
-                ),
-              );
-            },
-          );
-      },
-      home: HomeContent(
-        showWelcome: widget.showWelcome,
-        authenticated: widget.authenticated,
-        settingsNotifier: widget.settingsNotifier,
-        onUnlocked: widget.onUnlocked,
-        onRequestLock: widget.onRequestLock,
-        onWelcomeComplete: widget.onWelcomeComplete,
-        onDismissWelcome: widget.onDismissWelcome,
+                            : const SizedBox.shrink(),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            );
+          },
+          home: HomeContent(
+            showWelcome: widget.showWelcome,
+            authenticated: widget.authenticated,
+            settingsNotifier: widget.settingsNotifier,
+            onUnlocked: widget.onUnlocked,
+            onRequestLock: widget.onRequestLock,
+            onWelcomeComplete: widget.onWelcomeComplete,
+            onDismissWelcome: widget.onDismissWelcome,
+          ),
+        ),
       ),
-    ),
-  );
+    );
   }
 }
 

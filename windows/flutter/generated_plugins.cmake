@@ -6,7 +6,6 @@ list(APPEND FLUTTER_PLUGIN_LIST
   dynamic_color
   file_selector_windows
   permission_handler_windows
-  share_plus
   speech_to_text_windows
   url_launcher_windows
 )

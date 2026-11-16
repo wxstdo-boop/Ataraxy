@@ -64,8 +64,8 @@ class ChatController extends ChangeNotifier {
   final List<AiMessageUi> _messages = [];
   bool _busy = false;
   bool loading = true;
-  /// Active provider tab: 'free' (pollinations) | 'ada' (embedded
-  /// HuggingFace) | 'laguna' (Settings-configured poolside.ai endpoint).
+  /// Active provider tab: 'free' (pollinations) | 'ada' (HuggingFace,
+  /// user-supplied `hf_…` key) | 'laguna' (Settings-configured endpoint).
   String _provider = 'free';
   bool _clearing = false;
   int limit = 1300;
@@ -126,7 +126,9 @@ class ChatController extends ChangeNotifier {
     if (_provider == v) return;
     _provider = v;
     // Persist the user's last choice so the chat reopens on the same tab.
-    _storage.saveAiProvider(v).catchError((e) {});
+    _storage.saveAiProvider(v).catchError(
+          (e) => debugPrint('[AI] provider persist failed: $e'),
+        );
     notifyListeners();
   }
 
@@ -481,17 +483,26 @@ class ChatController extends ChangeNotifier {
     }
 
     // Provider wiring: Free ALWAYS means pollinations (no key), ADA means
-    // HuggingFace — a user-pasted `hf_…` key takes priority over the
-    // embedded credential ([AiService.keyFor]), Laguna uses the Settings
-    // endpoint/model/key (defaults to poolside.ai; the key field accepts the
-    // literal 'laguna' as a free access token).
+    // HuggingFace — it needs a user-pasted `hf_…` key (no bundled token
+    // ships with the app; see [AiService.keyFor]). Without one we glide to
+    // Free. Laguna uses the Settings endpoint/model/key (defaults to
+    // poolside.ai; the key field accepts the literal 'laguna' as a free
+    // access token).
     var endpoint = AiService.defaultEndpoint;
     var model = AiService.defaultModel;
     String? apiKey;
     if (provider == 'ada') {
-      endpoint = AiService.adaEndpoint;
-      model = AiService.adaModel;
-      apiKey = AiService.keyFor(endpoint, sp.settings.aiKey);
+      final key = AiService.keyFor(AiService.adaEndpoint, sp.settings.aiKey);
+      if (key == null) {
+        // No HuggingFace token configured — ADA can't run, use Free
+        // (without persisting the switch, same as the daily-limit fallback).
+        _provider = 'free';
+        snack('aiAdaFallback', SnackType.info);
+      } else {
+        endpoint = AiService.adaEndpoint;
+        model = AiService.adaModel;
+        apiKey = key;
+      }
     } else if (provider == 'laguna') {
       // The pasted key decides the backend: gsk_ → Groq, nvapi- → NVIDIA
       // NIM, AIza… → Google Gemini, hf_… → HuggingFace, anything else →
@@ -620,7 +631,7 @@ class ChatController extends ChangeNotifier {
       // bad key, provider rate-limit) → retry the same message on the other
       // built-in backends IN ORDER, so the chat answers instead of
       // dead-ending:
-      //   free          → pollinations failed → AI Horde → embedded HF Qwen
+      //   free          → pollinations failed → AI Horde → ADA (if keyed)
       //   ada / laguna  → tab switches to Free (pollinations) → AI Horde
       // AI Horde is the anonymous no-key lifeline: a community GPU network
       // with an OpenAI-compatible endpoint (verified ~6s from the phone).
@@ -762,7 +773,9 @@ class ChatController extends ChangeNotifier {
       try {
         final obj = jsonDecode(fence.group(1)!) as Map<String, dynamic>;
         if (obj.containsKey('action')) return obj;
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('[AI] fenced command parse failed: $e');
+      }
     }
     // Last resort: the first {...} span that decodes AND has an "action"
     // key. A plain prose reply without a command won't match, so this
@@ -774,7 +787,9 @@ class ChatController extends ChangeNotifier {
         final obj =
             jsonDecode(reply.substring(start, end + 1)) as Map<String, dynamic>;
         if (obj.containsKey('action')) return obj;
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('[AI] inline command parse failed: $e');
+      }
     }
     return null;
   }

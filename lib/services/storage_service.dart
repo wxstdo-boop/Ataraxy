@@ -652,7 +652,9 @@ class StorageService {
       try {
         final m = jsonDecode(raw) as Map<String, dynamic>;
         return m;
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('Storage: corrupt rewards blob ignored: $e');
+      }
     }
     return <String, dynamic>{};
   }

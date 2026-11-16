@@ -59,11 +59,12 @@ class AppSettings {
   final bool protectDeletedOnImport;
   // AI assistant: optional custom OpenAI-compatible provider. When the
   // endpoint/key are empty, the free Pollinations.AI endpoint is used.
-  // The key is stored locally (lightly obfuscated), never in the repo.
+  // The key is stored locally in the app's private Hive box (not encrypted),
+  // never in the repo. The UI only masks it visually.
   final bool aiEnabled;
   final String? aiEndpoint;
   final String? aiModel;
-  final String? aiKey; // stored obfuscated
+  final String? aiKey;
   final int aiDailyLimit; // messages per day, <=0 = unlimited
 
   const AppSettings({

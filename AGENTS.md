@@ -50,6 +50,45 @@ Common commands:
 WSL note: if `runpane doctor --json` cannot find `/tmp/pane-daemon.../daemon.sock` or `runpane` resolves to a broken Windows shim, Pane may be running on Windows. Try `powershell.exe -NoProfile -Command 'Set-Location $env:TEMP; runpane doctor --json'`, then create Panes through the same PowerShell form using the saved WSL repo name or id. Use `runpane agents doctor --agent <agent> --repo <selector> --json` to diagnose the repo environment Pane will actually use.
 <!-- pane-agent-context:end -->
 
+## Security & data
+
+- `lib/services/ai_service.dart` ships **no** credential. ADA (HuggingFace)
+  runs only on the user's own `hf_…` key from Settings; `AiService.keyFor`
+  returns `null` for ADA when no such key is set, and `chat_controller`
+  glides to the free providers. Never reintroduce a bundled/obfuscated token —
+  it is trivially recoverable from the APK (`test/ai_service_test.dart`
+  guards this).
+- Backups can be password-protected: `BackupCrypto`
+  (`lib/services/backup_crypto.dart`) seals the JSON with AES-256-GCM under a
+  PBKDF2-HMAC-SHA256 key (210 000 iterations). The envelope is self-describing
+  (`format: "ataraxy-encrypted-backup"`), so `_import` detects it via
+  `BackupCrypto.isEncrypted` and asks for the password; a wrong password
+  surfaces as `BackupPasswordException` → the distinct
+  `importWrongPassword` message, never a generic failure. Plaintext exports
+  still import unchanged.
+
+## Code layout
+
+- Large screens are split with `part`/`part of` (not new public classes) so
+  private members stay private and no `library` directive is needed. The
+  pattern: keep the widget + its `State` in the main file, move cohesive
+  method clusters and private helper widgets into `part` files.
+  - `lib/screens/settings_screen.dart` → `settings_ai.dart` (AI provider
+    sheets, key editing/picking, daily limit), `settings_backup_dialogs.dart`
+    (export/import password dialogs), plus the pre-existing `settings_pin_dialogs`,
+    `settings_key_rows`, `settings_painters`.
+  - `lib/screens/ai_assistant_screen.dart` → `ai_assistant_bubbles.dart`
+    (`_AnimatedMessage`, `_Bubble`, `_InputBar`, `_ThinkingDots`).
+- A `part` file may only use names visible in the library, so **extension
+  methods on the private `State` must be non-`static`** — a `static` member in
+  a `part` cannot be reached from the main file (that is why `_maskKey` is an
+  instance method now).
+- `TODOS.md` is generated: run `python3 tools/build_todos.py` after touching
+  a `NOTE:`/`TODO:`/`FIXME` marker. Do not hand-edit it.
+- `CHANGELOG.md` uses an `## [Unreleased]` section at the top; add entries
+  there and only fold them into a version heading at release time (the release
+  workflow keys off the `v*` tag matching `pubspec.yaml`).
+
 ## Repository layout & asset pipeline
 
 - `lib/` — Flutter app (models, screens, services, providers, widgets, theme, l10n).
@@ -57,8 +96,8 @@ WSL note: if `runpane doctor --json` cannot find `/tmp/pane-daemon.../daemon.soc
   `docs/hf_models.json` (model catalogue reference), `docs/screenshots/`
   (curated README screenshots).
 - `tools/` — developer scripts: `build_apk_arm64.{sh,bat}`, `analyze.ps1`,
-  `release_install.ps1`, and the asset generators `gen_avatar.dart` /
-  `gen_web_icons.dart`.
+  `release_install.ps1`, `build_l10n.py`, `build_todos.py`, and the asset
+  generators `gen_avatar.dart` / `gen_web_icons.dart`.
 - `test/` — unit/widget tests (`flutter test`).
 
 ### App artwork (black background)

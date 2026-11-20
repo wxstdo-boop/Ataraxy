@@ -142,6 +142,33 @@ are the single source of truth for every user-facing string.
 - `_button()` / `_content()` helpers inside a `State` do not get a `context`;
   pass one in rather than reaching for `L.trStatic` (which cannot see the
   active locale).
+- `L.tr` RETURNS THE KEY when the message is missing, so renaming an ARB key is
+  invisible to the compiler: `reminder_dialog.dart` kept asking for the old
+  `miuiHint` after the per-vendor `oemHintXiaomi` family landed and would have
+  printed the literal text "miuiHint". `test/l10n_test.dart` now resolves every
+  `L.tr` / `L.trStatic` key in `lib/` against `app_ru.arb`.
+- Per-locale plural categories are enforced, not just presence: ru declares
+  `_one/_few/_many`, en and fr declare `_one/_other`. Adding `_few` to en fails
+  the test, and `L.trPlural` falls back `category → other → many → few → one`.
+  Never hand-write Russian endings behind `languageCode == 'ru'`; the three
+  plural families the app shows (`aiAnalyzes`, `aiRemaining`, `aiLimitPerDay`)
+  all go through `L.trPlural`.
+- Text built OUTSIDE the widget tree (notification channels, reminder body,
+  test notification, permission report) cannot read `Localizations`. It uses
+  `L.trStatic` with `NotificationService.languageCode`, which `_MyAppState`
+  pushes from `L.resolveLanguage(...)` on every settings change — and a
+  language switch re-arms the reminder, because the pending notification still
+  carries the old wording.
+- The permission report travels as enums (`PermissionCheck` /
+  `PermissionOutcome`), never as a string. The UI used to search the service's
+  text for «ОТКЛОНЕНО», which read a real denial as success on iOS/desktop
+  (those paths answer `OK`/`Denied`). Render it with
+  `permissionReportText(context, report)` from `lib/l10n/permission_report_text.dart`.
+- Vendor-specific "keep notifications alive" hints must match the ROM. The
+  MIUI autostart steps used to show on every Android phone; `MainActivity`
+  now answers `getOem` on the `ataraxy/timezone` channel and
+  `NotificationService.oemHintKey` maps the family to `oemHintXiaomi` /
+  `Huawei` / `Oppo` / `Vivo` / generic. Never hardcode the vendor in copy.
 
 ### Release
 

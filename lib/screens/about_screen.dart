@@ -1,4 +1,5 @@
 import 'package:url_launcher/url_launcher.dart';
+import 'package:ataraxy/app_version.dart';
 import 'package:ataraxy/l10n/strings.dart';
 import 'package:ataraxy/widgets/app_back_button.dart';
 import 'package:ataraxy/theme/app_theme.dart';
@@ -90,7 +91,9 @@ class _AboutScreenState extends State<AboutScreen> {
                     size: 18, color: scheme.onSurface.withValues(alpha: 0.5)),
                 const SizedBox(width: 8),
                 Text(
-                  '${L.tr(context, 'version')} 1.3.4',
+                  // Was hardcoded '1.3.4' and never bumped, so About kept
+                  // reporting an ancient build on every release.
+                  '${L.tr(context, 'version')} ${AppVersion.current ?? '—'}',
                   style: Theme.of(context).textTheme.labelMedium?.copyWith(
                         color: scheme.onSurface.withValues(alpha: 0.6),
                       ),

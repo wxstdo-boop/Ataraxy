@@ -89,17 +89,28 @@ class GithubUpdateService {
       'https://api.github.com/repos/wxstdo-boop/Ataraxy/releases/latest';
   static const _maxApkBytes = 250 * 1024 * 1024;
 
+  /// GitHub's REST API rejects requests without a `User-Agent`. `dart:io`
+  /// sends one by default, but the header is not guaranteed on every client
+  /// this service could be handed, so state it explicitly.
+  static const _userAgent = 'Ataraxy-Updater';
+
+  static const _headers = {
+    'Accept': 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28',
+    'User-Agent': _userAgent,
+  };
+
   final http.Client _client;
   final bool _ownsClient;
-  final String currentVersion;
+
+  /// Version of the running build, or null when the build did not declare one
+  /// (see [AppVersion]).
+  final String? currentVersion;
 
   Future<GithubRelease?> checkForUpdate() async {
     final response = await _client.get(
       Uri.parse(_latestReleaseUrl),
-      headers: const {
-        'Accept': 'application/vnd.github+json',
-        'X-GitHub-Api-Version': '2022-11-28',
-      },
+      headers: _headers,
     );
     if (response.statusCode != HttpStatus.ok) {
       throw HttpException(
@@ -112,9 +123,13 @@ class GithubUpdateService {
       throw const FormatException('GitHub returned invalid release data');
     }
     final release = GithubRelease.fromJson(json);
-    return _compareVersions(release.version, currentVersion) > 0
-        ? release
-        : null;
+    final installed = currentVersion;
+    if (installed == null) {
+      // Without a known version any comparison would be a guess, so offer the
+      // release rather than hiding it behind a stale hardcoded default.
+      return release;
+    }
+    return _compareVersions(release.version, installed) > 0 ? release : null;
   }
 
   Future<File> findDownloadedApk(
@@ -137,6 +152,7 @@ class GithubUpdateService {
     void Function(int received, int total)? onProgress,
   }) async {
     final request = http.Request('GET', Uri.parse(release.apkUrl));
+    request.headers['User-Agent'] = _userAgent;
     final response = await _client.send(request);
     if (response.statusCode != HttpStatus.ok) {
       throw HttpException('APK download failed (${response.statusCode})');

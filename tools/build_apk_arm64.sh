@@ -21,10 +21,15 @@ flutter clean
 
 # Step 3: Build APK for ARM64
 echo "[3/3] Building APK for arm64-v8a..."
+# Pass the pubspec version so the built APK can compare itself against
+# GitHub releases; without it the updater cannot tell what is installed.
+APP_VERSION=$(grep -m1 '^version:' pubspec.yaml | sed 's/version: *//; s/+.*//')
+
 flutter build apk \
     --release \
     --split-per-abi \
     --target-platform android-arm64 \
+    --dart-define=APP_VERSION="$APP_VERSION" \
     --no-tree-shake-icons
 
 if [ $? -ne 0 ]; then

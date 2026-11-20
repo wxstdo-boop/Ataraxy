@@ -1,5 +1,26 @@
 # Ataraxy Changelog
 
+## [1.3.33] - 2026-11-16
+### Fixed
+- **The app now tells you about a new release.** The updater only ran when you
+  opened Settings → «Обновление Ataraxy» and tapped it, so a published release
+  reached nobody who did not go looking for it. A background check runs at
+  startup (at most once a day) and offers the release as a snack that jumps to
+  Settings. Failures stay silent — offline or a rate limit must not nag.
+- **«О приложении» showed a version that never changed.** The line was a
+  hardcoded `1.3.4` that no release bumped, so every build since 1.3.4 claimed
+  to be 1.3.4 — including 1.3.32. It now renders the version the build was
+  compiled with.
+- **The updater no longer compares against an invented version.** The version
+  came from `--dart-define=APP_VERSION` with a hardcoded `1.3.5` fallback, so
+  any build without the define either hid a real update or re-offered an older
+  one. `AppVersion.current` is the single source of truth and is `null` when
+  the build did not declare a version; the updater then shows the latest
+  release instead of guessing.
+- **Local build scripts pass the version too.** `tools/build_apk_arm64.sh`
+  built an APK that could not identify itself; it now reads `pubspec.yaml` and
+  passes `--dart-define=APP_VERSION`.
+
 ## [1.3.32] - 2026-11-16
 ### Fixed
 - **The MIUI battery steps are only shown on Xiaomi now.** The reminder dialog

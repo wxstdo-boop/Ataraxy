@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ataraxy/models/settings.dart';
 import 'package:ataraxy/providers/settings_provider.dart';
+import 'package:ataraxy/services/update_checker.dart';
 import 'package:ataraxy/theme/app_theme.dart';
 
 /// Shared bootstrap for screen-level widget tests.
@@ -18,6 +19,9 @@ import 'package:ataraxy/theme/app_theme.dart';
 /// [testApp] / [testAppWithSettings].
 void initTestStorage(String name) {
   TestWidgetsFlutterBinding.ensureInitialized();
+  // HomeScreen kicks off the background release check on init. flutter_test
+  // blocks the request, so the only effect would be a logged failure.
+  UpdateChecker.enabled = false;
   Hive.init(Directory.systemTemp.createTempSync('hive_$name').path);
 }
 

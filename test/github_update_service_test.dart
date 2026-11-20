@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:ataraxy/services/github_update_service.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -64,5 +65,47 @@ void main() {
     (json['assets'] as List).single['browser_download_url'] =
         'https://example.com/Ataraxy-v1.3.10.apk';
     expect(() => GithubRelease.fromJson(json), throwsFormatException);
+  });
+
+  test('sends an explicit User-Agent for the GitHub API', () async {
+    // GitHub rejects requests that lack a User-Agent. dart:io defaults one,
+    // but the service must not depend on that for every possible client.
+    late Map<String, String> sentHeaders;
+    final service = GithubUpdateService(
+      client: MockClient((request) async {
+        sentHeaders = request.headers;
+        return http.Response(jsonEncode(releaseJson()), 200);
+      }),
+      currentVersion: '1.3.9',
+    );
+
+    await service.checkForUpdate();
+
+    expect(sentHeaders['User-Agent'], isNotEmpty);
+  });
+
+  test('offers the latest release when the build version is unknown', () async {
+    // A local build passes no --dart-define=APP_VERSION. Guessing a version
+    // made the app compare against a stale constant, so it either hid a real
+    // update or re-offered an older one.
+    final service = GithubUpdateService(
+      client: MockClient((_) async => http.Response(
+            jsonEncode(releaseJson()),
+            200,
+          )),
+      currentVersion: null,
+    );
+
+    expect((await service.checkForUpdate())?.version, '1.3.10');
+  });
+
+  test('reports a failed check instead of claiming the build is current',
+      () async {
+    final service = GithubUpdateService(
+      client: MockClient((_) async => http.Response('forbidden', 403)),
+      currentVersion: '1.3.9',
+    );
+
+    expect(service.checkForUpdate(), throwsA(isA<HttpException>()));
   });
 }

@@ -19,6 +19,7 @@ import 'package:ataraxy/models/entry.dart';
 import 'package:ataraxy/models/settings.dart';
 import 'package:ataraxy/providers/settings_provider.dart';
 import 'package:ataraxy/services/storage_service.dart';
+import 'package:ataraxy/services/update_checker.dart';
 import 'package:ataraxy/theme/app_theme.dart';
 import 'package:ataraxy/theme/markdown_spacing.dart';
 import 'package:ataraxy/ai_overlay_state.dart';
@@ -134,6 +135,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     super.initState();
     _load();
     _loadBlurPref();
+    unawaited(_checkForUpdateInBackground());
     _searchFocus.addListener(_onSearchFocusChanged);
     // Убираем фокус при инициализации чтобы избежать автовызова клавиатуры
     _searchFocus.unfocus();
@@ -147,6 +149,26 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       curve: Curves.easeInOutCubic,
     );
     _barsCtrl.addListener(_onBarsTick);
+  }
+
+  /// Silently asks GitHub whether a newer release exists (once a day) and, if
+  /// so, offers it. This is the only place the app learns about a release
+  /// without the user opening Settings → "Обновление Ataraxy".
+  Future<void> _checkForUpdateInBackground() async {
+    final release = await UpdateChecker().checkIfDue();
+    if (!mounted || release == null) return;
+    AnimatedSnack.show(
+      context,
+      '${L.tr(context, 'updateFound')} ${release.version}',
+      type: SnackType.info,
+      duration: const Duration(seconds: 6),
+      action: SnackBarAction(
+        label: L.tr(context, 'updateTitle'),
+        onPressed: () {
+          Navigator.of(context).push(fadeRoute(const SettingsScreen()));
+        },
+      ),
+    );
   }
 
   /// Applies a new visible set (category chip, sort mode, search query).

@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ataraxy/services/update_checker.dart';
 import 'package:ataraxy/compat/localizations.dart';
 import 'package:ataraxy/compat/material.dart';
 import 'package:hive/hive.dart';
@@ -14,6 +15,7 @@ import 'package:ataraxy/services/settings_service.dart';
 import 'package:ataraxy/widgets/volumetric_switch.dart';
 
 void main() {
+  UpdateChecker.enabled = false;
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
   setUpAll(() async {

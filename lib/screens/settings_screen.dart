@@ -10,6 +10,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:ataraxy/app_version.dart';
 import 'package:ataraxy/l10n/permission_report_text.dart';
 import 'package:ataraxy/l10n/strings.dart';
 import 'package:ataraxy/widgets/app_back_button.dart';
@@ -56,10 +57,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   double? _updateProgress;
   String? _updateMessage;
   late final GithubUpdateService _updateService = GithubUpdateService(
-    currentVersion: const String.fromEnvironment(
-      'APP_VERSION',
-      defaultValue: '1.3.5',
-    ),
+    currentVersion: AppVersion.current,
   );
   static const _updateChannel = MethodChannel('ataraxy/updates');
 

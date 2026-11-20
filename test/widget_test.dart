@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ataraxy/services/update_checker.dart';
 import 'package:ataraxy/compat/material.dart';
 import 'package:hive/hive.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -10,6 +11,7 @@ import 'package:ataraxy/splash_content.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  UpdateChecker.enabled = false;
   SharedPreferences.setMockInitialValues({});
   Hive.init(Directory.systemTemp.createTempSync('hive_test').path);
   setUpAll(() async {

@@ -113,7 +113,7 @@ If more performance is needed:
 
 All modified files pass `dart analyze` without errors:
 ```bash
-cd C:/Games/ataraxy
+cd <repo-root>
 dart analyze lib/widgets/blood_flow_background.dart
  dart analyze lib/main.dart
  dart analyze lib/screens/home_screen.dart
@@ -123,3 +123,12 @@ dart analyze lib/widgets/blood_flow_background.dart
 ```
 
 All tests pass with no syntax errors.
+
+## Follow-up (2026-11)
+
+- `lib/screens/favorites_media_player.dart` - the audio visualizer no
+  longer applies a per-frame `MaskFilter.blur` to each of the 7 bars
+  (a GPU saveLayer per bar, and a rectangular glow artifact on
+  Impeller). The glow is now two wide translucent strokes built once
+  per `paint()` call, and `shouldRepaint` is value-gated on
+  `animationValue`/`position`/`isPlaying` instead of always true.

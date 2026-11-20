@@ -654,6 +654,22 @@ class _AudioVisualizerPainter extends CustomPainter {
       ],
     );
 
+    // Halo strokes replace the per-frame MaskFilter.blur: a GPU
+    // saveLayer per bar is expensive and Impeller draws the blurred
+    // region as a rectangle around the bar. Two wide, translucent
+    // strokes give the same soft glow at almost no cost, and the
+    // painters are built once per paint() call, not per bar.
+    final haloPaints = [
+      Paint()
+        ..color = AppAccents.roseLight.withValues(alpha: 0.14)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = barW * 0.9,
+      Paint()
+        ..color = AppAccents.roseLight.withValues(alpha: 0.22)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = barW * 0.45,
+    ];
+
     for (int i = 0; i < barCount; i++) {
       double value;
       if (isPlaying) {
@@ -671,17 +687,22 @@ class _AudioVisualizerPainter extends CustomPainter {
         Rect.fromLTWH(x, y, barW, barH),
         Radius.circular(barW / 2),
       );
+      for (final halo in haloPaints) {
+        canvas.drawRRect(rect, halo);
+      }
       final paint = Paint()
         ..shader = baseGradient.createShader(
           Rect.fromLTWH(x, y, barW, barH),
-        )
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
+        );
       canvas.drawRRect(rect, paint);
     }
   }
 
   @override
-  bool shouldRepaint(covariant _AudioVisualizerPainter old) => true;
+  bool shouldRepaint(covariant _AudioVisualizerPainter old) =>
+      old.animationValue != animationValue ||
+      old.controller.value.position != controller.value.position ||
+      old.controller.value.isPlaying != controller.value.isPlaying;
 }
 
 /// Fullscreen crop overlay — user drags to select a rectangular region.

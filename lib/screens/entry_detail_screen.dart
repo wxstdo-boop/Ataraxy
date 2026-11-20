@@ -436,9 +436,9 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
   String _formatDuration(BuildContext context, Duration d) {
     final h = d.inHours;
     final m = d.inMinutes.remainder(60);
-    final code = Localizations.localeOf(context).languageCode;
-    if (code == 'ru') return '${h > 0 ? '$h ч ' : ''}$m мин';
-    return '${h > 0 ? '$h h ' : ''}$m min';
+    final hours = L.tr(context, 'unitHoursShort');
+    final minutes = L.tr(context, 'unitMinutesShort');
+    return '${h > 0 ? '$h $hours ' : ''}$m $minutes';
   }
 
   Widget _dreamSigns(BuildContext context, JournalEntry entry, Color color) {

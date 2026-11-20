@@ -3,15 +3,6 @@ import 'package:ataraxy/theme/app_theme.dart';
 enum AppLanguage { system, russian, english, french }
 
 extension AppLanguageExtension on AppLanguage {
-  String get label {
-    return switch (this) {
-      AppLanguage.system => 'Системный',
-      AppLanguage.russian => 'Русский',
-      AppLanguage.english => 'English',
-      AppLanguage.french => 'Français',
-    };
-  }
-
   String get translationKey {
     return switch (this) {
       AppLanguage.system => 'langSystem',

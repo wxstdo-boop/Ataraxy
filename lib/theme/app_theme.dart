@@ -12,19 +12,6 @@ enum AppThemeMode {
 }
 
 extension AppThemeModeExtension on AppThemeMode {
-  String get label {
-    return switch (this) {
-      AppThemeMode.system => 'Системная (Material You)',
-      AppThemeMode.lightMaterialYou => 'Светлая персиковая',
-      AppThemeMode.lightLavender => 'Лавандовая',
-      AppThemeMode.lightGrok => 'Светлая Grok',
-      AppThemeMode.darkGrok => 'Тёмная Grok',
-      AppThemeMode.darkPeach => 'Тёмная персиковая',
-      // Без переводов — название темы одно во всех языках.
-      AppThemeMode.mutilated => 'MUTILATED',
-    };
-  }
-
   String get translationKey {
     return switch (this) {
       AppThemeMode.system => 'themeSystem',

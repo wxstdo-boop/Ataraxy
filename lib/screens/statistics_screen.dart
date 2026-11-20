@@ -712,7 +712,7 @@ class _TrackingSectionState extends State<_TrackingSection> {
               icon: Icons.schedule_rounded,
               color: AppAccents.amber,
               value: avgF ~/ 60,
-              label: '${L.tr(context, 'fasting')} ч',
+              label: '${L.tr(context, 'fasting')} ${L.tr(context, 'unitHoursShort')}',
             ),
           ],
         ),

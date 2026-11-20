@@ -1,3 +1,4 @@
+import 'package:ataraxy/l10n/permission_report_text.dart';
 import 'package:ataraxy/l10n/strings.dart';
 import 'package:ataraxy/providers/settings_provider.dart';
 import 'package:ataraxy/services/notification_service.dart';
@@ -116,15 +117,20 @@ class DevSettingsScreen extends StatelessWidget {
               title: Text(L.tr(context, 'devCheckPermissions')),
               subtitle: Text(L.tr(context, 'devPermissionsHint')),
               onTap: () async {
-                final status =
+                final report =
                     await NotificationService.checkPermissions();
                 if (context.mounted) {
+                  final text = permissionReportText(context, report);
                   showDialog(
                     context: context,
                     builder: (_) => AlertDialog(
                       title: Text(L.tr(context, 'devPermissionsTitle')),
                       content: SingleChildScrollView(
-                        child: Text(status),
+                        child: Text(
+                          text.isEmpty
+                              ? L.tr(context, 'devPermissionsUnsupported')
+                              : text,
+                        ),
                       ),
                       actions: [
                         TextButton(

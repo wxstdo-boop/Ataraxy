@@ -255,7 +255,14 @@ class _ReminderDialogState extends State<ReminderDialog>
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
-                                      L.tr(context, 'miuiHint'),
+                                      // Only the vendor whose ROM actually
+                                      // blocks background work gets the steps.
+                                      L.tr(
+                                        context,
+                                        NotificationService.oemHintKey(
+                                          NotificationService.oem,
+                                        ),
+                                      ),
                                       style: TextStyle(
                                         fontSize: 12,
                                         height: 1.35,

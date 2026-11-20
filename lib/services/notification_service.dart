@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:ataraxy/l10n/strings.dart';
 import 'package:ataraxy/models/settings.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:timezone/data/latest.dart' as tz_data;
@@ -14,16 +15,47 @@ import 'web_notifications_stub.dart'
     if (dart.library.js_interop) 'web_notifications.dart'
     as webnotif;
 
-/// Outcome of [NotificationService.requestAllPermissions].
-///
-/// [details] is a human-readable, line-per-permission report shown to the user;
-/// [denied] is the machine-readable verdict. The UI must branch on [denied] and
-/// never on the text — the wording differs per platform and per locale.
-class PermissionReport {
-  final String details;
-  final bool denied;
+/// Which permission a [PermissionCheck] describes.
+enum PermissionKind { notifications, exactAlarms, batteryOptimizations }
 
-  const PermissionReport({required this.details, required this.denied});
+/// What happened when the permission was requested.
+enum PermissionOutcome {
+  granted,
+  alreadyGranted,
+  denied,
+  deniedOpenedSettings,
+  grantedInBrowser,
+  deniedInBrowser,
+}
+
+/// One permission verdict, free of user-facing wording.
+///
+/// The service used to build a Russian report string and the UI searched it for
+/// «ОТКЛОНЕНО» — which silently read a denial as success on iOS/desktop (they
+/// answer 'OK'/'Denied') and could never be translated. Verdicts travel as
+/// enums now and `permissionReportText` renders them with the active locale.
+class PermissionCheck {
+  final PermissionKind kind;
+  final PermissionOutcome outcome;
+
+  const PermissionCheck(this.kind, this.outcome);
+
+  bool get isDenied =>
+      outcome == PermissionOutcome.denied ||
+      outcome == PermissionOutcome.deniedOpenedSettings ||
+      outcome == PermissionOutcome.deniedInBrowser;
+}
+
+/// Result of [NotificationService.requestAllPermissions].
+///
+/// [checks] carries one verdict per requested permission; [denied] is the
+/// aggregate the UI must branch on.
+class PermissionReport {
+  final List<PermissionCheck> checks;
+
+  const PermissionReport(this.checks);
+
+  bool get denied => checks.any((c) => c.isDenied);
 }
 
 class NotificationService {
@@ -44,6 +76,58 @@ class NotificationService {
   /// IANA timezone id, e.g. "Europe/Moscow".
   static const MethodChannel _tzChannel = MethodChannel('ataraxy/timezone');
 
+  /// Locale used for notification text built outside the widget tree.
+  ///
+  /// Channels, the reminder body and the test notification are created from
+  /// `main`/`initialize`, where no `BuildContext` exists — so the language is
+  /// pushed in from `_AppRootState` instead of read from `Localizations`.
+  static String languageCode = 'en';
+
+  static String _t(String key) => L.trStatic(key, languageCode: languageCode);
+
+  /// OEM family of this device ("xiaomi", "huawei", "samsung", …), resolved
+  /// once over the platform channel.
+  ///
+  /// The reminder dialog used to show the MIUI battery steps on every Android
+  /// phone, so a Samsung owner was told to enable "Autostart" in a menu their
+  /// ROM does not have. Null means "not asked yet"; [otherOem] means "asked,
+  /// and this vendor needs no special steps".
+  static String? _oem;
+  static const String otherOem = 'other';
+
+  static String? get oem => _oem;
+
+  /// Loads [oem] if it has not been resolved yet. Cheap and never throws.
+  static Future<String?> resolveOem() async {
+    if (_oem != null) return _oem;
+    if (kIsWeb || !Platform.isAndroid) {
+      _oem = otherOem;
+      return _oem;
+    }
+    try {
+      _oem = await _tzChannel.invokeMethod<String>('getOem') ?? otherOem;
+    } catch (e) {
+      // An older build without the channel method still has to render the
+      // dialog — fall back to "no vendor-specific hint".
+      debugPrint('[Notif] OEM lookup failed: $e');
+      _oem = otherOem;
+    }
+    return _oem;
+  }
+
+  /// ARB key of the battery/autostart hint for a given OEM family.
+  ///
+  /// Only vendors whose ROM actually kills background work get a specific
+  /// instruction; everyone else gets the generic line. Naming a menu the ROM
+  /// does not have is worse than no hint at all.
+  static String oemHintKey(String? oem) => switch (oem) {
+        'xiaomi' => 'oemHintXiaomi',
+        'huawei' => 'oemHintHuawei',
+        'oppo' => 'oemHintOppo',
+        'vivo' => 'oemHintVivo',
+        _ => 'oemHintAndroid',
+      };
+
   Future<void> initialize() async {
     tz_data.initializeTimeZones();
     // Set local timezone so scheduled notifications fire at the correct
@@ -51,6 +135,9 @@ class NotificationService {
     // `DateTime.now().timeZoneName` returns "UTC" even when the device is
     // UTC+3 — relying on tz.local there made reminders fire 3 hours late.
     await _setLocalTimezone();
+    // Warms the OEM lookup so the reminder dialog can pick its hint without
+    // awaiting inside `build`.
+    await resolveOem();
 
     // flutter_local_notifications has no web implementation and `dart:io`
     // Platform is unavailable in the browser — skip all plugin work on web.
@@ -171,10 +258,10 @@ class NotificationService {
   }
 
   Future<void> _createChannels() async {
-    const dailyChannel = AndroidNotificationChannel(
+    final dailyChannel = AndroidNotificationChannel(
       'daily_reminder',
-      'Ежедневное напоминание',
-      description: 'Напоминания о записи в дневник',
+      _t('notifChannelDailyName'),
+      description: _t('notifChannelDailyDescription'),
       // max importance triggers heads-up display and bypasses Doze batching
       // (channel importance is read by the OS, not the per-notification details).
       importance: Importance.max,
@@ -231,85 +318,114 @@ class NotificationService {
 
   /// Requests notification + exact-alarm + battery-optimization permissions.
   ///
-  /// Returns a human-readable report plus an explicit [PermissionReport.denied]
-  /// flag. Callers used to sniff the Russian «ОТКЛОНЕНО» substring out of the
-  /// text, which silently read a denial as success on iOS and desktop — those
-  /// paths answer 'OK'/'Denied' and never contain that word.
+  /// Returns one structured verdict per permission; the caller renders them
+  /// with `permissionReportText` in the active locale and branches on
+  /// [PermissionReport.denied], never on the wording.
   static Future<PermissionReport> requestAllPermissions() async {
     if (kIsWeb) {
       final ok = await webnotif.webRequestPermission();
-      return PermissionReport(
-        details: ok
-            ? 'Уведомления: разрешено (браузер)'
-            : 'Уведомления: ОТКЛОНЕНО (браузер) — разрешите в настройках сайта',
-        denied: !ok,
-      );
+      return PermissionReport([
+        PermissionCheck(
+          PermissionKind.notifications,
+          ok
+              ? PermissionOutcome.grantedInBrowser
+              : PermissionOutcome.deniedInBrowser,
+        ),
+      ]);
     }
-    final buffer = StringBuffer();
-    var denied = false;
+
     if (!Platform.isAndroid) {
       final ok = await NotificationService().requestPermissions();
-      return PermissionReport(
-        details: ok ? 'OK' : 'Denied',
-        denied: !ok,
-      );
+      return PermissionReport([
+        PermissionCheck(
+          PermissionKind.notifications,
+          ok ? PermissionOutcome.granted : PermissionOutcome.denied,
+        ),
+      ]);
     }
+
+    final checks = <PermissionCheck>[];
 
     // --- Notification permission ---
     final notif = await Permission.notification.status;
-    if (!notif.isGranted) {
-      final res = await Permission.notification.request();
-      buffer.writeln(
-        res.isGranted ? 'Уведомления: разрешено' : 'Уведомления: ОТКЛОНЕНО',
+    if (notif.isGranted) {
+      checks.add(
+        const PermissionCheck(
+          PermissionKind.notifications,
+          PermissionOutcome.alreadyGranted,
+        ),
       );
-      if (!res.isGranted) denied = true;
     } else {
-      buffer.writeln('Уведомления: уже разрешено');
+      final res = await Permission.notification.request();
+      checks.add(
+        PermissionCheck(
+          PermissionKind.notifications,
+          res.isGranted
+              ? PermissionOutcome.granted
+              : PermissionOutcome.denied,
+        ),
+      );
     }
 
     // --- SCHEDULE_EXACT_ALARM (Android 12+) ---
     final exact = await Permission.scheduleExactAlarm.status;
     if (exact.isGranted || exact.isRestricted) {
-      buffer.writeln('Точные будильники: уже разрешено');
+      checks.add(
+        const PermissionCheck(
+          PermissionKind.exactAlarms,
+          PermissionOutcome.alreadyGranted,
+        ),
+      );
     } else if (exact.isPermanentlyDenied) {
       await openAppSettings();
-      buffer.writeln(
-        'Точные будильники: ОТКЛОНЕНО — открыты настройки приложения; '
-        'найдите раздел "Будильники и напоминания" и включите точное расписание',
+      checks.add(
+        const PermissionCheck(
+          PermissionKind.exactAlarms,
+          PermissionOutcome.deniedOpenedSettings,
+        ),
       );
-      denied = true;
     } else {
       final res = await Permission.scheduleExactAlarm.request();
-      buffer.writeln(
-        res.isGranted
-            ? 'Точные будильники: разрешено'
-            : 'Точные будильники: ОТКЛОНЕНО',
+      checks.add(
+        PermissionCheck(
+          PermissionKind.exactAlarms,
+          res.isGranted
+              ? PermissionOutcome.granted
+              : PermissionOutcome.denied,
+        ),
       );
-      if (!res.isGranted) denied = true;
     }
 
     // --- ignoreBatteryOptimizations ---
     final battery = await Permission.ignoreBatteryOptimizations.status;
     if (battery.isGranted || battery.isRestricted) {
-      buffer.writeln('Оптимизация батареи: уже отключена');
+      checks.add(
+        const PermissionCheck(
+          PermissionKind.batteryOptimizations,
+          PermissionOutcome.alreadyGranted,
+        ),
+      );
     } else if (battery.isPermanentlyDenied) {
       await openAppSettings();
-      buffer.writeln(
-        'Оптимизация батареи: ОТКЛОНЕНО — открыты настройки приложения; '
-        'в разделе "Батарея" выберите "Без ограничений"',
+      checks.add(
+        const PermissionCheck(
+          PermissionKind.batteryOptimizations,
+          PermissionOutcome.deniedOpenedSettings,
+        ),
       );
-      denied = true;
     } else {
       final res = await Permission.ignoreBatteryOptimizations.request();
-      buffer.writeln(
-        res.isGranted
-            ? 'Оптимизация батареи: отключена'
-            : 'Оптимизация батареи: ОТКЛОНЕНО (уведомления могут опаздывать в фоне)',
+      checks.add(
+        PermissionCheck(
+          PermissionKind.batteryOptimizations,
+          res.isGranted
+              ? PermissionOutcome.granted
+              : PermissionOutcome.denied,
+        ),
       );
-      if (!res.isGranted) denied = true;
     }
 
-    return PermissionReport(details: buffer.toString(), denied: denied);
+    return PermissionReport(checks);
   }
 
   Future<void> showNotification(
@@ -334,8 +450,8 @@ class NotificationService {
     return NotificationDetails(
       android: AndroidNotificationDetails(
         'daily_reminder',
-        'Ежедневное напоминание',
-        channelDescription: 'Напоминания о записи в дневник',
+        _t('notifChannelDailyName'),
+        channelDescription: _t('notifChannelDailyDescription'),
         // max importance + reminder category makes the OS treat this as an
         // alarm-class notification that fires on time even under Doze.
         importance: Importance.max,
@@ -544,13 +660,13 @@ class NotificationService {
         settings.reminderTime!.isNotEmpty) {
       final body = settings.reminderText?.isNotEmpty == true
           ? settings.reminderText!
-          : 'Не забудьте записать свои мысли в дневник';
+          : _t('notifReminderBody');
       debugPrint(
         '[NOTIF] Scheduling daily at ${settings.reminderTime}, body: $body',
       );
       await scheduleDaily(
         settings.reminderTime!,
-        'Напоминание',
+        _t('reminder'),
         body,
         requestBatteryExemption: requestBatteryExemption,
       );
@@ -604,37 +720,60 @@ class NotificationService {
     );
   }
 
-  static Future<String> checkPermissions() async {
-    if (kIsWeb) return 'Web: notifications unsupported';
-    final buffer = StringBuffer();
-    if (Platform.isAndroid) {
-      final status = await Permission.notification.status;
-      buffer.writeln('Notification: $status');
-      final exactAlarm = await Permission.scheduleExactAlarm.status;
-      buffer.writeln('ExactAlarm: $exactAlarm');
-      final ignoreBattery = await Permission.ignoreBatteryOptimizations.status;
-      buffer.writeln('IgnoreBattery: $ignoreBattery');
-    } else {
-      buffer.writeln('Not Android');
+  /// Snapshot of the current permission state, without prompting the user.
+  ///
+  /// Returns the same structured shape as [requestAllPermissions] so the dev
+  /// screen renders it with the shared, localized formatter instead of the raw
+  /// English `PermissionStatus` names it used to concatenate.
+  static Future<PermissionReport> checkPermissions() async {
+    if (kIsWeb) return const PermissionReport([]);
+    if (!Platform.isAndroid) {
+      final ok = await Permission.notification.isGranted;
+      return PermissionReport([
+        PermissionCheck(
+          PermissionKind.notifications,
+          ok ? PermissionOutcome.alreadyGranted : PermissionOutcome.denied,
+        ),
+      ]);
     }
-    return buffer.toString();
+
+    PermissionOutcome state(PermissionStatus status) => status.isGranted ||
+            status.isRestricted ||
+            status.isLimited
+        ? PermissionOutcome.alreadyGranted
+        : PermissionOutcome.denied;
+
+    return PermissionReport([
+      PermissionCheck(
+        PermissionKind.notifications,
+        state(await Permission.notification.status),
+      ),
+      PermissionCheck(
+        PermissionKind.exactAlarms,
+        state(await Permission.scheduleExactAlarm.status),
+      ),
+      PermissionCheck(
+        PermissionKind.batteryOptimizations,
+        state(await Permission.ignoreBatteryOptimizations.status),
+      ),
+    ]);
   }
 
   static Future<String?> sendTest() async {
     if (kIsWeb) {
       final ok = await webnotif.webRequestPermission();
-      if (!ok) return 'Уведомления: ОТКЛОНЕНО браузером';
+      if (!ok) return _t('notifTestDeniedBrowser');
       webnotif.webShowNotification(
-        'Тест уведомления',
-        'Если вы это видите — уведомления работают!',
+        _t('testNotification'),
+        _t('notifTestBody'),
       );
       return null;
     }
     try {
       await _notifications.show(
         id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
-        title: 'Тест уведомления',
-        body: 'Если вы это видите — уведомления работают!',
+        title: _t('testNotification'),
+        body: _t('notifTestBody'),
         notificationDetails: _defaultDetails(),
       );
       return null;

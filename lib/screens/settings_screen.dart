@@ -10,6 +10,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:ataraxy/l10n/permission_report_text.dart';
 import 'package:ataraxy/l10n/strings.dart';
 import 'package:ataraxy/widgets/app_back_button.dart';
 import 'package:ataraxy/widgets/animated_field_counter.dart';
@@ -385,7 +386,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 if (err == null && report.denied) {
                   AnimatedSnack.show(
                     context,
-                    report.details,
+                    permissionReportText(context, report),
                     type: SnackType.warning,
                     duration: const Duration(seconds: 6),
                   );
@@ -856,7 +857,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Получить ключ:',
+                        L.tr(context, 'aiGetKey'),
                         style: TextStyle(
                           fontSize: 10.5,
                           color: Theme.of(context)
@@ -893,7 +894,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           // key 10 s to delete it. Local app feature — not
                           // available on freellm, so it stays.
                           _KeyPill(
-                            label: 'Мои ключи',
+                            label: L.tr(context, 'aiSavedKeys'),
                             onTap: () =>
                                 _showSavedKeys(context, provider, settings),
                           ),
@@ -1328,23 +1329,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  /// «N сообщений в день» with proper Russian plural forms
-  /// (1 сообщение / 2-4 сообщения / 5+ сообщений); en/fr use the generic
-  /// translated suffix.
-  String _perDayLimitLabel(BuildContext context, int n) {
-    if (Localizations.localeOf(context).languageCode != 'ru') {
-      return '$n ${L.tr(context, 'aiLimitPerDay')}';
-    }
-    final n10 = n % 10;
-    final n100 = n % 100;
-    final String word;
-    if (n10 == 1 && n100 != 11) {
-      word = 'сообщение';
-    } else if (n10 >= 2 && n10 <= 4 && (n100 < 12 || n100 > 14)) {
-      word = 'сообщения';
-    } else {
-      word = 'сообщений';
-    }
-    return '$n $word в день';
-  }
+  String _perDayLimitLabel(BuildContext context, int n) =>
+      L.trPlural(context, 'aiLimitPerDay', n);
 }

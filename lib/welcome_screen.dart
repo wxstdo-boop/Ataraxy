@@ -551,9 +551,17 @@ class _PermissionDeniedDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // The body used to spell out the MIUI autostart steps, so every Android
+    // user was told to hunt for a menu their ROM may not have. Only Xiaomi and
+    // friends get the extra vendor line.
+    final hintKey = NotificationService.oemHintKey(NotificationService.oem);
+    final body = [
+      L.tr(context, 'permissionsOffBody'),
+      if (hintKey != 'oemHintAndroid') L.tr(context, hintKey),
+    ].join('\n\n');
     return AlertDialog(
       title: Text(L.tr(context, 'permissionsOffTitle')),
-      content: Text(L.tr(context, 'permissionsOffBody')),
+      content: Text(body),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context, false),

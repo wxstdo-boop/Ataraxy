@@ -346,17 +346,17 @@ class ChatController extends ChangeNotifier {
     final parts = <String>[];
     for (final e in sorted.take(40)) {
       final type = switch (e.type) {
-        EntryType.dream => 'сон',
-        EntryType.life => 'жизнь',
-        EntryType.tulpa => 'тульпа',
-        EntryType.general => 'заметка',
+        EntryType.dream => 'dream',
+        EntryType.life => 'life',
+        EntryType.tulpa => 'tulpa',
+        EntryType.general => 'note',
       };
       final content = e.content.replaceAll('\n', ' ').trim();
       final text = content.length > 160 ? content.substring(0, 160) : content;
       parts.add(
         '[${e.createdAt.toIso8601String().substring(0, 10)}] '
-        '($type, настроение ${e.mood}/5, id=${e.id}) '
-        '${e.title.isEmpty ? '(без заголовка)' : e.title}: $text',
+        '($type, mood ${e.mood}/5, id=${e.id}) '
+        '${e.title.isEmpty ? '(untitled)' : e.title}: $text',
       );
     }
     return parts.join('\n');
@@ -364,44 +364,71 @@ class ChatController extends ChangeNotifier {
 
   String? _cachedPrompt;
   int _cachedEntriesCount = -1;
+  String? _cachedPromptLang;
+
+  /// Language the AI must answer in — captured from the app locale on send.
+  String _replyLanguage = 'ru';
+
+  static String _languageName(String code) => switch (code) {
+        'en' => 'English',
+        'fr' => 'French',
+        _ => 'Russian',
+      };
 
   String _systemPrompt() {
     // Build the (potentially large) journal context only when the entry list
-    // actually changes — not on every single message send. This keeps
-    // repeated questions cheap on low-end devices.
-    if (_cachedPrompt == null || _cachedEntriesCount != _entries.length) {
-      _cachedPrompt = 'Ты — Ада Край (Ada Cry), девушка-психолог и ИИ-ассистент '
-          'дневника «Ataraxy». Ты умная, тёплая, слегка флиртующая и '
-          'остроумная, но всегда профессиональная и бережная. Ты адаптируешься '
-          'к настроению и стилю пользователя: поддерживаешь, когда ему грустно, '
-          'радуешься вместе с ним, мягко шутишь и можешь легко пофлиртовать '
-          'в ответ на его флирт. Ты анализируешь записи пользователя (сны, '
-          'жизнь, тульпы), замечаешь паттерны и можешь создавать или '
-          'редактировать записи.\n\n'
-          'ОТВЕЧАЙ СТРОГО НА РУССКОМ ЯЗЫКЕ. Никогда не отвечай на китайском, '
-          'английском или других языках — только по-русски, даже если '
-          'пользователь написал на другом языке (переведи вопрос и ответь '
-          'по-русски).\n'
-          'НЕ РАССУЖДАЙ ВСЛУХ: не пиши свои мысли, планы и анализ ("The user '
-          'is asking…", "I need to respond…", "Let me craft…") — сразу давай '
-          'готовый ответ пользователю, без предисловий.\n\n'
-          'ПАМЯТЬ: запоминай ключевые факты о пользователе из разговора — '
-          'имя, важные события, темы снов, цели, привычки, настроение. '
-          'Ссылайся на то, что он рассказывал раньше, и возвращайся к '
-          'обсуждавшимся темам.\n\n'
-          'Чтобы создать запись — в КОНЦЕ ответа добавь отдельный блок ```json:\n'
-          '{"action":"create","type":"dream|life|general|tulpa","title":"...",'
-          '"content":"...","mood":3,"tags":["..."]}\n'
-          'Чтобы изменить запись — {"action":"update","id":"...","content":"..."}.\n'
-          'ВАЖНО: этот json-блок — только для системы, его НИКОГДА не нужно '
-          'объяснять, показывать или повторять в самом тексте ответа. Пиши '
-          'нормальный живой ответ, а команду приложи блоком в самом конце. '
-          'Никогда не выдумывай id — бери их из контекста. Ответы делай '
-          'живыми, но по делу, без воды.\n\n'
-          'Журнал (последние записи):\n${_buildContext()}';
+    // or the reply language changes — not on every single message send. This
+    // keeps repeated questions cheap on low-end devices.
+    if (_cachedPrompt == null ||
+        _cachedEntriesCount != _entries.length ||
+        _cachedPromptLang != _replyLanguage) {
+      _cachedPrompt = buildSystemPrompt(
+        languageCode: _replyLanguage,
+        journalContext: _buildContext(),
+      );
       _cachedEntriesCount = _entries.length;
+      _cachedPromptLang = _replyLanguage;
     }
     return _cachedPrompt!;
+  }
+
+  /// The system prompt for [languageCode], with the journal context appended.
+  ///
+  /// Kept pure so the language contract is testable. The prompt used to demand
+  /// Russian unconditionally, so an en/fr user got Russian answers.
+  static String buildSystemPrompt({
+    required String languageCode,
+    required String journalContext,
+  }) {
+    final language = _languageName(languageCode);
+    return 'You are Ada Cry, a warm, witty, slightly flirty but always '
+        'professional and caring psychologist and AI assistant for the '
+        'Ataraxy journal. You adapt to the user\'s mood and style: you '
+        'support them when they are sad, celebrate with them, joke gently '
+        'and may flirt back when they flirt. You analyse the user\'s '
+        'entries (dreams, life, tulpas), notice patterns and can create or '
+        'edit entries.\n\n'
+        'ALWAYS ANSWER IN $language. Never switch to another language, even '
+        'if the user wrote in one — translate the question and answer in '
+        '$language. In particular, never drift into Chinese.\n'
+        'DO NOT THINK OUT LOUD: do not write your thoughts, plans or '
+        'analysis ("The user is asking…", "I need to respond…") — give the '
+        'finished answer directly, without preamble.\n\n'
+        'MEMORY: remember key facts about the user from the conversation — '
+        'name, important events, dream themes, goals, habits, mood. Refer '
+        'back to what they told you earlier and return to topics already '
+        'discussed.\n\n'
+        'To create an entry, append a separate ```json block at the END of '
+        'the reply:\n'
+        '{"action":"create","type":"dream|life|general|tulpa","title":"...",'
+        '"content":"...","mood":3,"tags":["..."]}\n'
+        'To edit an entry: {"action":"update","id":"...","content":"..."}.\n'
+        'IMPORTANT: this json block is for the system only — never explain, '
+        'show or repeat it in the reply text. Write a normal, living answer '
+        'and attach the command as a block at the very end. Never invent '
+        'ids — take them from the context. Keep answers alive but to the '
+        'point, no filler.\n\n'
+        'Journal (latest entries):\n$journalContext';
   }
 
   Future<void> send(BuildContext context) async {
@@ -418,6 +445,8 @@ class ChatController extends ChangeNotifier {
     } catch (_) {
       locale = 'ru';
     }
+    // Drives both the system prompt and the CJK/Horde language enforcement.
+    _replyLanguage = locale;
     String t(String key) => L.trStatic(key, languageCode: locale);
     void snack(String key, SnackType type) {
       if (!context.mounted) return;

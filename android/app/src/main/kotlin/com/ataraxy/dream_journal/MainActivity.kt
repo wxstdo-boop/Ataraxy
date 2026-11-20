@@ -19,10 +19,13 @@ class MainActivity : FlutterActivity() {
         // which made scheduled reminders fire hours late.
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "ataraxy/timezone")
             .setMethodCallHandler { call, result ->
-                if (call.method == "getTimeZone") {
-                    result.success(TimeZone.getDefault().id)
-                } else {
-                    result.notImplemented()
+                when (call.method) {
+                    "getTimeZone" -> result.success(TimeZone.getDefault().id)
+                    // Manufacturers that kill background work unless the user
+                    // exempts the app. The Dart side picks the matching hint —
+                    // showing the MIUI steps on, say, a Samsung would be wrong.
+                    "getOem" -> result.success(oemFamily())
+                    else -> result.notImplemented()
                 }
             }
 
@@ -79,5 +82,21 @@ class MainActivity : FlutterActivity() {
                     else -> result.notImplemented()
                 }
             }
+    }
+
+    /// Coarse OEM family, used to pick the right "keep notifications alive"
+    /// hint. ROMs report their own `ro.product.brand`, so a Xiaomi-branded
+    /// device running a custom ROM still lands on `xiaomi` via Build.MANUFACTURER.
+    private fun oemFamily(): String {
+        val brand = (Build.BRAND + " " + Build.MANUFACTURER + " " + Build.PRODUCT)
+            .lowercase()
+        return when {
+            listOf("xiaomi", "redmi", "poco", "mi ").any { brand.contains(it) } -> "xiaomi"
+            listOf("huawei", "honor").any { brand.contains(it) } -> "huawei"
+            listOf("oppo", "realme", "oneplus", "one plus").any { brand.contains(it) } -> "oppo"
+            brand.contains("vivo") -> "vivo"
+            brand.contains("samsung") -> "samsung"
+            else -> "other"
+        }
     }
 }

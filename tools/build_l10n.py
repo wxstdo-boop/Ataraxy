@@ -40,6 +40,21 @@ def dart_string(value: str) -> str:
     return "'" + "".join(out) + "'"
 
 
+PLURAL_FORMS = ("zero", "one", "two", "few", "many", "other")
+
+
+def base_key(key: str) -> str:
+    """`aiAnalyzes_few` → `aiAnalyzes`; non-plural keys are their own base.
+
+    Plural forms legitimately differ per locale (ru has one/few/many, en only
+    one/other), so the key sets cannot be required to match exactly.
+    """
+    head, _, tail = key.rpartition("_")
+    if head and tail in PLURAL_FORMS:
+        return head
+    return key
+
+
 def load(lang: str) -> dict:
     data = json.loads((ARB_DIR / f"app_{lang}.arb").read_text(encoding="utf-8"))
     return {k: v for k, v in data.items() if not k.startswith("@")}
@@ -48,9 +63,22 @@ def load(lang: str) -> dict:
 def main() -> None:
     by_lang = {lang: load(lang) for lang in LANGS}
 
+    # Every message must exist in every locale, but the plural *forms* of a
+    # message may differ — compare base keys, not raw keys.
+    base_sets = {
+        lang: {base_key(k) for k in by_lang[lang]} for lang in LANGS
+    }
+    reference = base_sets["ru"]
+    for lang in LANGS[1:]:
+        assert base_sets[lang] == reference, f"key set differs for {lang}"
+
+    # ru defines the canonical ordering; extra forms in other locales are
+    # appended in ARB order so nothing is dropped.
     keys = list(by_lang["ru"].keys())
     for lang in LANGS[1:]:
-        assert list(by_lang[lang].keys()) == keys, f"key set differs for {lang}"
+        for key in by_lang[lang]:
+            if key not in keys:
+                keys.append(key)
 
     lines = [
         "// GENERATED CODE - DO NOT MODIFY BY HAND.",
@@ -59,6 +87,10 @@ def main() -> None:
         "// Regenerate after editing any ARB file: python3 tools/build_l10n.py",
         "",
         "/// UI strings, keyed by message id and then by language code.",
+        "///",
+        "/// A message may be absent for a locale: plural forms differ per",
+        "/// language (ru has one/few/many, en only one/other), and",
+        "/// `L.trPluralStatic` falls back to the `other` form.",
         "const Map<String, Map<String, String>> kStrings = {",
     ]
     sign_keys = [k for k in keys if k.startswith("sign_")]
@@ -68,6 +100,7 @@ def main() -> None:
         entries = ", ".join(
             f"{dart_string(lang)}: {dart_string(by_lang[lang][key])}"
             for lang in LANGS
+            if key in by_lang[lang]
         )
         lines.append(f"  {dart_string(key)}: {{{entries}}},")
     lines.append("};")
@@ -78,6 +111,7 @@ def main() -> None:
         entries = ", ".join(
             f"{dart_string(lang)}: {dart_string(by_lang[lang][key])}"
             for lang in LANGS
+            if key in by_lang[lang]
         )
         lines.append(f"  {dart_string(key[len('sign_'):])}: {{{entries}}},")
     lines.append("};")

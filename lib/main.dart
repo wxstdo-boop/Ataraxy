@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:ataraxy/compat/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'l10n/strings.dart';
 import 'models/settings.dart';
 import 'services/notification_service.dart';
 import 'services/settings_service.dart';
@@ -160,6 +161,17 @@ class _MyAppState extends State<MyApp> {
     _settings = widget.initialSettings;
     _settingsNotifier.value = widget.initialSettings;
     _showWelcome = widget.initialSettings.showWelcome;
+    _syncNotificationLanguage(widget.initialSettings);
+  }
+
+  /// Notification text is built outside the widget tree (see
+  /// [NotificationService.languageCode]), so it has to follow the same locale
+  /// `MaterialApp` resolves — otherwise an en/fr user gets Russian reminders.
+  void _syncNotificationLanguage(AppSettings settings) {
+    NotificationService.languageCode = L.resolveLanguage(
+      settings.language.localeCode,
+      WidgetsBinding.instance.platformDispatcher.locales,
+    );
   }
 
   @override
@@ -169,10 +181,13 @@ class _MyAppState extends State<MyApp> {
   }
 
   void _onSettingsChanged(AppSettings newSettings) {
+    // A language switch must also re-arm the reminder: the pending
+    // notification already carries the old language's title/body.
     final remindersChanged =
         _settings.reminderEnabled != newSettings.reminderEnabled ||
         _settings.reminderTime != newSettings.reminderTime ||
-        _settings.reminderText != newSettings.reminderText;
+        _settings.reminderText != newSettings.reminderText ||
+        _settings.language != newSettings.language;
     // Only fields MaterialApp reads directly (theme / language / auth gates)
     // need the full setState rebuild of the shell. Everything else travels
     // through the ValueNotifier → SettingsProvider path, so rebuilding the
@@ -185,6 +200,7 @@ class _MyAppState extends State<MyApp> {
 
     _settings = newSettings;
     _settingsNotifier.value = newSettings;
+    _syncNotificationLanguage(newSettings);
 
     if (shellRelevant) {
       setState(() {});

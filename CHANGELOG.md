@@ -1,5 +1,37 @@
 # Ataraxy Changelog
 
+## [1.3.32] - 2026-11-16
+### Fixed
+- **The MIUI battery steps are only shown on Xiaomi now.** The reminder dialog
+  and the onboarding permission dialog spelled out the MIUI autostart menu on
+  every Android phone, so a Samsung owner was sent looking for a screen their
+  ROM does not have. `MainActivity` reports a coarse OEM family over the
+  existing `ataraxy/timezone` channel, and the hint follows the vendor
+  (`oemHintXiaomi` / `Huawei` / `Oppo` / `Vivo` / generic).
+- **A renamed string no longer renders as its own key.** The reminder dialog
+  still asked for the old `miuiHint` key after the per-vendor hints landed, so
+  it would have printed the literal text "miuiHint". A test now resolves every
+  `L.tr` key in `lib/` against the ARB catalogue.
+- **Notifications speak the app language.** Channel names, the reminder title
+  and body, the permission report and the test notification were Russian
+  literals built outside the widget tree. They now follow the locale resolved
+  by `MaterialApp`, and switching language re-arms the pending reminder so the
+  already-scheduled notification does not keep the old wording.
+- **The permission report is structured, not a Russian string.** The UI used to
+  search the service's text for «ОТКЛОНЕНО», which read a real denial as
+  success on iOS and desktop (those paths answer `OK`/`Denied`). Verdicts now
+  travel as enums and `permissionReportText` renders them per locale.
+- **ADA answers in the app language.** The system prompt demanded Russian
+  unconditionally, so en/fr users got Russian replies; the prompt, the journal
+  context and the reply language now all follow the locale.
+- Plural forms no longer branch on `languageCode == 'ru'` with hand-written
+  Russian endings: `aiAnalyzes`, `aiRemaining` and the per-day AI limit use
+  CLDR plural keys, so en/fr get their own grammar. The l10n test understands
+  per-locale plural categories (`one/few/many` vs `one/other`).
+- The fasting summary in Statistics showed a hardcoded «ч»; the remaining
+  Russian-only labels in Settings ("Получить ключ", "Мои ключи") are localized,
+  and two dead `label` getters that returned Russian names were removed.
+
 ## [1.3.31] - 2026-11-16
 ### Fixed
 - `flutter analyze` is clean again on the current stable Flutter (3.50): the

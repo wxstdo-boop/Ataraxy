@@ -1135,53 +1135,11 @@ class _EmptyState extends StatelessWidget {
   final int remaining;
   const _EmptyState({required this.entriesCount, required this.remaining});
 
-  /// «Вижу N записей в твоём дневнике» with proper Russian plural forms
-  /// (1 запись / 2-4 записи / 5+ записей) — the generic "записей" read
-  /// wrong for small counts and the old build's "запись(и-ей)" was ugly.
-  String _analyzesLabel(BuildContext context) {
-    final n = entriesCount;
-    final localized = L
-        .tr(context, 'aiAnalyzes')
-        .replaceAll('{n}', n.toString());
-    if (Localizations.localeOf(context).languageCode != 'ru') {
-      return localized;
-    }
-    final n10 = n % 10;
-    final n100 = n % 100;
-    final String word;
-    if (n10 == 1 && n100 != 11) {
-      word = 'запись';
-    } else if (n10 >= 2 && n10 <= 4 && (n100 < 12 || n100 > 14)) {
-      word = 'записи';
-    } else {
-      word = 'записей';
-    }
-    return 'Вижу $n $word в твоём дневнике';
-  }
+  String _analyzesLabel(BuildContext context) =>
+      L.trPlural(context, 'aiAnalyzes', entriesCount);
 
-  /// «Сегодня осталось N сообщений» with proper Russian plural forms
-  /// (1 сообщение / 2-4 сообщения / 5+ сообщений) — the flat "сообщений"
-  /// read wrong for small remaining counts.
-  String _remainingLabel(BuildContext context) {
-    final n = remaining;
-    final localized = L
-        .tr(context, 'aiRemaining')
-        .replaceAll('{n}', n.toString());
-    if (Localizations.localeOf(context).languageCode != 'ru') {
-      return localized;
-    }
-    final n10 = n % 10;
-    final n100 = n % 100;
-    final String word;
-    if (n10 == 1 && n100 != 11) {
-      word = 'сообщение';
-    } else if (n10 >= 2 && n10 <= 4 && (n100 < 12 || n100 > 14)) {
-      word = 'сообщения';
-    } else {
-      word = 'сообщений';
-    }
-    return 'Сегодня осталось $n $word';
-  }
+  String _remainingLabel(BuildContext context) =>
+      L.trPlural(context, 'aiRemaining', remaining);
 
   @override
   Widget build(BuildContext context) {

@@ -1738,18 +1738,6 @@ abstract class AppLocalizations {
   /// **'Скоро'**
   String get comingSoon;
 
-  /// No description provided for @welcomeTitle.
-  ///
-  /// In ru, this message translates to:
-  /// **'Добро пожаловать в Ataraxy'**
-  String get welcomeTitle;
-
-  /// No description provided for @welcomeSubtitle.
-  ///
-  /// In ru, this message translates to:
-  /// **'Настройте приложение для идеального опыта записи снов'**
-  String get welcomeSubtitle;
-
   /// No description provided for @welcomeGreeting.
   ///
   /// In ru, this message translates to:
@@ -1869,12 +1857,6 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Больше не показывать'**
   String get dontShowAgain;
-
-  /// No description provided for @startUsing.
-  ///
-  /// In ru, this message translates to:
-  /// **'Начать использовать'**
-  String get startUsing;
 
   /// No description provided for @enableNotificationsFirst.
   ///

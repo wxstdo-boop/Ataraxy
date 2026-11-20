@@ -871,13 +871,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get comingSoon => 'Скоро';
 
   @override
-  String get welcomeTitle => 'Добро пожаловать в Ataraxy';
-
-  @override
-  String get welcomeSubtitle =>
-      'Настройте приложение для идеального опыта записи снов';
-
-  @override
   String get welcomeGreeting => 'Добро пожаловать в Ataraxy.';
 
   @override
@@ -941,9 +934,6 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get dontShowAgain => 'Больше не показывать';
-
-  @override
-  String get startUsing => 'Начать использовать';
 
   @override
   String get enableNotificationsFirst => 'Сначала включите уведомления';

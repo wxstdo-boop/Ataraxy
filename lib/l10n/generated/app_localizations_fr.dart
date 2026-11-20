@@ -878,13 +878,6 @@ class AppLocalizationsFr extends AppLocalizations {
   String get comingSoon => 'Bientôt disponible';
 
   @override
-  String get welcomeTitle => 'Bienvenue dans Ataraxy';
-
-  @override
-  String get welcomeSubtitle =>
-      'Configurez l\'application pour une expérience de journal de rêves parfaite';
-
-  @override
   String get welcomeGreeting => 'Bienvenue dans Ataraxy.';
 
   @override
@@ -949,9 +942,6 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get dontShowAgain => 'Ne plus montrer';
-
-  @override
-  String get startUsing => 'Commencer à utiliser';
 
   @override
   String get enableNotificationsFirst => 'Activez d\'abord les notifications';

@@ -177,6 +177,24 @@ Pushing a `v*` tag whose version matches `pubspec.yaml` triggers
 it as a GitHub release. The in-app updater (`GithubUpdateService`) reads that
 release, so bump `version:` in `pubspec.yaml` before tagging.
 
+- THE APP ONLY LEARNS ABOUT A RELEASE IF SOMETHING ASKS IT. The updater was
+  reachable only from Settings → «Обновление Ataraxy», so a published release
+  reached nobody who did not go looking for it — 1.3.32 shipped while devices
+  sat on 1.3.31. `UpdateChecker` now runs a daily background check from
+  `HomeScreen.initState` and offers the release as a snack. Its `enabled`
+  static is false in tests (`test/helpers.dart`), else every widget test that
+  mounts HomeScreen logs a failed HTTP call (`flutter_test` blocks network).
+- `AppVersion.current` (`lib/app_version.dart`) is the ONLY version source.
+  It is `null` for builds without `--dart-define=APP_VERSION`, and the updater
+  then offers the latest release instead of comparing against a guess. The old
+  fallback was a hardcoded `1.3.5`, and About rendered a hardcoded `1.3.4` —
+  two stale constants that made "no update" a lie. Any local build script must
+  pass the define (`tools/build_apk_arm64.sh` reads it from `pubspec.yaml`).
+- A FAILED CHECK MUST NOT LOOK LIKE "UP TO DATE". `checkForUpdate` throws on a
+  non-200 (a 403, a rate limit); only a null result means "already current".
+  Both used to be swallowed by the caller's catch and shown as
+  `updateCurrent`.
+
 ## SDK version drift (analyze is version-dependent)
 
 - CI (`.github/workflows/release.yml`) pins **Flutter 3.47.5**; a newer local

@@ -1,6 +1,7 @@
-import 'package:flutter/foundation.dart';
+﻿import 'package:flutter/foundation.dart';
 import 'package:ataraxy/compat/material.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'l10n/strings.dart';
 import 'models/settings.dart';
 import 'services/notification_service.dart';
 import 'theme/app_theme.dart';
@@ -95,15 +96,12 @@ class _WelcomeScreenState extends State<WelcomeScreen>
         await showDialog<void>(
           context: context,
           builder: (ctx) => AlertDialog(
-            title: const Text('Разрешение не получено'),
-            content: const Text(
-              'Без разрешения на уведомления напоминания не смогут '
-              'показаться. Нажмите «Включить» ещё раз, если передумали.',
-            ),
+            title: Text(L.tr(ctx, 'permissionMissingTitle')),
+            content: Text(L.tr(ctx, 'permissionMissingBody')),
             actions: [
               FilledButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: const Text('Понятно'),
+                child: Text(L.tr(ctx, 'gotIt')),
               ),
             ],
           ),
@@ -269,7 +267,7 @@ class _WelcomeTitle extends StatelessWidget {
     // long greeting appearing as one soft, continuous wave instead of a
     // staccato tick-tick-tick.
     return AnimatedLetters(
-      'Добро пожаловать в Ataraxy.',
+      L.tr(context, 'welcomeGreeting'),
       style: base,
       alignment: WrapAlignment.center,
       duration: const Duration(milliseconds: 620),
@@ -285,7 +283,7 @@ class _WelcomeSubtitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Text(
-      'Ваш личный дневник для записи снов, мыслей и идей',
+      L.tr(context, 'welcomeTagline'),
       style: style.bodyLarge?.copyWith(
         color: Theme.of(context).colorScheme.onSurfaceVariant,
       ),
@@ -356,13 +354,13 @@ class _PermissionCard extends StatelessWidget {
         },
         child: KeyedSubtree(
           key: ValueKey(notificationsGranted),
-          child: _content(),
+          child: _content(context),
         ),
       ),
     );
   }
 
-  Widget _content() {
+  Widget _content(BuildContext context) {
     // Vertical layout: icon + text on top, a full-width button below. The old
     // inline Row let the wide "Включить" pill eat the text column down to a
     // few pixels on a 360dp phone, so the copy wrapped into a tall ribbon and
@@ -398,13 +396,13 @@ class _PermissionCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          _button(),
+          _button(context),
         ],
       ),
     );
   }
 
-  Widget _button() {
+  Widget _button(BuildContext context) {
     if (notificationsGranted) {
       return FilledButton.tonalIcon(
         onPressed: null,
@@ -413,7 +411,10 @@ class _PermissionCard extends StatelessWidget {
           size: 18,
           color: AppAccents.sage,
         ),
-        label: const Text('Включено', style: TextStyle(color: AppAccents.sage)),
+        label: Text(
+          L.tr(context, 'enabledLabel'),
+          style: const TextStyle(color: AppAccents.sage),
+        ),
         style: FilledButton.styleFrom(
           disabledBackgroundColor: AppAccents.sage.withValues(alpha: 0.15),
           disabledForegroundColor: AppAccents.sage,
@@ -432,7 +433,7 @@ class _PermissionCard extends StatelessWidget {
                 child: CircularProgressIndicator(strokeWidth: 2),
               )
             : const Icon(Icons.notifications_rounded, size: 18),
-        label: const Text('Включить'),
+        label: Text(L.tr(context, 'enableLabel')),
       ),
     );
   }
@@ -485,7 +486,7 @@ class _PermissionText extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Уведомления',
+          L.tr(context, 'notifications'),
           style: style.titleSmall?.copyWith(fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 2),
@@ -493,8 +494,8 @@ class _PermissionText extends StatelessWidget {
         // so the wording simply swaps with it — no per-text animation needed.
         Text(
           notificationsGranted
-              ? 'Разрешение получено'
-              : 'Для напоминаний о записях в дневник',
+              ? L.tr(context, 'permissionGranted')
+              : L.tr(context, 'permissionReminderHint'),
           style: (style.bodySmall ?? const TextStyle()).copyWith(
             color: notificationsGranted
                 ? AppAccents.sage
@@ -516,7 +517,7 @@ class _DontShowAgainCheckbox extends StatelessWidget {
     return CheckboxListTile(
       value: value,
       onChanged: onChanged,
-      title: const Text('Больше не показывать'),
+      title: Text(L.tr(context, 'dontShowAgain')),
       controlAffinity: ListTileControlAffinity.leading,
       contentPadding: EdgeInsets.zero,
       dense: true,
@@ -538,7 +539,7 @@ class _StartButton extends StatelessWidget {
         height: 52,
         child: FilledButton(
           onPressed: onPressed,
-          child: const Text('Начать пользоваться'),
+          child: Text(L.tr(context, 'startUsingNow')),
         ),
       ),
     );
@@ -551,23 +552,16 @@ class _PermissionDeniedDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Разрешения отключены'),
-      content: const Text(
-        'Откройте настройки приложения и включите разрешение на уведомления вручную.\n\n'
-        'На Xiaomi/MIUI также включите:\n'
-        '• Автозапуск\n'
-        '• Уведомления\n'
-        '• Точные будильники\n'
-        '• Отключите оптимизацию батареи для Ataraxy',
-      ),
+      title: Text(L.tr(context, 'permissionsOffTitle')),
+      content: Text(L.tr(context, 'permissionsOffBody')),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context, false),
-          child: const Text('Отмена'),
+          child: Text(L.tr(context, 'cancel')),
         ),
         FilledButton(
           onPressed: () => Navigator.pop(context, true),
-          child: const Text('Открыть настройки'),
+          child: Text(L.tr(context, 'openSettings')),
         ),
       ],
     );

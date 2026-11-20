@@ -272,6 +272,42 @@ class AppLocalizationsFr extends AppLocalizations {
   String get exportCancelled => 'Export annulé';
 
   @override
+  String get exportEncryptTitle => 'Protéger par mot de passe';
+
+  @override
+  String get exportEncryptHint =>
+      'La sauvegarde sera chiffrée (AES-256). Retenez le mot de passe — sans lui la sauvegarde est irrécupérable.';
+
+  @override
+  String get exportEncryptToggle => 'Chiffrer la sauvegarde par mot de passe';
+
+  @override
+  String get exportPlain => 'Simple (sans mot de passe)';
+
+  @override
+  String get backupPassword => 'Mot de passe';
+
+  @override
+  String get backupPasswordConfirm => 'Répétez le mot de passe';
+
+  @override
+  String get backupPasswordMismatch => 'Les mots de passe ne correspondent pas';
+
+  @override
+  String get backupPasswordTooShort =>
+      'Mot de passe trop court (au moins 4 caractères)';
+
+  @override
+  String get importPasswordTitle => 'Sauvegarde chiffrée';
+
+  @override
+  String get importPasswordHint =>
+      'Saisissez le mot de passe utilisé pour la sauvegarde';
+
+  @override
+  String get importWrongPassword => 'Mot de passe incorrect';
+
+  @override
   String get importDone => 'Entrées importées';
 
   @override
@@ -654,7 +690,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get ok => 'OK';
 
   @override
-  String get aiAssistant => 'Assistant IA';
+  String get aiAssistant => 'Ada Cry';
 
   @override
   String get aiInputHint => 'Interrogez vos entrées…';
@@ -663,7 +699,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get aiThinking => 'Réflexion…';
 
   @override
-  String get aiEmptyTitle => 'Bonjour ! Je suis votre assistant IA';
+  String get aiEmptyTitle => 'Bonjour ! Je suis Ada Cry';
 
   @override
   String get aiEmptyHint =>
@@ -678,7 +714,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get aiDailyLimitReached => 'Limite quotidienne de messages atteinte';
 
   @override
-  String get aiError => 'Erreur IA';
+  String get aiError => 'Erreur d\'Ada';
 
   @override
   String get aiEntryCreated => '✅ Entrée créée';
@@ -690,14 +726,34 @@ class AppLocalizationsFr extends AppLocalizations {
   String get aiCommandError => '⚠ Impossible d\'exécuter la commande';
 
   @override
-  String get aiSettingsTitle => 'Assistant IA';
+  String get aiSettingsTitle => 'Ada Cry';
 
   @override
   String get aiSettingsHint =>
-      'Chat intelligent sur vos entrées (appui long sur «+»)';
+      'Chat avec Ada sur tes entrées (appui long sur «+»)';
 
   @override
   String get aiProvider => 'Fournisseur';
+
+  @override
+  String get aiProviderHint =>
+      'Presque tout FreeLLM est pris en charge — colle la clé API ci-dessous et ce fournisseur tournera à la place de Laguna. OVHcloud AI Endpoints et AI Horde fonctionnent sans aucune clé (branchés comme solutions de repli gratuites). La pilule FreeLLM ouvre le catalogue freellm.net — plus de 400 modèles gratuits et des liens vers des clés récentes.';
+
+  @override
+  String get aiNoSavedKeys =>
+      'Aucune clé enregistrée — colle une clé dans le champ ci-dessus.';
+
+  @override
+  String get aiMyKeys => 'Mes clés API';
+
+  @override
+  String get aiKeysHint =>
+      'Appuie pour choisir · maintiens 10 s pour supprimer';
+
+  @override
+  String aiKeyPicked(Object key) {
+    return 'Clé sélectionnée : $key';
+  }
 
   @override
   String get aiFree => 'gratuit, sans clé';
@@ -719,7 +775,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get aiDisabled =>
-      'Assistant IA désactivé — activez-le dans les réglages';
+      'Ada Cry est désactivée — active-la dans les réglages';
 
   @override
   String get minimize => 'Réduire';
@@ -729,15 +785,22 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get aiOnVacation =>
-      'L\'IA est en vacances en ce moment ☀️ — réessayez dans un instant';
+      'Ada est en vacances en ce moment ☀️ — réessaie dans un instant';
+
+  @override
+  String get aiDevelopmentBody =>
+      'Ada n’en est qu’au début de son développement. Si tu veux y participer, essaie l’application Misasoc (ou l’IDE sur PC) du même auteur — entièrement FOSS.';
+
+  @override
+  String get aiDevelopmentTitle => 'Participe au développement d’Ada';
 
   @override
   String get aiAdaFallback =>
-      'ADA temporairement indisponible (modèle non déployé) — basculé sur le fournisseur gratuit';
+      'Ada a besoin de ta clé HuggingFace — basculé sur le fournisseur gratuit';
 
   @override
   String get aiAdaNotDeployed =>
-      'Le modèle ADA n\'est pas encore déployé sur HuggingFace — activez un Inference Endpoint dans les réglages du modèle (Pro requis), ou utilisez Free';
+      'Le modèle d\'Ada n\'est pas encore déployé sur HuggingFace — active un Inference Endpoint dans les réglages du modèle (Pro requis), ou utilise Free';
 
   @override
   String get aiClearChat => 'Vider le chat';
@@ -748,7 +811,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get aiAdaLimitReached =>
-      'Limite quotidienne ADA (100) atteinte — bascule sur le fournisseur gratuit';
+      'Limite quotidienne d\'Ada (100) atteinte — bascule sur le fournisseur gratuit';
 
   @override
   String aiRemaining(Object n) {
@@ -820,6 +883,49 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get welcomeSubtitle =>
       'Configurez l\'application pour une expérience de journal de rêves parfaite';
+
+  @override
+  String get welcomeGreeting => 'Bienvenue dans Ataraxy.';
+
+  @override
+  String get welcomeTagline =>
+      'Ton journal privé pour les rêves, les pensées et les idées';
+
+  @override
+  String get permissionMissingTitle => 'Autorisation non accordée';
+
+  @override
+  String get permissionMissingBody =>
+      'Sans l’autorisation de notifications, les rappels ne peuvent pas s’afficher. Appuie de nouveau sur « Activer » si tu as changé d’avis.';
+
+  @override
+  String get gotIt => 'Compris';
+
+  @override
+  String get enabledLabel => 'Activé';
+
+  @override
+  String get enableLabel => 'Activer';
+
+  @override
+  String get permissionGranted => 'Autorisation accordée';
+
+  @override
+  String get permissionReminderHint =>
+      'Pour les rappels d’écriture dans le journal';
+
+  @override
+  String get permissionsOffTitle => 'Autorisations désactivées';
+
+  @override
+  String get permissionsOffBody =>
+      'Ouvre les réglages de l’application et active manuellement l’autorisation de notifications.\n\nSur Xiaomi/MIUI active aussi :\n• Démarrage automatique\n• Notifications\n• Alarmes exactes\n• Désactive l’optimisation de la batterie pour Ataraxy';
+
+  @override
+  String get openSettings => 'Ouvrir les réglages';
+
+  @override
+  String get startUsingNow => 'Commencer';
 
   @override
   String get notifications => 'Notifications';

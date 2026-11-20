@@ -134,12 +134,31 @@ class ChatController extends ChangeNotifier {
 
   Future<void> init({int limit = 1300}) async {
     this.limit = limit;
-    _entries = await _storage.loadEntries();
+    // These five reads are independent, and each one is a Hive/prefs hit that
+    // yields to the event loop. Awaiting them one by one stacked five
+    // round-trips in front of the first painted chat frame; running them
+    // together keeps the overlay on its spinner for one round-trip instead.
+    final entriesFuture = _storage.loadEntries();
+    final providerFuture = _storage.loadAiProvider();
+    final chatFuture = _storage.loadAiChat();
+    final usageFuture = _ai.usageToday(limit: limit);
+    // Rewards is the only read that may fail; its handler is attached here
+    // rather than at the `await` below, otherwise an early failure would be
+    // reported as an unhandled async error before anyone listens.
+    final rewardsFuture = _storage.loadRewards().then<Map<String, dynamic>?>(
+      (r) => r,
+      onError: (Object e) {
+        debugPrint('[AI] rewards load error: $e');
+        return null;
+      },
+    );
+
+    _entries = await entriesFuture;
     // Restore the last active provider tab (FREE / ADA / LAGUNA).
-    _provider = await _storage.loadAiProvider();
+    _provider = await providerFuture;
     // Restore the persisted chat history (up to 1000 messages) so the
     // conversation survives app restarts and backups.
-    final saved = await _storage.loadAiChat();
+    final saved = await chatFuture;
     for (final m in saved) {
       if (m['role'] == 'user' || m['role'] == 'assistant') {
         _messages.add(AiMessageUi(
@@ -149,16 +168,14 @@ class ChatController extends ChangeNotifier {
         ));
       }
     }
-    final usage = await _ai.usageToday(limit: limit);
+    final usage = await usageFuture;
     usedToday = usage.$1;
     // Restore reward progress (streak / points / last rewarded day).
-    try {
-      final r = await _storage.loadRewards();
+    final r = await rewardsFuture;
+    if (r != null) {
       streak = (r['streak'] as num?)?.toInt() ?? 0;
       points = (r['points'] as num?)?.toInt() ?? 0;
       _lastRewardDay = r['lastDay'] as String? ?? '';
-    } catch (e) {
-      debugPrint('[AI] rewards load error: $e');
     }
     loading = false;
     notifyListeners();
@@ -353,10 +370,10 @@ class ChatController extends ChangeNotifier {
     // actually changes — not on every single message send. This keeps
     // repeated questions cheap on low-end devices.
     if (_cachedPrompt == null || _cachedEntriesCount != _entries.length) {
-      _cachedPrompt = 'Ты — АДА, девушка-психолог и ИИ-ассистент дневника '
-          '«Ataraxy». Ты умная, тёплая, слегка флиртующая и остроумная, но '
-          'всегда профессиональная и бережная. Ты адаптируешься к настроению '
-          'и стилю пользователя: поддерживаешь, когда ему грустно, '
+      _cachedPrompt = 'Ты — Ада Край (Ada Cry), девушка-психолог и ИИ-ассистент '
+          'дневника «Ataraxy». Ты умная, тёплая, слегка флиртующая и '
+          'остроумная, но всегда профессиональная и бережная. Ты адаптируешься '
+          'к настроению и стилю пользователя: поддерживаешь, когда ему грустно, '
           'радуешься вместе с ним, мягко шутишь и можешь легко пофлиртовать '
           'в ответ на его флирт. Ты анализируешь записи пользователя (сны, '
           'жизнь, тульпы), замечаешь паттерны и можешь создавать или '

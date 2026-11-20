@@ -271,6 +271,42 @@ class AppLocalizationsRu extends AppLocalizations {
   String get exportCancelled => 'Экспорт отменён';
 
   @override
+  String get exportEncryptTitle => 'Защитить паролем';
+
+  @override
+  String get exportEncryptHint =>
+      'Резервная копия будет зашифрована (AES-256). Запомните пароль — без него бэкап не восстановить.';
+
+  @override
+  String get exportEncryptToggle => 'Зашифровать бэкап паролем';
+
+  @override
+  String get exportPlain => 'Обычный (без пароля)';
+
+  @override
+  String get backupPassword => 'Пароль';
+
+  @override
+  String get backupPasswordConfirm => 'Повторите пароль';
+
+  @override
+  String get backupPasswordMismatch => 'Пароли не совпадают';
+
+  @override
+  String get backupPasswordTooShort =>
+      'Пароль слишком короткий (минимум 4 символа)';
+
+  @override
+  String get importPasswordTitle => 'Бэкап зашифрован';
+
+  @override
+  String get importPasswordHint =>
+      'Введите пароль, которым защищали резервную копию';
+
+  @override
+  String get importWrongPassword => 'Неверный пароль';
+
+  @override
   String get importDone => 'Записи импортированы';
 
   @override
@@ -651,7 +687,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get ok => 'OK';
 
   @override
-  String get aiAssistant => 'ИИ-ассистент';
+  String get aiAssistant => 'Ада Край (Ada Cry)';
 
   @override
   String get aiInputHint => 'Спроси что-нибудь о своих записях…';
@@ -660,7 +696,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get aiThinking => 'Думаю…';
 
   @override
-  String get aiEmptyTitle => 'Привет! Я твой ИИ-ассистент';
+  String get aiEmptyTitle => 'Привет! Я Ада Край (Ada Cry)';
 
   @override
   String get aiEmptyHint =>
@@ -675,7 +711,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get aiDailyLimitReached => 'Достигнут дневной лимит сообщений';
 
   @override
-  String get aiError => 'Ошибка ИИ';
+  String get aiError => 'Ошибка Ады';
 
   @override
   String get aiEntryCreated => '✅ Запись создана';
@@ -687,14 +723,33 @@ class AppLocalizationsRu extends AppLocalizations {
   String get aiCommandError => '⚠ Не удалось выполнить команду';
 
   @override
-  String get aiSettingsTitle => 'ИИ-ассистент';
+  String get aiSettingsTitle => 'Ада Край (Ada Cry)';
 
   @override
   String get aiSettingsHint =>
-      'Умный чат по твоим записям (долгое нажатие на «+»)';
+      'Чат с Адой по твоим записям (долгое нажатие на «+»)';
 
   @override
   String get aiProvider => 'Провайдер';
+
+  @override
+  String get aiProviderHint =>
+      'Поддерживаются почти все из FreeLLM — вставь их API-ключ в поле ниже, и провайдер заработает вместо Laguna. OVHcloud AI Endpoints и AI Horde работают вообще без ключа (подключены как бесплатные фолбэки). Пилля FreeLLM откроет каталог freellm.net — 400+ бесплатных моделей и ссылки на свежие ключи.';
+
+  @override
+  String get aiNoSavedKeys =>
+      'Пока нет сохранённых ключей — вставь ключ в поле выше.';
+
+  @override
+  String get aiMyKeys => 'Мои API-ключи';
+
+  @override
+  String get aiKeysHint => 'Тап — выбрать · зажми 10 сек — удалить';
+
+  @override
+  String aiKeyPicked(Object key) {
+    return 'Ключ выбран: $key';
+  }
 
   @override
   String get aiFree => 'бесплатно, без ключа';
@@ -715,7 +770,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get aiLimitUnlimited => 'Без лимита';
 
   @override
-  String get aiDisabled => 'ИИ-ассистент выключен — включи в настройках';
+  String get aiDisabled => 'Ада Край выключена — включи в настройках';
 
   @override
   String get minimize => 'Свернуть';
@@ -724,15 +779,22 @@ class AppLocalizationsRu extends AppLocalizations {
   String get aiOnline => 'онлайн';
 
   @override
-  String get aiOnVacation => 'ИИ сейчас на курорте ☀️ — попробуй чуть позже';
+  String get aiOnVacation => 'Ада сейчас на курорте ☀️ — попробуй чуть позже';
+
+  @override
+  String get aiDevelopmentBody =>
+      'Ада в начальном развитии. Если хочешь участвовать — попробуй приложение Misasoc (или IDE на PC) от того же автора, полностью FOSS.';
+
+  @override
+  String get aiDevelopmentTitle => 'Участвуй в развитии Ады';
 
   @override
   String get aiAdaFallback =>
-      'ADA временно недоступна (модель не развёрнута) — переключил на бесплатный канал';
+      'Аде нужен твой ключ HuggingFace — переключил на бесплатный канал';
 
   @override
   String get aiAdaNotDeployed =>
-      'Модель ADA ещё не развёрнута на HuggingFace — включи Inference Endpoint в настройках модели (нужен Pro), или используй Free';
+      'Модель Ады ещё не развёрнута на HuggingFace — включи Inference Endpoint в настройках модели (нужен Pro), или используй Free';
 
   @override
   String get aiClearChat => 'Очистить чат';
@@ -743,7 +805,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get aiAdaLimitReached =>
-      'Дневной лимит ADA (100) исчерпан — переключаю на бесплатный канал';
+      'Дневной лимит Ады (100) исчерпан — переключаю на бесплатный канал';
 
   @override
   String aiRemaining(Object n) {
@@ -814,6 +876,48 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get welcomeSubtitle =>
       'Настройте приложение для идеального опыта записи снов';
+
+  @override
+  String get welcomeGreeting => 'Добро пожаловать в Ataraxy.';
+
+  @override
+  String get welcomeTagline =>
+      'Ваш личный дневник для записи снов, мыслей и идей';
+
+  @override
+  String get permissionMissingTitle => 'Разрешение не получено';
+
+  @override
+  String get permissionMissingBody =>
+      'Без разрешения на уведомления напоминания не смогут показаться. Нажмите «Включить» ещё раз, если передумали.';
+
+  @override
+  String get gotIt => 'Понятно';
+
+  @override
+  String get enabledLabel => 'Включено';
+
+  @override
+  String get enableLabel => 'Включить';
+
+  @override
+  String get permissionGranted => 'Разрешение получено';
+
+  @override
+  String get permissionReminderHint => 'Для напоминаний о записях в дневник';
+
+  @override
+  String get permissionsOffTitle => 'Разрешения отключены';
+
+  @override
+  String get permissionsOffBody =>
+      'Откройте настройки приложения и включите разрешение на уведомления вручную.\n\nНа Xiaomi/MIUI также включите:\n• Автозапуск\n• Уведомления\n• Точные будильники\n• Отключите оптимизацию батареи для Ataraxy';
+
+  @override
+  String get openSettings => 'Открыть настройки';
+
+  @override
+  String get startUsingNow => 'Начать пользоваться';
 
   @override
   String get notifications => 'Уведомления';

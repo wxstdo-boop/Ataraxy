@@ -60,4 +60,31 @@ void main() {
   test('unknown keys fall back to the key itself', () {
     expect(L.trStatic('definitelyNotAKey'), 'definitelyNotAKey');
   });
+
+  test('onboarding screen has no hardcoded Russian UI text', () {
+    // The welcome/onboarding flow is the first thing an en/fr user sees, yet
+    // every string in it was a Russian literal, so those locales got a fully
+    // Russian first launch. Comments are excluded; only code lines count.
+    _expectNoCyrillic('lib/welcome_screen.dart');
+  });
+
+  test('AI settings screen has no hardcoded Russian UI text', () {
+    // Same trap: the provider sheet, the saved-keys list and its snack were
+    // Russian-only literals while the rest of the screen went through L.tr.
+    _expectNoCyrillic('lib/screens/settings_ai.dart');
+  });
+}
+
+void _expectNoCyrillic(String path) {
+  final source = File(path).readAsStringSync();
+  final cyrillic = RegExp(r'[А-Яа-яЁё]');
+  final offenders = <String>[];
+  var lineNo = 0;
+  for (final line in source.split('\n')) {
+    lineNo++;
+    if (line.trimLeft().startsWith('//')) continue;
+    final code = line.split('//').first;
+    if (cyrillic.hasMatch(code)) offenders.add('$lineNo: ${line.trim()}');
+  }
+  expect(offenders, isEmpty, reason: '$path:\n${offenders.join('\n')}');
 }

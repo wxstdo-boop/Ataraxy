@@ -11,11 +11,17 @@ import 'package:ataraxy/widgets/limited_context_menu.dart';
 import 'package:ataraxy/ai_overlay_state.dart';
 import 'package:ataraxy/widgets/em_dash_formatter.dart';
 import 'package:ataraxy/widgets/pressable_icon_button.dart';
+import 'package:ataraxy/widgets/press_scale.dart';
 import 'package:ataraxy/providers/chat_controller.dart';
 import 'package:ataraxy/theme/app_theme.dart';
 import 'package:ataraxy/theme/markdown_spacing.dart';
 
 part 'ai_assistant_bubbles.dart';
+
+/// Smallest height the chat window is allowed to shrink to. The body is a
+/// Column (list + input bar), so squeezing it further overflows instead of
+/// scrolling — the chrome plus the input bar already need this much.
+const double _kMinWindowHeight = 240;
 
 /// АДА — floating AI assistant. A big draggable bubble that hovers over the
 /// app; tap it to expand into a chat window. The chat has read access to all
@@ -98,21 +104,55 @@ class AiFloatingAssistantState extends State<AiFloatingAssistant>
       vsync: this,
       duration: const Duration(milliseconds: 380),
     )..forward();
-    // Gentle autonomous motion: 33ms tick at a steady ~0.9 px/tick
-    // (≈27 px/s cruise). The heading is a continuous function of time, so
-    // the path curves smoothly and the speed never drops to zero — AND a
-    // wall-repulsion force turns the bubble inward BEFORE it reaches the
-    // border, so it never parks on or jitters against an edge.
+    _bubblePulse = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1600),
+    );
+    // The pulse only runs while the BUBBLE is on screen. It used to
+    // `repeat()` from initState, so it kept ticking at 60 fps even with the
+    // chat window open (bubble not visible) and even during the opening
+    // fade — a constant per-frame rebuild of its AnimatedBuilder subtree plus
+    // a full-screen composite on top of the app, which is what made
+    // entering/leaving ADA feel heavy. Start it on the bubble, stop it
+    // everywhere else.
+    _bubblePulse.addStatusListener((status) {
+      if (!mounted) return;
+      if (_minimized && status == AnimationStatus.completed) {
+        _bubblePulse.repeat(reverse: true);
+      }
+    });
+    _closing = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 220),
+    );
+    _snap = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 320),
+    );
+  }
+
+  /// Runs the bubble's autonomous drift. Only alive while the bubble is the
+  /// visible surface — see [_setMinimized].
+  ///
+  /// 33ms tick at a steady ~0.9 px/tick (≈27 px/s cruise). The heading is a
+  /// continuous function of time, so the path curves smoothly and the speed
+  /// never drops to zero — AND a wall-repulsion force turns the bubble inward
+  /// BEFORE it reaches the border, so it never parks on or jitters against an
+  /// edge. A periodic 30 Hz callback that ran for the whole session kept the
+  /// Dart event loop busy and forced a `_drag` write per tick even with the
+  /// chat window open — one of the reasons opening and closing the assistant
+  /// felt sluggish.
+  void _startDrift() {
+    _driftTimer?.cancel();
     _driftTimer = Timer.periodic(const Duration(milliseconds: 33), (_) {
       if (!mounted || !_minimized || _dragging.value || _closing.isAnimating) {
         return;
       }
-      final size = MediaQuery.of(context).size;
+      final size = MediaQuery.sizeOf(context);
       final now = DateTime.now().millisecondsSinceEpoch / 1000.0;
       // Continuously turning heading: two slow sine waves at different
       // rates → an organic lissajous-ish wander with no repeats.
-      final angle =
-          math.sin(now * 0.21) * 1.1 + math.cos(now * 0.13) * 0.7;
+      final angle = math.sin(now * 0.21) * 1.1 + math.cos(now * 0.13) * 0.7;
       const cruise = 0.9; // px per tick — constant, never stalls
       var vx = math.cos(angle) * cruise;
       var vy = math.sin(angle) * 0.55 * cruise;
@@ -156,28 +196,21 @@ class AiFloatingAssistantState extends State<AiFloatingAssistant>
       }
       _drag.value = _clampDrag(next, size, true);
     });
-    _bubblePulse = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1600),
-    )..repeat(reverse: true);
-    // Stop the pulse when the chat window is open: the bubble is not visible
-    // then, but the repeating controller would otherwise keep ticking and
-    // rebuild its AnimatedBuilder subtree every frame — a real battery/CPU
-    // drain on mid-range phones. Restart it when minimized again.
-    _bubblePulse.addStatusListener((status) {
-      if (!mounted) return;
-      if (_minimized && status == AnimationStatus.completed) {
-        _bubblePulse.repeat(reverse: true);
-      }
-    });
-    _closing = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 220),
-    );
-    _snap = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 320),
-    );
+  }
+
+  /// Switches between the bubble and the chat window, starting/stopping the
+  /// bubble-only animations so nothing ticks while the other surface is up.
+  void _setMinimized(bool value) {
+    if (_minimized == value) return;
+    setState(() => _minimized = value);
+    if (value) {
+      _startDrift();
+      _bubblePulse.repeat(reverse: true);
+    } else {
+      _driftTimer?.cancel();
+      _driftTimer = null;
+      _bubblePulse.stop();
+    }
   }
 
   /// Smoothly flies the drag offset to [target] (used for edge-snap and for
@@ -187,9 +220,10 @@ class AiFloatingAssistantState extends State<AiFloatingAssistant>
     _snap.stop();
     final from = _drag.value;
     if ((from - target).distance < 0.5) return;
-    _snapAnim = Tween<Offset>(begin: from, end: target).animate(
-      CurvedAnimation(parent: _snap, curve: Curves.easeOutCubic),
-    );
+    _snapAnim = Tween<Offset>(
+      begin: from,
+      end: target,
+    ).animate(CurvedAnimation(parent: _snap, curve: Curves.easeOutCubic));
     void listener() {
       final anim = _snapAnim;
       if (anim != null) _drag.value = anim.value;
@@ -258,46 +292,93 @@ class AiFloatingAssistantState extends State<AiFloatingAssistant>
     );
   }
 
+  /// The un-obscured viewport, remembered while the keyboard is down.
+  ///
+  /// Android reports the keyboard in one of two ways: `viewInsets.bottom`
+  /// grows while the surface keeps its height, or the surface itself shrinks
+  /// (`adjustResize`). Sizing the window from the CURRENT height made it
+  /// resize under the user on the second variant — the input bar lurched
+  /// ("дёргается"). While the keyboard is up the box is therefore sized from
+  /// this remembered viewport; it is refreshed whenever the keyboard is down,
+  /// so rotation and split-screen still apply.
+  Size _layoutSize = Size.zero;
+
+  Size _screenSize(BuildContext context) {
+    final current = MediaQuery.sizeOf(context);
+    final keyboard = MediaQuery.viewInsetsOf(context).bottom;
+    if (keyboard <= 0 || _layoutSize == Size.zero) {
+      _layoutSize = current;
+      return current;
+    }
+    return _layoutSize;
+  }
+
+  /// Bottom offset that keeps the chat window clear of the keyboard.
+  ///
+  /// Each reporting style is compensated exactly once: with `viewInsets` the
+  /// surface keeps its height and the window rises by the inset; with
+  /// `adjustResize` the surface is already shorter by that much, so the
+  /// visible shrink is subtracted from the lift.
+  double _keyboardLift(BuildContext context, Size pinned) {
+    final keyboard = MediaQuery.viewInsetsOf(context).bottom;
+    if (keyboard <= 0) return 10;
+    final shrink = (pinned.height - MediaQuery.sizeOf(context).height).clamp(
+      0.0,
+      keyboard,
+    );
+    return math.max(10.0, keyboard - shrink + 10);
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final size = MediaQuery.of(context).size;
+    final size = _screenSize(context);
     // Compact window. Slightly wider so the assistant description fits
     // comfortably in the empty state.
     final w = size.width.clamp(280.0, 320.0);
-    final h = (size.height * 0.44).clamp(280.0, 480.0);
+    final available = MediaQuery.sizeOf(context).height;
+    final lift = _keyboardLift(context, size);
+    final preferred = (size.height * 0.44).clamp(280.0, 480.0);
+    // A tall keyboard plus the lift can leave less room than the preferred
+    // height — shrink the box to the visible area instead of letting it ride
+    // off the top of the screen. The floor is the chrome plus the input bar:
+    // below that the body's Column overflows instead of scrolling.
+    final visible = available - lift - 8;
+    final h = math.min(preferred, math.max(_kMinWindowHeight, visible));
+    // Final guard: whatever the platform reported, the window must fit inside
+    // the visible surface. This also absorbs the one-frame window where the
+    // keyboard inset and the surface shrink arrive in different frames.
+    final bottom = math.min(lift, math.max(10.0, available - h - 8));
 
     // Transparent Material + SizedBox.expand: the assistant is mounted
     // inside the home screen's Stack, and a Material ancestor guarantees
     // TextField/IconButton always have their required sheet even if the
     // host ever moves the widget outside a Scaffold.
+    //
+    // NO full-screen ScaleTransition here. Scaling a screen-sized layer makes
+    // the GPU bilinear-resample every pixel each frame (the same jank the
+    // splash hit) — the open/close "дико подтормаживает". Fades are a cheap
+    // blend with zero resampling, and the only scale left is the per-child
+    // one in the AnimatedSwitcher below, which is window-sized (cheap).
     return Material(
       type: MaterialType.transparency,
       child: SizedBox.expand(
         child: RepaintBoundary(
           child: FadeTransition(
-        // Close animation: fade + scale down, then the host is dismissed.
-        opacity: Tween(begin: 1.0, end: 0.0).animate(
-          CurvedAnimation(parent: _closing, curve: Curves.easeInCubic),
-        ),
-        child: ScaleTransition(
-          scale: Tween(begin: 1.0, end: 0.8).animate(
-            CurvedAnimation(parent: _closing, curve: Curves.easeInCubic),
-          ),
-          child: FadeTransition(
-            opacity: _appear,
-            child: ScaleTransition(
-              scale: Tween(begin: 0.85, end: 1.0).animate(
-                CurvedAnimation(parent: _appear, curve: Curves.easeOutBack),
-              ),
+            // Close: fade out, then the host is dismissed.
+            opacity: Tween(begin: 1.0, end: 0.0).animate(
+              CurvedAnimation(parent: _closing, curve: Curves.easeInCubic),
+            ),
+            child: FadeTransition(
+              opacity: _appear,
               // Smoothly morph between the window and the bubble when
               // minimizing / expanding. Distinct ValueKeys are REQUIRED —
               // both branches are Stack-shaped widgets, and without keys the
               // AnimatedSwitcher treats them as the same child and skips the
               // transition entirely (a hard snap).
               child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 360),
-                switchInCurve: Curves.easeOutBack,
+                duration: const Duration(milliseconds: 300),
+                switchInCurve: Curves.easeOutCubic,
                 switchOutCurve: Curves.easeInCubic,
                 transitionBuilder: (child, animation) => FadeTransition(
                   opacity: animation,
@@ -313,14 +394,12 @@ class AiFloatingAssistantState extends State<AiFloatingAssistant>
                       )
                     : KeyedSubtree(
                         key: const ValueKey('window'),
-                        child: _window(scheme, w, h),
+                        child: _window(scheme, w, h, bottom),
                       ),
               ),
             ),
           ),
         ),
-      ),
-      ),
       ),
     );
   }
@@ -344,8 +423,7 @@ class AiFloatingAssistantState extends State<AiFloatingAssistant>
           child: RepaintBoundary(
             child: GestureDetector(
               onTap: () {
-                setState(() => _minimized = false);
-                _bubblePulse.stop();
+                _setMinimized(false);
                 // Reopening the window recreates the ListView at the top —
                 // land straight on the newest message.
                 _chat.jumpToBottom();
@@ -353,7 +431,7 @@ class AiFloatingAssistantState extends State<AiFloatingAssistant>
                 // the left edge used to open the chat half off-screen.
                 final clamped = _clampDrag(
                   _drag.value,
-                  MediaQuery.of(context).size,
+                  MediaQuery.sizeOf(context),
                   false,
                 );
                 if (clamped != _drag.value) _animateDragTo(clamped);
@@ -449,9 +527,7 @@ class AiFloatingAssistantState extends State<AiFloatingAssistant>
                 Icons.auto_awesome_rounded,
                 color: Colors.white,
                 size: 18,
-                shadows: const [
-                  Shadow(color: Colors.black38, blurRadius: 3),
-                ],
+                shadows: const [Shadow(color: Colors.black38, blurRadius: 3)],
               ),
               // Sparkle
               Positioned(
@@ -473,18 +549,24 @@ class AiFloatingAssistantState extends State<AiFloatingAssistant>
 
   // ============ Chat window ============
 
-  Widget _window(ColorScheme scheme, double w, double h) {
+  Widget _window(ColorScheme scheme, double w, double h, double bottom) {
     // Same as the bubble: Positioned must be inside a Stack, otherwise the
     // window is stretched to the full screen instead of staying compact.
-    // The window is anchored at a FIXED bottom offset — it never jumps when
-    // the keyboard opens (user preference), so no viewInsets math here.
+    //
+    // The bottom offset carries the keyboard lift and is animated, so the
+    // window glides up over the keyboard and settles back instead of jumping.
+    // A fixed offset left the field hidden behind the keyboard on devices
+    // that report it as `viewInsets`, and let the box ride off the top on a
+    // short viewport.
     return Stack(
       children: [
         ValueListenableBuilder<Offset>(
           valueListenable: _drag,
-          builder: (context, pos, child) => Positioned(
+          builder: (context, pos, child) => AnimatedPositioned(
+            duration: const Duration(milliseconds: 240),
+            curve: Curves.easeOutCubic,
             right: 8,
-            bottom: 10,
+            bottom: bottom,
             child: Transform.translate(offset: pos, child: child),
           ),
           child: RepaintBoundary(
@@ -496,50 +578,53 @@ class AiFloatingAssistantState extends State<AiFloatingAssistant>
                 curve: Curves.easeOut,
                 child: child,
               ),
-              child: ListenableBuilder(
-                listenable: _chat,
-                builder: (context, _) => Container(
-                  width: w,
-                  height: h,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(24),
-                    // FULLY OPAQUE background — the previous translucent
-                    // gradient let the app behind (and the keyboard)
-                    // bleed through and read as a muddy gray screen while
-                    // typing. Solid surface keeps the chat crisp on every
-                    // theme. Highest (not Low) so the panel keeps the theme
-                    // tint instead of reading as a near-white stripe.
-                    color: scheme.surfaceContainerHighest,
-                    border: Border.all(
-                      color: scheme.primary.withValues(alpha: 0.28),
-                      width: 1.2,
+              // The decoration (two large blurred shadows) is built ONCE here,
+              // outside the chat subscription. It used to sit inside a
+              // ListenableBuilder on _chat, so every streamed token flush
+              // re-created the whole BoxDecoration and re-rasterised both
+              // 34/40px blurs — the dominant cost while the answer typed
+              // itself out. Only the body below listens to the chat now.
+              child: Container(
+                width: w,
+                height: h,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(24),
+                  // FULLY OPAQUE background — the previous translucent
+                  // gradient let the app behind (and the keyboard)
+                  // bleed through and read as a muddy gray screen while
+                  // typing. Solid surface keeps the chat crisp on every
+                  // theme. Highest (not Low) so the panel keeps the theme
+                  // tint instead of reading as a near-white stripe.
+                  color: scheme.surfaceContainerHighest,
+                  border: Border.all(
+                    color: scheme.primary.withValues(alpha: 0.28),
+                    width: 1.2,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.22),
+                      blurRadius: 34,
+                      offset: const Offset(0, 14),
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.22),
-                        blurRadius: 34,
-                        offset: const Offset(0, 14),
-                      ),
-                      BoxShadow(
-                        color: scheme.primary.withValues(alpha: 0.2),
-                        blurRadius: 40,
-                        offset: const Offset(0, 0),
-                      ),
-                    ],
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  child: Column(
-                    children: [
-                      _dragHandle(scheme),
-                      _header(scheme),
-                      const Divider(height: 1),
-                      Expanded(
-                        child: !_chatReady
-                            ? const Center(child: CircularProgressIndicator())
-                            : _AiChatBody(controller: _chat),
-                      ),
-                    ],
-                  ),
+                    BoxShadow(
+                      color: scheme.primary.withValues(alpha: 0.2),
+                      blurRadius: 40,
+                      offset: const Offset(0, 0),
+                    ),
+                  ],
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: Column(
+                  children: [
+                    _dragHandle(scheme),
+                    _header(scheme),
+                    const Divider(height: 1),
+                    Expanded(
+                      child: !_chatReady
+                          ? const Center(child: CircularProgressIndicator())
+                          : _AiChatBody(controller: _chat),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -589,7 +674,7 @@ class AiFloatingAssistantState extends State<AiFloatingAssistant>
   Widget _header(ColorScheme scheme) {
     // Two rows: identity (avatar + name + status) on top, then the
     // Free/ADA toggle ABOVE the window controls (clear/minimize/close).
-    // This gives the name full width ("АДА" never wraps) and keeps the
+    // This gives the name full width (it never wraps) and keeps the
     // provider switch clearly separated from the control buttons.
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 2, 6, 2),
@@ -598,7 +683,7 @@ class AiFloatingAssistantState extends State<AiFloatingAssistant>
         children: [
           Row(
             children: [
-              // ADA avatar — gradient ring + inner circle, theme-aware.
+              // Ada avatar — gradient ring + inner circle, theme-aware.
               Container(
                 width: 36,
                 height: 36,
@@ -637,7 +722,7 @@ class AiFloatingAssistantState extends State<AiFloatingAssistant>
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      'АДА',
+                      'Ада Край',
                       style: TextStyle(
                         fontWeight: FontWeight.w800,
                         fontSize: 15,
@@ -654,8 +739,7 @@ class AiFloatingAssistantState extends State<AiFloatingAssistant>
                         duration: const Duration(milliseconds: 320),
                         switchInCurve: Curves.easeOutCubic,
                         switchOutCurve: Curves.easeInCubic,
-                        transitionBuilder: (child, animation) =>
-                            FadeTransition(
+                        transitionBuilder: (child, animation) => FadeTransition(
                           opacity: animation,
                           child: SlideTransition(
                             position: Tween(
@@ -667,12 +751,9 @@ class AiFloatingAssistantState extends State<AiFloatingAssistant>
                         ),
                         layoutBuilder: (currentChild, previousChildren) =>
                             Stack(
-                          alignment: Alignment.centerLeft,
-                          children: [
-                            ...previousChildren,
-                            ?currentChild,
-                          ],
-                        ),
+                              alignment: Alignment.centerLeft,
+                              children: [...previousChildren, ?currentChild],
+                            ),
                         child: Row(
                           key: ValueKey(_chat.busy),
                           mainAxisSize: MainAxisSize.min,
@@ -688,10 +769,11 @@ class AiFloatingAssistantState extends State<AiFloatingAssistant>
                                     : AppAccents.sage,
                                 boxShadow: [
                                   BoxShadow(
-                                    color: (_chat.busy
-                                            ? AppAccents.amber
-                                            : AppAccents.sage)
-                                        .withValues(alpha: 0.4),
+                                    color:
+                                        (_chat.busy
+                                                ? AppAccents.amber
+                                                : AppAccents.sage)
+                                            .withValues(alpha: 0.4),
                                     blurRadius: 4,
                                   ),
                                 ],
@@ -717,10 +799,7 @@ class AiFloatingAssistantState extends State<AiFloatingAssistant>
               const SizedBox(width: 6),
               // Streak + points mini-badges — always visible so the user
               // can see their reward progress at a glance.
-              _RewardBadges(
-                streak: _chat.streak,
-                points: _chat.points,
-              ),
+              _RewardBadges(streak: _chat.streak, points: _chat.points),
             ],
           ),
           const SizedBox(height: 4),
@@ -749,11 +828,10 @@ class AiFloatingAssistantState extends State<AiFloatingAssistant>
                 ),
                 onPressed: () {
                   _chat.unfocusInput(); // keyboard closes with the window
-                  setState(() => _minimized = true);
-                  _bubblePulse.repeat(reverse: true);
+                  _setMinimized(true);
                   final clamped = _clampDrag(
                     _drag.value,
-                    MediaQuery.of(context).size,
+                    MediaQuery.sizeOf(context),
                     true,
                   );
                   if (clamped != _drag.value) _animateDragTo(clamped);
@@ -814,8 +892,7 @@ class _RewardBadges extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        pill(Icons.local_fire_department_rounded, AppAccents.amber,
-            '$streak'),
+        pill(Icons.local_fire_department_rounded, AppAccents.amber, '$streak'),
         const SizedBox(width: 4),
         pill(Icons.star_rounded, scheme.primary, '$points'),
       ],
@@ -865,7 +942,8 @@ class _AiChatBody extends StatelessWidget {
                               scheme: scheme,
                               // Only the last assistant bubble is "live"
                               // while the model types into it.
-                              streaming: c.streaming &&
+                              streaming:
+                                  c.streaming &&
                                   i == c.messages.length - 1 &&
                                   m.role == 'assistant',
                             );
@@ -1062,10 +1140,9 @@ class _EmptyState extends StatelessWidget {
   /// wrong for small counts and the old build's "запись(и-ей)" was ugly.
   String _analyzesLabel(BuildContext context) {
     final n = entriesCount;
-    final localized = L.tr(context, 'aiAnalyzes').replaceAll(
-      '{n}',
-      n.toString(),
-    );
+    final localized = L
+        .tr(context, 'aiAnalyzes')
+        .replaceAll('{n}', n.toString());
     if (Localizations.localeOf(context).languageCode != 'ru') {
       return localized;
     }
@@ -1087,10 +1164,9 @@ class _EmptyState extends StatelessWidget {
   /// read wrong for small remaining counts.
   String _remainingLabel(BuildContext context) {
     final n = remaining;
-    final localized = L.tr(context, 'aiRemaining').replaceAll(
-      '{n}',
-      n.toString(),
-    );
+    final localized = L
+        .tr(context, 'aiRemaining')
+        .replaceAll('{n}', n.toString());
     if (Localizations.localeOf(context).languageCode != 'ru') {
       return localized;
     }
@@ -1151,29 +1227,29 @@ class _EmptyState extends StatelessWidget {
           Text(
             L.tr(context, 'aiEmptyHint'),
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                  fontSize: 11.5,
-                  height: 1.3,
-                ),
+              color: scheme.onSurfaceVariant,
+              fontSize: 11.5,
+              height: 1.3,
+            ),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 4),
           Text(
             _analyzesLabel(context),
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: scheme.primary,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 11.5,
-                ),
+              color: scheme.primary,
+              fontWeight: FontWeight.w700,
+              fontSize: 11.5,
+            ),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 2),
           Text(
             _remainingLabel(context),
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                  fontSize: 11,
-                ),
+              color: scheme.onSurfaceVariant,
+              fontSize: 11,
+            ),
             textAlign: TextAlign.center,
           ),
         ],

@@ -1,4 +1,4 @@
-part of 'settings_screen.dart';
+﻿part of 'settings_screen.dart';
 
 /// AI-assistant settings: provider info sheets, API-key editing/picking,
 /// the daily-limit dialog and the key-masking helper. Split out of
@@ -24,13 +24,7 @@ extension _SettingsAi on _SettingsScreenState {
             Text(L.tr(ctx, 'aiProvider')),
           ],
         ),
-        content: const Text(
-          'Поддерживаются почти все из FreeLLM — вставь их API-ключ в поле '
-          'ниже, и провайдер заработает вместо Laguna. OVHcloud AI '
-          'Endpoints и AI Horde работают вообще без ключа (подключены как '
-          'бесплатные фолбэки). Пилля FreeLLM откроет каталог freellm.net — '
-          '400+ бесплатных моделей и ссылки на свежие ключи.',
-        ),
+        content: Text(L.tr(ctx, 'aiProviderHint')),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
@@ -41,8 +35,8 @@ extension _SettingsAi on _SettingsScreenState {
     );
   }
 
-  /// Rounded info sheet for the «Участвуй в развитии ADA» tile — describes
-  /// how to try the author's other FOSS apps while ADA is early-stage.
+  /// Rounded info sheet for the «Участвуй в развитии Ады» tile — describes
+  /// how to try the author's other FOSS apps while Ada is early-stage.
   Future<void> _showAdaJoinInfo(BuildContext context) async {
     final scheme = Theme.of(context).colorScheme;
     await showDialog<void>(
@@ -55,19 +49,15 @@ extension _SettingsAi on _SettingsScreenState {
           children: [
             Icon(Icons.handshake_rounded, color: scheme.primary),
             const SizedBox(width: 10),
-            const Flexible(
+            Flexible(
               child: Text(
-                'Участвуй в развитии ADA',
-                style: TextStyle(fontSize: 17),
+                L.tr(ctx, 'aiDevelopmentTitle'),
+                style: const TextStyle(fontSize: 17),
               ),
             ),
           ],
         ),
-        content: const Text(
-          'АДА в начальном развитии, если хотите участвовать — пробуйте '
-          'приложение Misasoc (или IDE на PC) от того же автора, '
-          'полностью FOSS.',
-        ),
+        content: Text(L.tr(ctx, 'aiDevelopmentBody')),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
@@ -201,7 +191,7 @@ extension _SettingsAi on _SettingsScreenState {
     if (keys.isEmpty) {
       AnimatedSnack.show(
         context,
-        'Пока нет сохранённых ключей — вставь ключ в поле выше.',
+        L.tr(context, 'aiNoSavedKeys'),
         type: SnackType.info,
       );
       return;
@@ -236,7 +226,7 @@ extension _SettingsAi on _SettingsScreenState {
                     Icon(Icons.key_rounded, size: 19, color: scheme.primary),
                     const SizedBox(width: 9),
                     Text(
-                      'Мои API-ключи',
+                      L.tr(ctx, 'aiMyKeys'),
                       style: Theme.of(ctx).textTheme.titleSmall?.copyWith(
                             fontWeight: FontWeight.w800,
                           ),
@@ -245,7 +235,7 @@ extension _SettingsAi on _SettingsScreenState {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Тап — выбрать · зажми 10 сек — удалить',
+                  L.tr(ctx, 'aiKeysHint'),
                   style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
                         color: scheme.onSurfaceVariant,
                         fontSize: 11,
@@ -283,7 +273,7 @@ extension _SettingsAi on _SettingsScreenState {
       provider.onChanged(settings.copyWith(aiKey: picked));
       AnimatedSnack.show(
         context,
-        'Ключ выбран: ${_maskKey(picked)}',
+        L.tr(context, 'aiKeyPicked', params: {'key': _maskKey(picked)}),
         type: SnackType.success,
       );
     }

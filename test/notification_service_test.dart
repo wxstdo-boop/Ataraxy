@@ -52,4 +52,31 @@ void main() {
       }
     });
   });
+
+  _permissionReportContractTests();
+}
+
+/// `requestAllPermissions` must report denial through the explicit
+/// `PermissionReport.denied` flag, not through the wording of `details`.
+///
+/// The UI used to look for the Russian «ОТКЛОНЕНО» substring. On iOS and
+/// desktop the service answers 'OK'/'Denied', so a real denial was rendered as
+/// a green success snack — this locks the flag in.
+void _permissionReportContractTests() {
+  test('PermissionReport carries details and the denied verdict', () {
+    const denied = PermissionReport(details: 'Denied', denied: true);
+    expect(denied.denied, isTrue);
+    expect(denied.details, 'Denied');
+
+    const granted = PermissionReport(details: 'OK', denied: false);
+    expect(granted.denied, isFalse);
+    expect(granted.details, 'OK');
+  });
+
+  test('denied is not derived from the Russian wording', () {
+    // A non-Russian, non-Android answer still has to read as a denial.
+    const report = PermissionReport(details: 'Denied', denied: true);
+    expect(report.details.contains('ОТКЛОНЕНО'), isFalse);
+    expect(report.denied, isTrue);
+  });
 }

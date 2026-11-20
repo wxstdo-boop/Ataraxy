@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -13,6 +13,18 @@ import 'package:timezone/data/latest.dart' as tz_data;
 import 'web_notifications_stub.dart'
     if (dart.library.js_interop) 'web_notifications.dart'
     as webnotif;
+
+/// Outcome of [NotificationService.requestAllPermissions].
+///
+/// [details] is a human-readable, line-per-permission report shown to the user;
+/// [denied] is the machine-readable verdict. The UI must branch on [denied] and
+/// never on the text — the wording differs per platform and per locale.
+class PermissionReport {
+  final String details;
+  final bool denied;
+
+  const PermissionReport({required this.details, required this.denied});
+}
 
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _notifications =
@@ -218,17 +230,29 @@ class NotificationService {
   }
 
   /// Requests notification + exact-alarm + battery-optimization permissions.
-  static Future<String> requestAllPermissions() async {
+  ///
+  /// Returns a human-readable report plus an explicit [PermissionReport.denied]
+  /// flag. Callers used to sniff the Russian «ОТКЛОНЕНО» substring out of the
+  /// text, which silently read a denial as success on iOS and desktop — those
+  /// paths answer 'OK'/'Denied' and never contain that word.
+  static Future<PermissionReport> requestAllPermissions() async {
     if (kIsWeb) {
       final ok = await webnotif.webRequestPermission();
-      return ok
-          ? 'Уведомления: разрешено (браузер)'
-          : 'Уведомления: ОТКЛОНЕНО (браузер) — разрешите в настройках сайта';
+      return PermissionReport(
+        details: ok
+            ? 'Уведомления: разрешено (браузер)'
+            : 'Уведомления: ОТКЛОНЕНО (браузер) — разрешите в настройках сайта',
+        denied: !ok,
+      );
     }
     final buffer = StringBuffer();
+    var denied = false;
     if (!Platform.isAndroid) {
       final ok = await NotificationService().requestPermissions();
-      return ok ? 'OK' : 'Denied';
+      return PermissionReport(
+        details: ok ? 'OK' : 'Denied',
+        denied: !ok,
+      );
     }
 
     // --- Notification permission ---
@@ -238,6 +262,7 @@ class NotificationService {
       buffer.writeln(
         res.isGranted ? 'Уведомления: разрешено' : 'Уведомления: ОТКЛОНЕНО',
       );
+      if (!res.isGranted) denied = true;
     } else {
       buffer.writeln('Уведомления: уже разрешено');
     }
@@ -252,6 +277,7 @@ class NotificationService {
         'Точные будильники: ОТКЛОНЕНО — открыты настройки приложения; '
         'найдите раздел "Будильники и напоминания" и включите точное расписание',
       );
+      denied = true;
     } else {
       final res = await Permission.scheduleExactAlarm.request();
       buffer.writeln(
@@ -259,6 +285,7 @@ class NotificationService {
             ? 'Точные будильники: разрешено'
             : 'Точные будильники: ОТКЛОНЕНО',
       );
+      if (!res.isGranted) denied = true;
     }
 
     // --- ignoreBatteryOptimizations ---
@@ -271,6 +298,7 @@ class NotificationService {
         'Оптимизация батареи: ОТКЛОНЕНО — открыты настройки приложения; '
         'в разделе "Батарея" выберите "Без ограничений"',
       );
+      denied = true;
     } else {
       final res = await Permission.ignoreBatteryOptimizations.request();
       buffer.writeln(
@@ -278,9 +306,10 @@ class NotificationService {
             ? 'Оптимизация батареи: отключена'
             : 'Оптимизация батареи: ОТКЛОНЕНО (уведомления могут опаздывать в фоне)',
       );
+      if (!res.isGranted) denied = true;
     }
 
-    return buffer.toString();
+    return PermissionReport(details: buffer.toString(), denied: denied);
   }
 
   Future<void> showNotification(

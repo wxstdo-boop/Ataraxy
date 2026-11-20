@@ -426,32 +426,38 @@ class _InputBar extends StatelessWidget {
             ),
             const SizedBox(width: 6),
             // Gradient send button — theme-aware (was hardcoded purple).
-            Container(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [scheme.primary, scheme.tertiary],
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: scheme.primary.withValues(alpha: 0.4),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
+            // PressScale gives it the same fast dimple + eased recoil as every
+            // other control; a bare IconButton only flashed a ripple.
+            PressScale(
+              scale: 0.92,
+              haptic: true,
+              child: Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [scheme.primary, scheme.tertiary],
                   ),
-                ],
-              ),
-              child: IconButton(
-                onPressed: enabled ? onSend : null,
-                icon: const Icon(Icons.send_rounded, size: 20),
-                color: scheme.onPrimary,
-                // The pressed/ripple highlight must follow the circle of
-                // the gradient shell exactly — the default square-ish
-                // highlight sticks out of the round button.
-                style: IconButton.styleFrom(
-                  backgroundColor: Colors.transparent,
-                  shape: const CircleBorder(),
+                  boxShadow: [
+                    BoxShadow(
+                      color: scheme.primary.withValues(alpha: 0.4),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: IconButton(
+                  onPressed: enabled ? onSend : null,
+                  icon: const Icon(Icons.send_rounded, size: 20),
+                  color: scheme.onPrimary,
+                  // The pressed/ripple highlight must follow the circle of
+                  // the gradient shell exactly — the default square-ish
+                  // highlight sticks out of the round button.
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    shape: const CircleBorder(),
+                  ),
                 ),
               ),
             ),

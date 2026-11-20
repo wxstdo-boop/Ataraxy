@@ -73,3 +73,28 @@ Future<void> settle(
     if (done != null && done()) return;
   }
 }
+
+/// Waits for the AI chat overlay to finish loading, then settles its entrance.
+///
+/// `pumpAndSettle()` cannot be used while the chat is still initialising: the
+/// placeholder is a `CircularProgressIndicator`, which animates forever, so the
+/// call spins until its 10-minute timeout — the flaky failure in
+/// `ai_keyboard_test` / `ai_send_button_test` whenever Hive init was slow.
+/// Waiting for the indicator to disappear first keeps the settle finite.
+Future<void> settleChat(
+  WidgetTester tester, {
+  int maxRounds = 40,
+}) async {
+  final loading = find.byType(CircularProgressIndicator);
+  await settle(
+    tester,
+    done: () => loading.evaluate().isEmpty,
+    maxRounds: maxRounds,
+  );
+  expect(
+    loading,
+    findsNothing,
+    reason: 'the chat never finished initialising',
+  );
+  await tester.pumpAndSettle();
+}

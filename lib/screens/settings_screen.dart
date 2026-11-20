@@ -378,14 +378,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
             scale: 0.95,
             child: OutlinedButton.icon(
               onPressed: () async {
-                final details =
+                final report =
                     await NotificationService.requestAllPermissions();
               final err = await NotificationService.sendTest();
               if (context.mounted) {
-                if (err == null && details.contains('ОТКЛОНЕНО')) {
+                if (err == null && report.denied) {
                   AnimatedSnack.show(
                     context,
-                    details,
+                    report.details,
                     type: SnackType.warning,
                     duration: const Duration(seconds: 6),
                   );
@@ -712,7 +712,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         const Divider(height: 1),
-                        // «Участвуй в развитии ADA» — bold-outlined tile that opens
+                        // «Участвуй в развитии Ады» — bold-outlined tile that opens
                         // a rounded info sheet (same style as the provider sheet).
                 Padding(
                   padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
@@ -752,7 +752,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             const SizedBox(width: 10),
                             Expanded(
                               child: Text(
-                                'Участвуй в развитии ADA',
+                                L.tr(context, 'aiDevelopmentTitle'),
                                 style: TextStyle(
                                   fontWeight: FontWeight.w700,
                                   color: scheme.onSurface,

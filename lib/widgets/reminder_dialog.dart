@@ -169,11 +169,11 @@ class _ReminderDialogState extends State<ReminderDialog>
                               color: scheme.onSurfaceVariant,
                             ),
                             onTap: () async {
-                              final result =
+                              final report =
                                   await NotificationService
                                       .requestAllPermissions();
                               if (context.mounted) {
-                                final denied = result.contains('ОТКЛОНЕНО');
+                                final denied = report.denied;
                                 AnimatedSnack.show(
                                   context,
                                   L.tr(

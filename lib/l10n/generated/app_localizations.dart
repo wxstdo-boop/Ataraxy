@@ -604,6 +604,72 @@ abstract class AppLocalizations {
   /// **'Экспорт отменён'**
   String get exportCancelled;
 
+  /// No description provided for @exportEncryptTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Защитить паролем'**
+  String get exportEncryptTitle;
+
+  /// No description provided for @exportEncryptHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Резервная копия будет зашифрована (AES-256). Запомните пароль — без него бэкап не восстановить.'**
+  String get exportEncryptHint;
+
+  /// No description provided for @exportEncryptToggle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Зашифровать бэкап паролем'**
+  String get exportEncryptToggle;
+
+  /// No description provided for @exportPlain.
+  ///
+  /// In ru, this message translates to:
+  /// **'Обычный (без пароля)'**
+  String get exportPlain;
+
+  /// No description provided for @backupPassword.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пароль'**
+  String get backupPassword;
+
+  /// No description provided for @backupPasswordConfirm.
+  ///
+  /// In ru, this message translates to:
+  /// **'Повторите пароль'**
+  String get backupPasswordConfirm;
+
+  /// No description provided for @backupPasswordMismatch.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пароли не совпадают'**
+  String get backupPasswordMismatch;
+
+  /// No description provided for @backupPasswordTooShort.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пароль слишком короткий (минимум 4 символа)'**
+  String get backupPasswordTooShort;
+
+  /// No description provided for @importPasswordTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Бэкап зашифрован'**
+  String get importPasswordTitle;
+
+  /// No description provided for @importPasswordHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Введите пароль, которым защищали резервную копию'**
+  String get importPasswordHint;
+
+  /// No description provided for @importWrongPassword.
+  ///
+  /// In ru, this message translates to:
+  /// **'Неверный пароль'**
+  String get importWrongPassword;
+
   /// No description provided for @importDone.
   ///
   /// In ru, this message translates to:
@@ -1345,7 +1411,7 @@ abstract class AppLocalizations {
   /// No description provided for @aiAssistant.
   ///
   /// In ru, this message translates to:
-  /// **'ИИ-ассистент'**
+  /// **'Ада Край (Ada Cry)'**
   String get aiAssistant;
 
   /// No description provided for @aiInputHint.
@@ -1363,7 +1429,7 @@ abstract class AppLocalizations {
   /// No description provided for @aiEmptyTitle.
   ///
   /// In ru, this message translates to:
-  /// **'Привет! Я твой ИИ-ассистент'**
+  /// **'Привет! Я Ада Край (Ada Cry)'**
   String get aiEmptyTitle;
 
   /// No description provided for @aiEmptyHint.
@@ -1387,7 +1453,7 @@ abstract class AppLocalizations {
   /// No description provided for @aiError.
   ///
   /// In ru, this message translates to:
-  /// **'Ошибка ИИ'**
+  /// **'Ошибка Ады'**
   String get aiError;
 
   /// No description provided for @aiEntryCreated.
@@ -1411,13 +1477,13 @@ abstract class AppLocalizations {
   /// No description provided for @aiSettingsTitle.
   ///
   /// In ru, this message translates to:
-  /// **'ИИ-ассистент'**
+  /// **'Ада Край (Ada Cry)'**
   String get aiSettingsTitle;
 
   /// No description provided for @aiSettingsHint.
   ///
   /// In ru, this message translates to:
-  /// **'Умный чат по твоим записям (долгое нажатие на «+»)'**
+  /// **'Чат с Адой по твоим записям (долгое нажатие на «+»)'**
   String get aiSettingsHint;
 
   /// No description provided for @aiProvider.
@@ -1425,6 +1491,36 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Провайдер'**
   String get aiProvider;
+
+  /// No description provided for @aiProviderHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Поддерживаются почти все из FreeLLM — вставь их API-ключ в поле ниже, и провайдер заработает вместо Laguna. OVHcloud AI Endpoints и AI Horde работают вообще без ключа (подключены как бесплатные фолбэки). Пилля FreeLLM откроет каталог freellm.net — 400+ бесплатных моделей и ссылки на свежие ключи.'**
+  String get aiProviderHint;
+
+  /// No description provided for @aiNoSavedKeys.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пока нет сохранённых ключей — вставь ключ в поле выше.'**
+  String get aiNoSavedKeys;
+
+  /// No description provided for @aiMyKeys.
+  ///
+  /// In ru, this message translates to:
+  /// **'Мои API-ключи'**
+  String get aiMyKeys;
+
+  /// No description provided for @aiKeysHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Тап — выбрать · зажми 10 сек — удалить'**
+  String get aiKeysHint;
+
+  /// No description provided for @aiKeyPicked.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ключ выбран: {key}'**
+  String aiKeyPicked(Object key);
 
   /// No description provided for @aiFree.
   ///
@@ -1465,7 +1561,7 @@ abstract class AppLocalizations {
   /// No description provided for @aiDisabled.
   ///
   /// In ru, this message translates to:
-  /// **'ИИ-ассистент выключен — включи в настройках'**
+  /// **'Ада Край выключена — включи в настройках'**
   String get aiDisabled;
 
   /// No description provided for @minimize.
@@ -1483,19 +1579,31 @@ abstract class AppLocalizations {
   /// No description provided for @aiOnVacation.
   ///
   /// In ru, this message translates to:
-  /// **'ИИ сейчас на курорте ☀️ — попробуй чуть позже'**
+  /// **'Ада сейчас на курорте ☀️ — попробуй чуть позже'**
   String get aiOnVacation;
+
+  /// No description provided for @aiDevelopmentBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ада в начальном развитии. Если хочешь участвовать — попробуй приложение Misasoc (или IDE на PC) от того же автора, полностью FOSS.'**
+  String get aiDevelopmentBody;
+
+  /// No description provided for @aiDevelopmentTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Участвуй в развитии Ады'**
+  String get aiDevelopmentTitle;
 
   /// No description provided for @aiAdaFallback.
   ///
   /// In ru, this message translates to:
-  /// **'ADA временно недоступна (модель не развёрнута) — переключил на бесплатный канал'**
+  /// **'Аде нужен твой ключ HuggingFace — переключил на бесплатный канал'**
   String get aiAdaFallback;
 
   /// No description provided for @aiAdaNotDeployed.
   ///
   /// In ru, this message translates to:
-  /// **'Модель ADA ещё не развёрнута на HuggingFace — включи Inference Endpoint в настройках модели (нужен Pro), или используй Free'**
+  /// **'Модель Ады ещё не развёрнута на HuggingFace — включи Inference Endpoint в настройках модели (нужен Pro), или используй Free'**
   String get aiAdaNotDeployed;
 
   /// No description provided for @aiClearChat.
@@ -1513,7 +1621,7 @@ abstract class AppLocalizations {
   /// No description provided for @aiAdaLimitReached.
   ///
   /// In ru, this message translates to:
-  /// **'Дневной лимит ADA (100) исчерпан — переключаю на бесплатный канал'**
+  /// **'Дневной лимит Ады (100) исчерпан — переключаю на бесплатный канал'**
   String get aiAdaLimitReached;
 
   /// No description provided for @aiRemaining.
@@ -1641,6 +1749,84 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Настройте приложение для идеального опыта записи снов'**
   String get welcomeSubtitle;
+
+  /// No description provided for @welcomeGreeting.
+  ///
+  /// In ru, this message translates to:
+  /// **'Добро пожаловать в Ataraxy.'**
+  String get welcomeGreeting;
+
+  /// No description provided for @welcomeTagline.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ваш личный дневник для записи снов, мыслей и идей'**
+  String get welcomeTagline;
+
+  /// No description provided for @permissionMissingTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Разрешение не получено'**
+  String get permissionMissingTitle;
+
+  /// No description provided for @permissionMissingBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Без разрешения на уведомления напоминания не смогут показаться. Нажмите «Включить» ещё раз, если передумали.'**
+  String get permissionMissingBody;
+
+  /// No description provided for @gotIt.
+  ///
+  /// In ru, this message translates to:
+  /// **'Понятно'**
+  String get gotIt;
+
+  /// No description provided for @enabledLabel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Включено'**
+  String get enabledLabel;
+
+  /// No description provided for @enableLabel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Включить'**
+  String get enableLabel;
+
+  /// No description provided for @permissionGranted.
+  ///
+  /// In ru, this message translates to:
+  /// **'Разрешение получено'**
+  String get permissionGranted;
+
+  /// No description provided for @permissionReminderHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Для напоминаний о записях в дневник'**
+  String get permissionReminderHint;
+
+  /// No description provided for @permissionsOffTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Разрешения отключены'**
+  String get permissionsOffTitle;
+
+  /// No description provided for @permissionsOffBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Откройте настройки приложения и включите разрешение на уведомления вручную.\n\nНа Xiaomi/MIUI также включите:\n• Автозапуск\n• Уведомления\n• Точные будильники\n• Отключите оптимизацию батареи для Ataraxy'**
+  String get permissionsOffBody;
+
+  /// No description provided for @openSettings.
+  ///
+  /// In ru, this message translates to:
+  /// **'Открыть настройки'**
+  String get openSettings;
+
+  /// No description provided for @startUsingNow.
+  ///
+  /// In ru, this message translates to:
+  /// **'Начать пользоваться'**
+  String get startUsingNow;
 
   /// No description provided for @notifications.
   ///

@@ -133,6 +133,15 @@ are the single source of truth for every user-facing string.
   map. Placeholders use `{name}` and are filled from the `params` map.
 - `test/l10n_test.dart` fails if a message is missing from a locale or if the
   generated map drifts from the ARB files, so regenerate before committing.
+- HAVING A KEY IS NOT THE SAME AS USING IT. `welcome_screen.dart` and
+  `settings_ai.dart` were full of Russian string literals while their keys
+  (`welcomeTitle`, `notifications`, `aiSettingsTitle`, …) sat unused in the
+  ARB — an en/fr user got a fully Russian first launch and AI settings sheet.
+  `test/l10n_test.dart` now fails on any Cyrillic literal in those files, so
+  route new copy through `L.tr` instead of pasting text.
+- `_button()` / `_content()` helpers inside a `State` do not get a `context`;
+  pass one in rather than reaching for `L.trStatic` (which cannot see the
+  active locale).
 
 ### Release
 
@@ -275,6 +284,41 @@ release, so bump `version:` in `pubspec.yaml` before tagging.
 
 ## Performance notes
 
+- `ChatController.init()` fires its five independent restores (entries,
+  provider tab, chat history, daily usage, rewards) concurrently. Awaiting them
+  in sequence put five Hive/prefs round-trips in front of the first chat frame,
+  so the overlay sat on its spinner noticeably longer. Keep new restores in the
+  same `Future`s-then-`await` shape, and attach any error handler at creation
+  time (see the rewards read) so an early failure is not an unhandled error.
+- Widget tests that open the AI overlay must use `settleChat(tester)` from
+  `test/helpers.dart`, never a bare `pumpAndSettle()`. While the chat is
+  initialising it shows a `CircularProgressIndicator`, which animates forever
+  and pins `pumpAndSettle` until its timeout — the source of the intermittent
+  `ai_keyboard_test` / `ai_send_button_test` failures. `settleChat` waits for
+  the spinner to disappear first, then settles.
+- `NotificationService.requestAllPermissions()` returns a `PermissionReport`
+  (`details` for the user + a `denied` flag). Branch on `denied`; never sniff
+  the wording of `details`. The UI used to look for the Russian «ОТКЛОНЕНО»
+  substring, but iOS/desktop answer `'OK'`/`'Denied'`, so a real denial
+  rendered as a green success snack. `test/notification_service_test.dart`
+  pins the contract.
+- The AI overlay (`lib/screens/ai_assistant_screen.dart`) must keep its
+  animations scoped to the surface that is actually visible. `_bubblePulse`
+  and `_driftTimer` (33 ms) are started/stopped together in `_setMinimized`,
+  not in `initState`: they used to tick for the whole session even with the
+  chat window open, which is what made entering/leaving the assistant feel
+  heavy. The decorated chat `Container` (two large blurred shadows) is built
+  OUTSIDE the `ListenableBuilder` on `ChatController`, so a streaming token
+  flush no longer re-rasterises the shadows.
+- Chat-window geometry must survive the keyboard. Android reports it either
+  as `viewInsets.bottom` (surface keeps its height) or as a shorter surface
+  (`adjustResize`). `_screenSize` remembers the un-obscured viewport and
+  `_keyboardLift` subtracts whatever shrink the platform already applied, so
+  each style is compensated exactly once; the window glides up via
+  `AnimatedPositioned` instead of resizing. `test/ai_keyboard_test.dart`
+  asserts both variants and that closing the keyboard restores the exact
+  original rect — do not "simplify" this back to `MediaQuery.sizeOf` plus a
+  fixed `bottom`.
 - Pixel-sampling tests (`RenderRepaintBoundary.toImage`) run under the test
   harness where the default font is Ahem: every glyph paints as a SOLID FILLED
   BOX in the text colour. A light-on-dark header therefore scans as wide
